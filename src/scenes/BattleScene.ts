@@ -30,12 +30,11 @@ import {
   UPGRADE_PATH_TITLES,
   UPGRADE_TREE_COLUMNS,
   LEVELS,
-  STONE_GIANT_IDLE_FRAME_COUNT,
-  STONE_GIANT_ATTACK_FRAME_COUNT,
   STONE_GIANT_IDLE_FRAME_MS,
   STONE_GIANT_ATTACK_FRAME_MS,
   STONE_GIANT_DISPLAY_WIDTH,
 } from '../game/constants'
+import { characterRegistry } from '../game/CharacterRegistry'
 import { computeReticle } from '../game/systems/AimSystem'
 import { getUpgradeNodeStatus, getXpProgress } from '../game/upgrades'
 import type { GameState, HitResult, HitZoneName, ActiveSlotState, ShapeDescriptor, UpgradeNodeId, GlobalUpgradeState, SkillFightStats } from '../types'
@@ -361,14 +360,13 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    // Extract idle masks
-    for (let i = 0; i < STONE_GIANT_IDLE_FRAME_COUNT; i++) {
-      extractMask(`stone_giant_mask_idle_${i}`, 'idle', i)
-    }
-
-    // Extract attack masks
-    for (let i = 0; i < STONE_GIANT_ATTACK_FRAME_COUNT; i++) {
-      extractMask(`stone_giant_mask_attack_${i}`, 'attack', i)
+    // Extract masks for all animations from the stone-giant manifest
+    const sgManifest = characterRegistry.get('stone-giant')
+    for (const [animKey, anim] of Object.entries(sgManifest.animations)) {
+      if (!anim.hasMasks) continue
+      for (let i = 0; i < anim.frameCount; i++) {
+        extractMask(`${sgManifest.spriteKey}_mask_${animKey}_${i}`, animKey, i)
+      }
     }
 
     if (loaded > 0) {
@@ -400,14 +398,14 @@ export class BattleScene extends Phaser.Scene {
     if (this._stoneGiantAnim === 'idle') {
       if (this._stoneGiantAnimTimer >= STONE_GIANT_IDLE_FRAME_MS) {
         this._stoneGiantAnimTimer -= STONE_GIANT_IDLE_FRAME_MS
-        this._stoneGiantFrame = (this._stoneGiantFrame + 1) % STONE_GIANT_IDLE_FRAME_COUNT
+        this._stoneGiantFrame = (this._stoneGiantFrame + 1) % characterRegistry.get('stone-giant').animations.idle.frameCount
       }
     } else {
       // attack animation
       if (this._stoneGiantAnimTimer >= STONE_GIANT_ATTACK_FRAME_MS) {
         this._stoneGiantAnimTimer -= STONE_GIANT_ATTACK_FRAME_MS
         this._stoneGiantFrame++
-        if (this._stoneGiantFrame >= STONE_GIANT_ATTACK_FRAME_COUNT) {
+        if (this._stoneGiantFrame >= characterRegistry.get('stone-giant').animations.attack.frameCount) {
           // Attack animation complete — return to idle
           this._stoneGiantAnim = 'idle'
           this._stoneGiantFrame = 0

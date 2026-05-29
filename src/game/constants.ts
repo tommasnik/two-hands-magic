@@ -884,12 +884,6 @@ export const ENEMY_STONE_GIANT: EnemyDef = {
   displayWidth: STONE_GIANT_DISPLAY_WIDTH,
 }
 
-/** Stone Giant idle animation frame count. Unit: frames. Affects: idle loop length. */
-export const STONE_GIANT_IDLE_FRAME_COUNT = 10
-
-/** Stone Giant attack animation frame count. Unit: frames. Affects: attack animation length. */
-export const STONE_GIANT_ATTACK_FRAME_COUNT = 7
-
 /** Stone Giant idle animation frame duration. Unit: ms. Affects: idle loop speed (1.5s full cycle). */
 export const STONE_GIANT_IDLE_FRAME_MS = 150
 

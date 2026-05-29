@@ -13,7 +13,7 @@
       "frameCount": 9,
       "frameDurationMs": 100,
       "loop": false,
-      "hasMasks": false,
+      "hasMasks": true,
       "source": {
         "animationId": "dd99f7d4-b1d7-4628-8f0e-feb4d58b2d96",
         "animationGroupId": "b769cedf-49ce-4d7d-8644-1eaae2fbd95c",

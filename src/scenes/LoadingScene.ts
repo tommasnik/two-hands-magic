@@ -1,8 +1,22 @@
 import Phaser from 'phaser'
-import {
-  STONE_GIANT_IDLE_FRAME_COUNT,
-  STONE_GIANT_ATTACK_FRAME_COUNT,
-} from '../game/constants'
+import { characterRegistry } from '../game/CharacterRegistry'
+import type { CharacterManifest } from '../game/CharacterRegistry'
+
+// Static manifest imports — Vite resolves JSON imports at build time
+import stoneGiantManifest from '../assets/characters/stone-giant/manifest.json'
+import plagueRatManifest from '../assets/characters/plague-rat/manifest.json'
+import iceGiantManifest from '../assets/characters/ice-giant/manifest.json'
+import crystalSpiderManifest from '../assets/characters/crystal-spider/manifest.json'
+import emberWispManifest from '../assets/characters/ember-wisp/manifest.json'
+
+/** All character manifests to register and load. */
+const ALL_MANIFESTS: CharacterManifest[] = [
+  stoneGiantManifest as CharacterManifest,
+  plagueRatManifest as CharacterManifest,
+  iceGiantManifest as CharacterManifest,
+  crystalSpiderManifest as CharacterManifest,
+  emberWispManifest as CharacterManifest,
+]
 
 export class LoadingScene extends Phaser.Scene {
   constructor() {
@@ -10,32 +24,38 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Stone Giant sprite frames
-    for (let i = 0; i < STONE_GIANT_IDLE_FRAME_COUNT; i++) {
-      this.load.image(
-        `stone_giant_idle_${i}`,
-        `src/assets/characters/stone-giant/frames/idle_${String(i).padStart(2, '0')}.png`,
-      )
-    }
-    for (let i = 0; i < STONE_GIANT_ATTACK_FRAME_COUNT; i++) {
-      this.load.image(
-        `stone_giant_attack_${i}`,
-        `src/assets/characters/stone-giant/frames/attack_${String(i).padStart(2, '0')}.png`,
-      )
+    // Register all manifests into the global CharacterRegistry
+    for (const manifest of ALL_MANIFESTS) {
+      if (!characterRegistry.has(manifest.id)) {
+        characterRegistry.register(manifest)
+      }
     }
 
-    // Stone Giant hit zone masks
-    for (let i = 0; i < STONE_GIANT_IDLE_FRAME_COUNT; i++) {
-      this.load.image(
-        `stone_giant_mask_idle_${i}`,
-        `src/assets/characters/stone-giant/masks/idle_${String(i).padStart(2, '0')}.png`,
-      )
-    }
-    for (let i = 0; i < STONE_GIANT_ATTACK_FRAME_COUNT; i++) {
-      this.load.image(
-        `stone_giant_mask_attack_${i}`,
-        `src/assets/characters/stone-giant/masks/attack_${String(i).padStart(2, '0')}.png`,
-      )
+    // Generically load all frames and masks for every registered character
+    for (const manifest of characterRegistry.getAll()) {
+      const { id, spriteKey, animations } = manifest
+
+      for (const [animKey, anim] of Object.entries(animations)) {
+        // Load sprite frames
+        for (let i = 0; i < anim.frameCount; i++) {
+          const paddedIndex = String(i).padStart(2, '0')
+          this.load.image(
+            `${spriteKey}_${animKey}_${i}`,
+            `src/assets/characters/${id}/frames/${animKey}_${paddedIndex}.png`,
+          )
+        }
+
+        // Load hit-zone masks (only if masks exist for this animation)
+        if (anim.hasMasks) {
+          for (let i = 0; i < anim.frameCount; i++) {
+            const paddedIndex = String(i).padStart(2, '0')
+            this.load.image(
+              `${spriteKey}_mask_${animKey}_${i}`,
+              `src/assets/characters/${id}/masks/${animKey}_${paddedIndex}.png`,
+            )
+          }
+        }
+      }
     }
   }
 

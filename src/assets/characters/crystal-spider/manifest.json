@@ -17,7 +17,7 @@
       "frameCount": 9,
       "frameDurationMs": 100,
       "loop": false,
-      "hasMasks": false,
+      "hasMasks": true,
       "source": {
         "animationId": "cf755f31-cea3-4b51-87bd-64b1de4d2212",
         "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
@@ -29,7 +29,7 @@
       "frameCount": 9,
       "frameDurationMs": 100,
       "loop": false,
-      "hasMasks": false,
+      "hasMasks": true,
       "source": {
         "animationId": "40d872f9-c683-4c5e-9972-8ecb2dfc5267",
         "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
@@ -41,7 +41,7 @@
       "frameCount": 9,
       "frameDurationMs": 100,
       "loop": false,
-      "hasMasks": false,
+      "hasMasks": true,
       "source": {
         "animationId": "d5202235-c1ee-4413-a326-d4fb1b3d4b96",
         "characterId": "7f186dfb-70ee-4fa3-9935-dbe50018ae9e",
