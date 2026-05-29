@@ -32,7 +32,6 @@ export interface AnimationDef {
  */
 export class AnimationController {
   private readonly animations: Record<string, AnimationDef>
-  private readonly animKeys: string[]
   private defaultKey: string
 
   private activeKey: string
@@ -47,7 +46,6 @@ export class AnimationController {
     }
 
     this.animations = animations
-    this.animKeys = keys
 
     // Default = first loop animation, or first animation overall
     const firstLoop = keys.find(k => animations[k].loop)

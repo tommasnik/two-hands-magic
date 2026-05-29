@@ -892,6 +892,52 @@ export const STONE_GIANT_IDLE_FRAME_MS = 150
 /** Stone Giant attack animation frame duration. Unit: ms. Affects: attack animation speed (~700ms total). */
 export const STONE_GIANT_ATTACK_FRAME_MS = 100
 
+/**
+ * Ice Giant — sprite-based enemy. Two attack phases (windup + throw), no idle yet.
+ * Uses first attack animation frame as idle placeholder until idle animation is created.
+ * HP and difficulty comparable to Stone Giant.
+ */
+export const ENEMY_ICE_GIANT: EnemyDef = {
+  name: 'Ice Giant',
+  /** HP: 130. Comparable to Stone Giant. Unit: HP. */
+  maxHp: 130,
+  /** critZoneScale: 0.55 — same as Stone Giant; very small head. Unit: dimensionless multiplier. */
+  critZoneScale: 0.55,
+  /** manifestId: character manifest ID for CharacterRegistry lookup. */
+  manifestId: 'ice-giant',
+  /** spriteKey: Phaser texture key for the Ice Giant animated sprite. */
+  spriteKey: 'ice_giant',
+  /** hitZoneMap: default three-zone layout (head/torso/legs). */
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  /** behavior: static — challenge is precision. */
+  behavior: { pattern: 'static', speed: 0 },
+  /** shape: massive humanoid — larger scale, very small head relative to huge body. */
+  shape: { type: 'humanoid', scale: 1.4, headScale: 0.55, widthRatio: 1.3 },
+  /**
+   * hitZoneLayout: fallback geometric layout matching Stone Troll / Stone Giant.
+   */
+  hitZoneLayout: {
+    critDx: 0,
+    critDy: -(ENEMY_TORSO_HEIGHT_PX / 2 + ENEMY_HEAD_RADIUS_PX * 0.55),
+    critRadius: ENEMY_HEAD_RADIUS_PX * 0.55,
+    midDx: 0,
+    midDy: 0,
+    midRadius: ENEMY_TORSO_WIDTH_PX * 0.75,
+    lowDx: 0,
+    lowDy: ENEMY_TORSO_HEIGHT_PX * 0.25,
+    lowRadius: ENEMY_TORSO_HEIGHT_PX * 1.2,
+  },
+  /** attacks: inherited from Stone Troll. */
+  attacks: ENEMY_STONE_TROLL.attacks,
+  /** maskConfig: pixel-perfect PNG masks for attack (9 frames) and throw (9 frames). */
+  maskConfig: {
+    idle: { frameCount: 9, prefix: 'mask_attack_' },
+    attack: { frameCount: 9, prefix: 'mask_throw_' },
+  },
+  /** displayWidth: 124 px per manifest. */
+  displayWidth: 124,
+}
+
 // ============================================================
 // Extended enemy roster — 15 enemy types for future levels / sandbox use
 // Each EnemyDef includes size, movementPattern, hitZone, and critZone metadata.
@@ -1601,6 +1647,25 @@ export const ENEMY_TITAN_LORD: EnemyDef = {
     lowRadius: ENEMY_TORSO_HEIGHT_PX * 1.45,
   },
 }
+
+// ============================================================
+// Enemy pool — 5 sprite-based characters for sequential rotation
+// After killing one enemy, the next one from this pool appears.
+// The pool wraps around: after the last enemy, it cycles back to the first.
+// ============================================================
+
+/**
+ * Pool of 5 sprite-based enemies used for sequential rotation in battle.
+ * After each kill the next enemy in the pool is loaded. Wraps around modulo length.
+ * Unit: EnemyDef[]. Affects: which enemy appears after each kill.
+ */
+export const ENEMY_POOL: readonly EnemyDef[] = [
+  ENEMY_STONE_GIANT,
+  ENEMY_PLAGUE_RAT,
+  ENEMY_ICE_GIANT,
+  ENEMY_CRYSTAL_SPIDER,
+  ENEMY_EMBER_WISP,
+]
 
 // ============================================================
 // Level definitions — 18-level campaign

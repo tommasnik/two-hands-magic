@@ -67,7 +67,9 @@ describe('Game Design: Thunder Hawk — short hit window, diagonal speed', () =>
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    const hitsNeeded = minHitsToKill(ENEMY_THUNDER_HAWK.maxHp, SLOW_CRIT_DMG)
+    // Use the actual enemy HP from the machine (pool rotation may differ from Thunder Hawk)
+    const actualHp = machine.getState().enemyMaxHp
+    const hitsNeeded = minHitsToKill(actualHp, SLOW_CRIT_DMG)
     for (let i = 0; i < hitsNeeded; i++) {
       machine._applyHitForTesting('CRIT', 'slow_shot')
     }

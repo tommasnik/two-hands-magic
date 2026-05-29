@@ -14,7 +14,7 @@ import {
   SLOW_SKILL_DAMAGE,
   CRIT_DAMAGE_MULTIPLIER,
   HIT_DAMAGE_MULTIPLIER,
-  ENEMY_GOBLIN_SCOUT,
+  ENEMY_POOL,
   ENEMY_STONE_TROLL,
   UPGRADE_NODES,
   DEFAULT_GLOBAL_UPGRADE_STATE,
@@ -34,8 +34,11 @@ const BASE_SLOW_CRIT = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
 /** Slow-shot HIT damage at the baseline. */
 const BASE_SLOW_HIT = SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER
 
-/** Number of slow-shot CRITs to kill a baseline goblin scout (rounded up). */
-const BASELINE_GOBLIN_CRITS_TO_KILL = Math.ceil(ENEMY_GOBLIN_SCOUT.maxHp / BASE_SLOW_CRIT)
+/** The first enemy in the pool — the one GSM loads on startBattle(). */
+const FIRST_ENEMY = ENEMY_POOL[0]
+
+/** Number of slow-shot CRITs to kill the first pool enemy (rounded up). */
+const BASELINE_CRITS_TO_KILL = Math.ceil(FIRST_ENEMY.maxHp / BASE_SLOW_CRIT)
 
 /** Build a synthetic GlobalUpgradeState by unlocking the named ids in order. */
 function buildUpgradeState(...ids: UpgradeNodeId[]): GlobalUpgradeState {
@@ -87,10 +90,10 @@ describe('Game Design: upgrades regression (no nodes unlocked)', () => {
     expect(before - gsm.getState().enemyHp).toBe(BASE_SLOW_HIT)
   })
 
-  it('default upgrades — Goblin Scout takes BASELINE_GOBLIN_CRITS_TO_KILL slow_shot CRITs', () => {
+  it('default upgrades — first pool enemy takes BASELINE_CRITS_TO_KILL slow_shot CRITs', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(critsToKill(gsm)).toBe(BASELINE_GOBLIN_CRITS_TO_KILL)
+    expect(critsToKill(gsm)).toBe(BASELINE_CRITS_TO_KILL)
   })
 
   it('default upgrades — getState.globalUpgrades matches DEFAULT_GLOBAL_UPGRADE_STATE', () => {
@@ -108,10 +111,10 @@ describe('Game Design: upgrades regression (no nodes unlocked)', () => {
 // ---------------------------------------------------------------------------
 
 describe('Game Design: power user with crit_dmg_3', () => {
-  it('TTK on Goblin Scout drops to at most 50 % of the baseline crit count', () => {
+  it('TTK on first pool enemy drops below the baseline crit count', () => {
     const upgrades = buildUpgradeState('crit_dmg_1', 'crit_dmg_2', 'crit_dmg_3')
     const expectedCritDmg = Math.round(SLOW_SKILL_DAMAGE * upgrades.critDamageMultiplier)
-    const expectedCritsToKill = Math.ceil(ENEMY_GOBLIN_SCOUT.maxHp / expectedCritDmg)
+    const expectedCritsToKill = Math.ceil(FIRST_ENEMY.maxHp / expectedCritDmg)
 
     const gsm = new GameStateMachine()
     gsm.startBattle()
@@ -122,9 +125,7 @@ describe('Game Design: power user with crit_dmg_3', () => {
     const upgradedHits = critsToKill(gsm)
     expect(upgradedHits).toBe(expectedCritsToKill)
     // Difficulty intent: 3.2× crit multiplier vs 2.0× baseline → fewer crits to kill.
-    // For Goblin Scout HP and SLOW_SKILL_DAMAGE this is exactly a 2× speedup (2 → 1 crit).
-    expect(upgradedHits * 2).toBeLessThanOrEqual(BASELINE_GOBLIN_CRITS_TO_KILL)
-    expect(upgradedHits).toBeLessThan(BASELINE_GOBLIN_CRITS_TO_KILL)
+    expect(upgradedHits).toBeLessThan(BASELINE_CRITS_TO_KILL)
   })
 
   it('crit_dmg_3 also makes Stone Troll measurably easier (monotonic improvement)', () => {
@@ -177,7 +178,7 @@ describe('Game Design: casual player with crit_zone_1', () => {
   })
 
   it('near-miss shot landing within 1+tolerance × crit radius now reads as CRIT', () => {
-    // Build a layout via the goblin scout so the tolerance is exercised against
+    // Build a layout via the first pool enemy so the tolerance is exercised against
     // production geometry rather than a synthetic test layout.
     const gsm = new GameStateMachine()
     gsm.startBattle()
@@ -185,7 +186,7 @@ describe('Game Design: casual player with crit_zone_1', () => {
     gsm._applyUpgradeForTesting('crit_zone_1')
     const tolerance = gsm.getState().globalUpgrades.critZoneTolerance
     const enemyPos = gsm.getState().enemy
-    const layout = ENEMY_GOBLIN_SCOUT.hitZoneLayout!
+    const layout = FIRST_ENEMY.hitZoneLayout!
 
     // Sample point 1.1× crit radius from the crit centre — outside the strict
     // crit zone, but inside the tolerance band (tolerance is 0.15 → 1.15×).

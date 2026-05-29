@@ -35,7 +35,7 @@ import {
   CRIT_DAMAGE_MULTIPLIER,
   HIT_DAMAGE_MULTIPLIER,
   MAX_DELTA_MS,
-  ENEMY_GOBLIN_SCOUT,
+  ENEMY_POOL,
   DEFAULT_SKILL_CONFIG,
 } from '../../game/constants'
 import type { InputEvent } from '../../types'
@@ -194,16 +194,16 @@ describe('TASK-38 AC#2 — Fireball SkillDef', () => {
 // ============================================================
 // Kill scenario — White Shot (power user: multiple crits)
 // white_shot CRIT = WHITE_SHOT_SKILL_DAMAGE × 2
-// Goblin Scout HP = ENEMY_GOBLIN_SCOUT.maxHp
+// Goblin Scout HP = ENEMY_POOL[0].maxHp
 // Shots to kill = ceil(HP / CRIT_DAMAGE) = ceil(60 / 6) = 10
 // ============================================================
 
 describe('TASK-38 — White Shot kill scenario (power user)', () => {
-  it('power user can kill Goblin Scout using white_shot CRITs (worst-case min damage)', () => {
+  it('power user can kill first pool enemy using white_shot CRITs (worst-case min damage)', () => {
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    const hp = ENEMY_GOBLIN_SCOUT.maxHp
+    const hp = ENEMY_POOL[0].maxHp
     // Use min damage to guarantee kill regardless of rng
     const shotsToKill = Math.ceil(hp / WHITE_SHOT_CRIT_MIN)
 
@@ -260,16 +260,16 @@ describe('TASK-38 — White Shot kill scenario (power user)', () => {
 // ============================================================
 // Kill scenario — Fireball (power user: fewer but powerful crits)
 // fireball CRIT = FIREBALL_SKILL_DAMAGE × 2
-// Goblin Scout HP = ENEMY_GOBLIN_SCOUT.maxHp = 60
+// Goblin Scout HP = ENEMY_POOL[0].maxHp = 60
 // Shots to kill = ceil(60 / 24) = 3
 // ============================================================
 
 describe('TASK-38 — Fireball kill scenario (power user)', () => {
-  it('power user can kill Goblin Scout using fireball CRITs (worst-case min damage)', () => {
+  it('power user can kill first pool enemy using fireball CRITs (worst-case min damage)', () => {
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    const hp = ENEMY_GOBLIN_SCOUT.maxHp
+    const hp = ENEMY_POOL[0].maxHp
     // Use min damage to guarantee kill regardless of rng
     const shotsToKill = Math.ceil(hp / FIREBALL_CRIT_MIN)
 
@@ -282,8 +282,8 @@ describe('TASK-38 — Fireball kill scenario (power user)', () => {
     expect(['fight_overview']).toContain(state.phase)
   })
 
-  it('fireball requires fewer CRITs to kill Goblin Scout than white_shot (burst mechanic)', () => {
-    const hp = ENEMY_GOBLIN_SCOUT.maxHp
+  it('fireball requires fewer CRITs to kill first pool enemy than white_shot (burst mechanic)', () => {
+    const hp = ENEMY_POOL[0].maxHp
     // Compare worst-case shots needed for each skill
     const whiteShotCritsNeeded = Math.ceil(hp / WHITE_SHOT_CRIT_MIN)
     const fireballCritsNeeded  = Math.ceil(hp / FIREBALL_CRIT_MIN)

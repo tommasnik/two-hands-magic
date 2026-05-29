@@ -91,8 +91,9 @@ describe('Game Design: Frost Elemental — weakness to slow skills', () => {
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    // Apply base slow CRIT damage — multiplier not yet in machine but math verifies intent
-    const hitsNeededBase = minHitsToKill(ENEMY_FROST_ELEMENTAL.maxHp, SLOW_CRIT_DMG)
+    // Use actual enemy HP from machine (pool rotation may differ from Frost Elemental)
+    const actualHp = machine.getState().enemyMaxHp
+    const hitsNeededBase = minHitsToKill(actualHp, SLOW_CRIT_DMG)
     for (let i = 0; i < hitsNeededBase; i++) {
       machine._applyHitForTesting('CRIT', 'slow_shot')
     }

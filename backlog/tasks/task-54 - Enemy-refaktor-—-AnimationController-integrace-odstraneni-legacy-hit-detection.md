@@ -3,11 +3,11 @@ id: TASK-54
 title: >-
   Enemy refaktor — AnimationController integrace, odstraneni legacy hit
   detection
-status: In Progress
+status: Done
 assignee:
   - '@agent'
 created_date: '2026-05-29 12:03'
-updated_date: '2026-05-29 12:31'
+updated_date: '2026-05-29 12:49'
 labels:
   - game-logic
   - refactor

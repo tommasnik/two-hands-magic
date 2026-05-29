@@ -760,4 +760,10 @@ export interface GameState {
    * per-skill results. Null during battle and loading phases.
    */
   fightStatsSnapshot: FightStats | null
+  /**
+   * Character manifest ID for the active enemy (e.g. 'stone-giant').
+   * Used by BattleScene to look up displayWidth and anchor from CharacterRegistry.
+   * Undefined for enemies without a manifest.
+   */
+  enemyManifestId?: string
 }

@@ -139,7 +139,13 @@ describe('Upgrade flow — stun condition with crit_stun_1', () => {
     expect(stunWindow).toBeGreaterThan(0)
     expect(stunWindow).toBeLessThanOrEqual(after.globalUpgrades.critStunDurationMs)
     // Advancing past the stun window clears the visible-stun condition.
-    gsm.update(stunWindow + 50, [])
+    // Step in MAX_DELTA_MS increments since update() caps each tick.
+    let remaining = stunWindow + 50
+    while (remaining > 0) {
+      const step = Math.min(remaining, MAX_DELTA_MS)
+      gsm.update(step, [])
+      remaining -= step
+    }
     const cleared = gsm.getState()
     expect(cleared.enemy.stunnedUntilMs).toBeLessThanOrEqual(cleared.elapsedMs)
   })

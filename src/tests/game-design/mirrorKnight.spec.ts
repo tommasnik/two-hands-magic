@@ -72,7 +72,9 @@ describe('Game Design: Mirror Knight — reflected zone penalises wrong zone hit
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    const hitsNeeded = minHitsToKill(ENEMY_MIRROR_KNIGHT.maxHp, SLOW_CRIT_DMG)
+    // Use actual enemy HP from machine (pool rotation may differ from Mirror Knight)
+    const actualHp = machine.getState().enemyMaxHp
+    const hitsNeeded = minHitsToKill(actualHp, SLOW_CRIT_DMG)
     for (let i = 0; i < hitsNeeded; i++) {
       machine._applyHitForTesting('CRIT', 'slow_shot')
     }

@@ -82,7 +82,9 @@ describe('Game Design: Swarm — multi-target, low individual HP', () => {
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    const totalHits = minHitsToKill(ENEMY_SWARM.maxHp, SLOW_CRIT_DMG)
+    // Use actual enemy HP from machine (pool rotation may differ from Swarm)
+    const actualHp = machine.getState().enemyMaxHp
+    const totalHits = minHitsToKill(actualHp, SLOW_CRIT_DMG)
     for (let i = 0; i < totalHits; i++) {
       machine._applyHitForTesting('CRIT', 'slow_shot')
     }

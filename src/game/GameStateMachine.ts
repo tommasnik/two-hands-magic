@@ -30,6 +30,7 @@ import {
   DEFAULT_HIT_ZONE_LAYOUT, DEFAULT_SHAPE, PLAYER_MAX_HP, LASER_ORIGIN_Y,
   PLAYER_START_LEVEL, PLAYER_MAX_LEVEL, XP_LEVEL_THRESHOLDS,
   DEFAULT_GLOBAL_UPGRADE_STATE,
+  ENEMY_POOL,
 } from './constants'
 import type { SkillSlotConfig } from './constants'
 
@@ -97,16 +98,17 @@ export class GameStateMachine {
   private _enemyOriginY = ENEMY_DEFAULT_Y
   // Active behavior def — updated on level load; defaults to static
   private _enemyBehavior: EnemyBehaviorDef = resolveBehavior(ENEMY_GOBLIN_SCOUT)
-  // Active hit zone layout — updated on level load; drives per-enemy hit detection
-  private _enemyHitZoneLayout: HitZoneLayout = resolveHitZoneLayout(ENEMY_GOBLIN_SCOUT)
   // Active shape descriptor — updated on level load; drives procedural rendering
   private _enemyShape: ShapeDescriptor = resolveShape(ENEMY_GOBLIN_SCOUT)
   private enemy = new Enemy(GAME_WIDTH / 2, ENEMY_DEFAULT_Y)
+  // Index into ENEMY_POOL for sequential rotation (wraps around modulo pool length)
+  private _enemyPoolIndex = 0
   private currentLevel = 1
   private enemyHp = ENEMY_GOBLIN_SCOUT.maxHp
   private enemyMaxHp = ENEMY_GOBLIN_SCOUT.maxHp
   private enemyName = ENEMY_GOBLIN_SCOUT.name
   private _enemySpriteKey = resolveSpriteKey(ENEMY_GOBLIN_SCOUT)
+  private _enemyManifestId?: string = ENEMY_GOBLIN_SCOUT.manifestId
   private _enemyHitZoneMap: readonly HitZoneEntry[] = resolveHitZoneMap(ENEMY_GOBLIN_SCOUT)
   private inputManager: InputManager
   private projectileSystem = new ProjectileSystem()
@@ -182,8 +184,8 @@ export class GameStateMachine {
    */
   startBattle(): void {
     if (this.phase === 'loading') {
-      const levelDef = LEVELS[this.currentLevel - 1]
-      this._loadLevel(levelDef.enemyDef)
+      this._enemyPoolIndex = 0
+      this._loadLevel(ENEMY_POOL[this._enemyPoolIndex])
       this.phase = 'battle'
     }
   }
@@ -201,8 +203,9 @@ export class GameStateMachine {
     // Guard: if already on the last level, nextLevel() is not valid — use completeFightOverview() instead.
     if (this.currentLevel >= LEVELS.length) return
     this.currentLevel++
-    const levelDef = LEVELS[this.currentLevel - 1]
-    this._loadLevel(levelDef.enemyDef)
+    // Sequential enemy rotation from ENEMY_POOL
+    this._enemyPoolIndex = (this._enemyPoolIndex + 1) % ENEMY_POOL.length
+    this._loadLevel(ENEMY_POOL[this._enemyPoolIndex])
     this.projectileSystem.reset()
     this._fightStats = this._initFightStats()
     this._fightStatsSnapshot = null
@@ -221,8 +224,7 @@ export class GameStateMachine {
     // the next kill's pendingLevelUp gate would prevent progression with no UI
     // re-entry point.
     this.pendingLevelUp = false
-    const levelDef = LEVELS[this.currentLevel - 1]
-    this._loadLevel(levelDef.enemyDef)
+    this._loadLevel(ENEMY_POOL[this._enemyPoolIndex])
     this.projectileSystem.reset()
     this.phase = 'battle'
   }
@@ -235,6 +237,7 @@ export class GameStateMachine {
   restartGame(): void {
     if (this.phase !== 'victory' && this.phase !== 'fight_overview') return
     this.currentLevel = 1
+    this._enemyPoolIndex = 0
     this.score = { total: 0, crits: 0, hits: 0, grazes: 0, misses: 0 }
     this.elapsedMs = 0
     this.lastHit = null
@@ -245,8 +248,7 @@ export class GameStateMachine {
       ...DEFAULT_GLOBAL_UPGRADE_STATE,
       unlockedNodeIds: [...DEFAULT_GLOBAL_UPGRADE_STATE.unlockedNodeIds],
     }
-    const levelDef = LEVELS[0]
-    this._loadLevel(levelDef.enemyDef)
+    this._loadLevel(ENEMY_POOL[this._enemyPoolIndex])
     this.projectileSystem.reset()
     this._fightStats = this._initFightStats()
     this._fightStatsSnapshot = null
@@ -589,6 +591,7 @@ export class GameStateMachine {
       enemyMaxHp: this.enemyMaxHp,
       enemyName: this.enemyName,
       enemySpriteKey: this._enemySpriteKey,
+      enemyManifestId: this._enemyManifestId,
       enemyAnimKey: this.enemy.currentAnimKey,
       enemyFrameIndex: this.enemy.currentFrameIndex,
       currentLevel: this.currentLevel,
@@ -681,8 +684,8 @@ export class GameStateMachine {
     this.enemyMaxHp = enemyDef.maxHp
     this.enemyName = enemyDef.name
     this._enemySpriteKey = resolveSpriteKey(enemyDef)
+    this._enemyManifestId = enemyDef.manifestId
     this._enemyHitZoneMap = resolveHitZoneMap(enemyDef)
-    this._enemyHitZoneLayout = resolveHitZoneLayout(enemyDef)
     this._enemyShape = resolveShape(enemyDef)
     this._enemyBehavior = resolveBehavior(enemyDef)
 

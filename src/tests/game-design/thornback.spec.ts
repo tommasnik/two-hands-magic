@@ -77,7 +77,9 @@ describe('Game Design: Thornback — zigzag drops casual hit rate', () => {
     const machine = new GameStateMachine()
     machine.startBattle()
 
-    const hitsNeeded = minHitsToKill(ENEMY_THORNBACK.maxHp, SLOW_CRIT_DMG)
+    // Use actual enemy HP from machine (pool rotation may differ from Thornback)
+    const actualHp = machine.getState().enemyMaxHp
+    const hitsNeeded = minHitsToKill(actualHp, SLOW_CRIT_DMG)
     for (let i = 0; i < hitsNeeded; i++) {
       machine._applyHitForTesting('CRIT', 'slow_shot')
     }
