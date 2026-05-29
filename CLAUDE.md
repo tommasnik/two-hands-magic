@@ -333,6 +333,39 @@ Masky jsou PNG obrázky kde barva pixelu kóduje hit zónu:
 
 Masky se malují v **stone-giant-editor** (`sites/stone-giant-editor/`) — canvas tool pro ruční painting zón přes sprite framy.
 
+### PixelLab MCP — povinný kontext
+
+Před jakoukoliv prací s PixelLab MCP tools si **vždy** načti aktuální dokumentaci:
+```
+WebFetch https://api.pixellab.ai/mcp/docs
+```
+Obsahuje kompletní reference všech tools, workflow patterns, parametry a tipy. Docs se aktualizují s každou verzí API — nikdy nespoléhej na zapamatované parametry.
+
+### Pravidla generování animací v PixelLabu
+
+#### 1. Pre-check sprite před animací
+Po vytvoření characteru/objektu a **PŘED** generováním jakékoliv animace:
+- Stáhni a vizuálně zkontroluj base sprite (`get_character`/`get_object`)
+- Ověř jak postava **skutečně** vypadá — póza, zbraně, detaily, barvy, proporce
+- Uprav `action_description` idle i attack animací podle **reálného** vzhledu spritu, ne podle idealizovaného popisu v tasku
+- Pokud sprite nemá zbraň, kterou task zmiňuje, uprav attack animaci odpovídajícím způsobem
+
+#### 2. Idle loop kontinuita
+- Idle animace MUSÍ tvořit plynulý loop — první a poslední frame vizuálně identické v póze a pozici
+- Žádný viditelný "skok" při opakování
+- V `action_description` **vždy** explicitně uvést: "The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
+
+#### 3. Rich prompt konzistence
+- Každý `action_description` musí být **self-contained** — obsahovat kompletní vizuální popis (materiály, barvy, proporce, zbraně, vybavení, textury)
+- Ne jen popis pohybu — PixelLab generuje framy nezávisle, prompt musí nést VŠECHNY vizuální informace
+- Prompt musí být konzistentní s `description` z character creation — stejné barvy, materiály, detaily
+- Čím víc detailů (textury, poškození, svítící prvky, materiálové vlastnosti), tím konzistentnější výsledek
+
+#### 4. Konzistence zbraní v attack
+- Pokud postava drží zbraň (meč, sekeru, dýku, luk...), attack animace MUSÍ útočit **touto** zbraní
+- Žádný generic punch/slam pokud má sprite konkrétní zbraň
+- Ověřit vizuálně po pre-checku spritu — zbraň na spritu je autoritativní, ne popis v tasku
+
 ### PixelLab → Hra pipeline
 
 #### Bulk stažení všech assetů z PixelLabu
@@ -382,12 +415,15 @@ Kompletní postup pro stažení a kategorizaci všeho z PixelLabu:
 #### Postup při vytváření jednoho nového character spritu
 
 1. **Vytvoř character v PixelLab** → zapiš `projectId` a `characterId`
-2. **Vytvoř animace v PixelLab** (idle, attack) → zapiš `animationId` pro každou
-3. **Stáhni framy** — curl z CDN (viz URL vzor výše), přejmenuj na `{animKey}_{NN}.png`
-4. **Vytvoř manifest.json** podle šablony výše
-5. **Generuj masky** — `python3 scripts/generate_masks.py src/assets/characters/{id}`
-6. **(Volitelné) Zpřesni masky** v stone-giant-editor — red/yellow/green zóny
-7. **Přidej do constants.ts a loaderu**
+2. **Pre-check sprite** — stáhni a vizuálně zkontroluj base sprite (`get_character`). Ověř skutečný vzhled (póza, zbraně, barvy, proporce). Uprav `action_description` animací podle toho, co vidíš — ne podle idealizovaného popisu.
+3. **Vytvoř animace v PixelLab** (idle, attack) → zapiš `animationId` pro každou
+   - Idle: prompt MUSÍ obsahovat seamless loop instrukci + kompletní vizuální popis
+   - Attack: MUSÍ útočit zbraní viditelnou na spritu (ne generic)
+4. **Stáhni framy** — curl z CDN (viz URL vzor výše), přejmenuj na `{animKey}_{NN}.png`
+5. **Vytvoř manifest.json** podle šablony výše
+6. **Generuj masky** — `python3 scripts/generate_masks.py src/assets/characters/{id}`
+7. **(Volitelné) Zpřesni masky** v stone-giant-editor — red/yellow/green zóny
+8. **Přidej do constants.ts a loaderu**
 
 ### Inventář assetů
 
