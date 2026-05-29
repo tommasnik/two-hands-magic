@@ -1,0 +1,26 @@
+{
+  "id": "ember-wisp",
+  "spriteKey": "ember_wisp",
+  "displayWidth": 256,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "d9acc4df-4312-47d1-97ce-db1cc53a5031",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "dd99f7d4-b1d7-4628-8f0e-feb4d58b2d96",
+        "animationGroupId": "b769cedf-49ce-4d7d-8644-1eaae2fbd95c",
+        "direction": "unknown",
+        "description": "Flame intensifies, pulsing with bright core, surges forward trailing embers"
+      }
+    }
+  },
+  "_notes": "1-direction object (no rotation). Static frame also saved as rotation.png."
+}

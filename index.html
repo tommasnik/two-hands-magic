@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#05000f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Two Hands Magic</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+      html, body {
+        width: 100%; height: 100%;
+        overflow: hidden; overscroll-behavior: none;
+        touch-action: none;
+        background: #05000f;
+        font-family: 'Courier New', monospace;
+        color: #fff;
+        user-select: none; -webkit-user-select: none;
+      }
+      #game-container { position: fixed; inset: 0; }
+      #game-container canvas { display: block; }
+      #cmRef { position: fixed; left: -9999px; top: -9999px; width: 1cm; height: 1cm; }
+
+      .hud {
+        position: fixed; top: env(safe-area-inset-top, 0); left: 0; right: 0;
+        padding: 10px 14px;
+        pointer-events: none;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .hud-level {
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        color: #aaa;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .hud-enemy-name {
+        font-size: 11px;
+        font-weight: bold;
+        letter-spacing: 0.18em;
+        color: #fff;
+        text-shadow: 0 0 8px #ff2255, 0 0 16px #ff2255;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .hud-hp-track {
+        width: 100%;
+        height: 8px;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255, 60, 80, 0.45);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .hud-hp-fill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #ff2255, #ff6080);
+        box-shadow: 0 0 8px #ff2255;
+        border-radius: 4px;
+        transition: width 0.05s linear;
+      }
+
+      .player-hud {
+        position: fixed;
+        bottom: env(safe-area-inset-bottom, 4px);
+        left: 0; right: 0;
+        padding: 4px 14px 8px 14px;
+        z-index: 5;
+        pointer-events: none;
+      }
+      .player-hp-track {
+        width: 100%;
+        height: 10px;
+        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(120, 200, 255, 0.45);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .player-hp-fill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #44ddff, #44ff99);
+        box-shadow: 0 0 8px #44ddff;
+        border-radius: 4px;
+        transition: width 0.08s linear;
+      }
+
+      #player-hit-flash {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 34, 68, 0.45);
+        pointer-events: none;
+        z-index: 6;
+        opacity: 0;
+        transition: opacity 0.18s ease-out;
+      }
+      #player-hit-flash.active { opacity: 1; }
+
+      .xp-hud { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+      .xp-label {
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        color: #cce4ff;
+        text-shadow: 0 0 6px #4a8dff;
+        min-width: 44px;
+        text-transform: uppercase;
+        text-align: left;
+      }
+      .xp-track {
+        flex: 1;
+        height: 4px;
+        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(120, 180, 255, 0.4);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .xp-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #4a8dff, #b8e1ff);
+        box-shadow: 0 0 6px #4a8dff;
+        border-radius: 3px;
+        transition: width 0.12s linear;
+      }
+      .xp-fill.max { background: linear-gradient(90deg, #ffe066, #ffc000); box-shadow: 0 0 8px #ffc000; }
+
+      /* Upgrade picker overlay */
+      #upgrade-overlay {
+        z-index: 21;
+        justify-content: flex-start;
+        padding-top: 36px;
+        background: rgba(5, 0, 15, 0.96);
+      }
+      .upgrade-heading {
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        color: #aaa;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .upgrade-title {
+        font-size: clamp(22px, 6.5vw, 32px);
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        background: linear-gradient(135deg, #00f0ff, #ff00aa);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+      .upgrade-tree {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        width: 100%;
+        max-width: 360px;
+      }
+      .upgrade-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .upgrade-col-header {
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        color: #88a;
+        text-align: center;
+        text-transform: uppercase;
+        padding-bottom: 2px;
+        border-bottom: 1px solid rgba(120, 180, 255, 0.3);
+      }
+      .upgrade-cross {
+        margin-top: 10px;
+        width: 100%;
+        max-width: 360px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .upgrade-cross-header {
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        color: #88a;
+        text-align: center;
+        text-transform: uppercase;
+        padding-bottom: 2px;
+        border-bottom: 1px solid rgba(255, 120, 80, 0.3);
+      }
+      .upgrade-node {
+        border: 1px solid #444;
+        background: rgba(255,255,255,0.04);
+        color: #ccc;
+        font-family: inherit;
+        font-size: 10px;
+        line-height: 1.25;
+        padding: 6px 4px;
+        border-radius: 4px;
+        cursor: default;
+        text-align: center;
+        pointer-events: auto;
+        opacity: 0.6;
+      }
+      .upgrade-node .node-title { font-weight: bold; letter-spacing: 0.06em; display: block; }
+      .upgrade-node .node-desc  { font-size: 8.5px; color: #99a; margin-top: 2px; display: block; }
+      .upgrade-node.available {
+        border-color: #ffffff;
+        background: rgba(255,255,255,0.10);
+        color: #fff;
+        opacity: 1;
+        cursor: pointer;
+        box-shadow: 0 0 8px rgba(255,255,255,0.25);
+      }
+      .upgrade-node.available:active { transform: scale(0.97); background: rgba(0,240,255,0.18); }
+      .upgrade-node.unlocked {
+        border-color: #44ff99;
+        background: rgba(68,255,153,0.08);
+        color: #b8ffd0;
+        opacity: 0.85;
+        cursor: default;
+      }
+      .upgrade-node.unlocked .node-desc { color: #6ec79a; }
+      .upgrade-node.locked {
+        border-color: #2a2a3a;
+        color: #555;
+        background: rgba(0,0,0,0.2);
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      .overlay {
+        position: fixed; inset: 0;
+        z-index: 20;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: rgba(5, 0, 15, 0.94);
+        padding: 24px;
+        text-align: center;
+      }
+      .overlay.hidden { display: none; }
+      .title {
+        font-size: clamp(32px, 9vw, 56px);
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        background: linear-gradient(135deg, #00f0ff, #ff00aa);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 22px;
+        filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.45));
+      }
+      .subtitle { font-size: 12px; letter-spacing: 0.18em; color: #aaa; margin-bottom: 30px; }
+      .instructions { font-size: 13px; line-height: 1.9; color: #ddd; margin-bottom: 30px; max-width: 340px; }
+      .start-btn {
+        padding: 14px 40px;
+        border: 2px solid #00f0ff;
+        background: transparent;
+        color: #fff;
+        font-family: inherit;
+        font-size: 16px;
+        font-weight: bold;
+        letter-spacing: 0.2em;
+        cursor: pointer;
+        text-shadow: 0 0 8px #00f0ff;
+        box-shadow: 0 0 20px rgba(0,240,255,0.5), inset 0 0 20px rgba(0,240,255,0.1);
+      }
+      .start-btn:active { background: rgba(0,240,255,0.15); transform: scale(0.97); }
+
+      /* Victory toast (task-47) */
+      #victory-toast {
+        position: fixed;
+        top: 40%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.75);
+        color: #ffe066;
+        font: bold 28px "Courier New", monospace;
+        padding: 12px 28px;
+        border-radius: 8px;
+        text-align: center;
+        z-index: 50;
+        pointer-events: none;
+        letter-spacing: 0.15em;
+        box-shadow: 0 0 24px rgba(255, 224, 102, 0.5);
+      }
+      #victory-toast.hidden { display: none; }
+
+      /* Fight overview button (task-47) */
+      #fight-overview-btn {
+        margin-top: 24px;
+        padding: 14px 32px;
+        font: bold 18px "Courier New", monospace;
+        background: #ffe066;
+        color: #111;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        letter-spacing: 0.1em;
+        box-shadow: 0 0 16px rgba(255,224,102,0.5);
+      }
+      #fight-overview-btn:active { transform: scale(0.97); }
+
+      #landscape-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: #1a1a2e;
+        color: #fff;
+        font-size: 1.2rem;
+        align-items: center; justify-content: center;
+        text-align: center;
+        z-index: 9999;
+      }
+      @media (orientation: landscape) { #landscape-overlay { display: flex; } }
+
+      /* Fight overview overlay (task-48) */
+      #fight-overview-overlay {
+        animation: foSlideUp 0.35s ease-out;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        gap: 0;
+      }
+      #fight-overview-overlay.hidden { display: none !important; animation: none; }
+
+      @keyframes foSlideUp {
+        from { transform: translateY(60px); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+      }
+
+      .fo-header { text-align: center; margin-bottom: 16px; }
+      .fo-title { display: block; font: bold 20px "Courier New"; color: #ffe066; }
+      .fo-meta  { display: block; font: 14px "Courier New"; color: #aaa; margin-top: 4px; }
+
+      .fo-skill {
+        width: 100%; max-width: 340px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+      }
+      .fo-skill-name { font: bold 13px "Courier New"; color: #ffe066; margin-bottom: 8px; letter-spacing: 1px; }
+
+      .fo-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+      .fo-bar {
+        flex: 1; height: 18px; border-radius: 4px;
+        background: #222; overflow: hidden; display: flex;
+      }
+      .fo-bar-seg { height: 100%; transition: width 0.3s; }
+      .fo-shots { font: 12px "Courier New"; color: #aaa; white-space: nowrap; }
+
+      .fo-legend { display: flex; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+      .fo-dot {
+        font: 11px "Courier New"; color: #ccc;
+        display: flex; align-items: center; gap: 4px;
+      }
+      .fo-dot::before {
+        content: ""; display: inline-block;
+        width: 8px; height: 8px; border-radius: 50%;
+        background: inherit;
+      }
+
+      .fo-stats { font: 12px "Courier New"; color: #bbb; }
+
+      /* XP section inside fight overview */
+      .fo-xp-section {
+        width: 100%; max-width: 340px;
+        margin-top: 4px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .fo-xp-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .fo-xp-gained {
+        font: bold 16px "Courier New";
+        color: #7fff7f;
+        letter-spacing: 0.08em;
+      }
+      .fo-xp-level-num {
+        font: bold 15px "Courier New";
+        color: #cce4ff;
+        letter-spacing: 0.05em;
+      }
+      @keyframes foLvlPop {
+        0%   { transform: scale(1);   color: #cce4ff; text-shadow: none; }
+        35%  { transform: scale(1.7); color: #ffe066; text-shadow: 0 0 14px #ffe066, 0 0 28px #ffe066; }
+        65%  { transform: scale(0.9); color: #ffe066; }
+        100% { transform: scale(1);   color: #cce4ff; text-shadow: none; }
+      }
+      .fo-lvl-pop { animation: foLvlPop 0.5s ease-out; }
+      .fo-level-up-badge {
+        font: bold 14px "Courier New";
+        color: #ffe066;
+        background: rgba(255,224,102,0.12);
+        border: 1px solid rgba(255,224,102,0.35);
+        border-radius: 4px;
+        padding: 4px 10px;
+        text-align: center;
+        letter-spacing: 0.05em;
+      }
+      .fo-xp-track {
+        height: 10px;
+        background: #222;
+        border-radius: 5px;
+        overflow: hidden;
+        display: flex;
+        transform-origin: center;
+      }
+      .fo-xp-base {
+        height: 100%;
+        background: #555;
+        flex-shrink: 0;
+      }
+      .fo-xp-gain {
+        height: 100%;
+        background: #7fff7f;
+        flex-shrink: 0;
+        transition: width 0.6s ease-out;
+      }
+      @keyframes foXpPop {
+        0%   { box-shadow: none; transform: scaleY(1); }
+        40%  { box-shadow: 0 0 0 3px #7fff7f, 0 0 12px #7fff7f; transform: scaleY(1.8); }
+        70%  { transform: scaleY(0.7); box-shadow: 0 0 0 1px #7fff7f; }
+        100% { box-shadow: none; transform: scaleY(1); }
+      }
+      .fo-xp-pop { animation: foXpPop 0.4s ease-out; }
+      .fo-xp-label {
+        font: 11px "Courier New";
+        color: #888;
+      }
+      /* Damage split bar */
+      .fo-dmg-split-title {
+        font: bold 11px "Courier New";
+        color: #888;
+        letter-spacing: 0.12em;
+        margin-bottom: 6px;
+      }
+      .fo-dmg-split-wrap {
+        width: 100%; max-width: 340px;
+        margin-bottom: 12px;
+        padding: 10px 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+      }
+      .fo-dmg-split {
+        height: 12px;
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+        background: #222;
+        margin-bottom: 6px;
+      }
+      .fo-dmg-seg { height: 100%; }
+      .fo-dmg-split-legend {
+        display: flex;
+        justify-content: space-between;
+        font: 11px "Courier New";
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cmRef"></div>
+    <div id="landscape-overlay"><p>Rotujte zařízení do portrétu</p></div>
+    <div class="hud">
+      <div class="hud-level" id="hud-level"></div>
+      <div class="hud-enemy-name" id="hud-enemy-name">—</div>
+      <div class="hud-hp-track">
+        <div class="hud-hp-fill" id="hud-hp-fill"></div>
+      </div>
+    </div>
+    <div class="overlay" id="start-overlay">
+      <div class="title">TWO HANDS MAGIC</div>
+      <div class="subtitle">PROTOTYPE · PORTRAIT · 2 FINGERS</div>
+      <div class="instructions">
+        V rozích jsou touch pointy — vlevo <b>3</b>, vpravo <b>3</b>.<br>
+        Každá barva má jinou rychlost míření — vyzkoušej je.<br>
+        Posuň prst <b>doleva/doprava</b> pro doladění míření.<br>
+        Pusť prst — projektil vyletí v barvě laseru.
+      </div>
+      <button class="start-btn" id="start-btn">START</button>
+    </div>
+    <div class="overlay hidden" id="level-complete-overlay">
+      <div class="title" id="level-complete-text">LEVEL COMPLETE!</div>
+    </div>
+    <div class="overlay hidden" id="victory-overlay">
+      <div class="title">VICTORY!</div>
+      <div class="subtitle">Restarting...</div>
+    </div>
+    <div class="overlay hidden" id="game-over-overlay">
+      <div class="title">GAME OVER</div>
+      <div class="subtitle">Restarting level...</div>
+    </div>
+    <div id="victory-toast" class="hidden">VICTORY!</div>
+    <div class="overlay hidden" id="fight-overview-overlay">
+      <div id="fight-overview-content"></div>
+      <button id="fight-overview-btn" type="button">Next enemy →</button>
+    </div>
+    <div class="overlay hidden" id="upgrade-overlay">
+      <div class="upgrade-heading" id="upgrade-level-label">LEVEL UP</div>
+      <div class="upgrade-title">VYBER UPGRADE</div>
+      <div class="upgrade-tree" id="upgrade-tree"></div>
+      <div class="upgrade-cross">
+        <div class="upgrade-cross-header" id="upgrade-cross-header">QUICK CHAIN</div>
+        <div id="upgrade-cross-nodes"></div>
+      </div>
+    </div>
+    <div id="player-hit-flash"></div>
+    <div class="player-hud">
+      <div class="player-hp-track">
+        <div class="player-hp-fill" id="player-hp-fill"></div>
+      </div>
+      <div class="xp-hud">
+        <div class="xp-label" id="xp-label">Lvl 1</div>
+        <div class="xp-track">
+          <div class="xp-fill" id="xp-fill"></div>
+        </div>
+      </div>
+    </div>
+    <div id="game-container"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

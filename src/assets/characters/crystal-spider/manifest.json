@@ -1,0 +1,54 @@
+{
+  "id": "crystal-spider",
+  "spriteKey": "crystal_spider",
+  "displayWidth": 224,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e",
+    "groupId": "09d9e38a-57ef-4747-a144-3c856623efae",
+    "groupStates": {
+      "idle": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
+      "stretched": "7f186dfb-70ee-4fa3-9935-dbe50018ae9e"
+    }
+  },
+  "animations": {
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "cf755f31-cea3-4b51-87bd-64b1de4d2212",
+        "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
+        "direction": "south",
+        "description": "Lunge stretch — spider lunges forward"
+      }
+    },
+    "attack_mandible": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "40d872f9-c683-4c5e-9972-8ecb2dfc5267",
+        "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
+        "direction": "south",
+        "description": "Mandible attack — spider bites with mandibles"
+      }
+    },
+    "bite": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "d5202235-c1ee-4413-a326-d4fb1b3d4b96",
+        "characterId": "7f186dfb-70ee-4fa3-9935-dbe50018ae9e",
+        "direction": "south",
+        "description": "Bite from stretched body state"
+      }
+    }
+  },
+  "_notes": "No idle animation yet — needs PixelLab idle generation. Three attack variants from two character states."
+}

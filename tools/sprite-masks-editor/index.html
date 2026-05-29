@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stone Giant Zone Editor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Left panel — frame list */
+  #sidebar {
+    width: 220px;
+    background: #16213e;
+    border-right: 2px solid #0f3460;
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 8px;
+  }
+  #sidebar h2 {
+    font-size: 14px;
+    color: #e94560;
+    margin-bottom: 8px;
+    padding: 4px;
+  }
+  .frame-group-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 12px 0 4px 4px;
+  }
+  .frame-btn {
+    display: block;
+    width: 100%;
+    padding: 6px 8px;
+    margin-bottom: 2px;
+    background: #1a1a2e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .frame-btn:hover { background: #2a2a4e; }
+  .frame-btn.active {
+    background: #0f3460;
+    border-color: #e94560;
+    color: #fff;
+  }
+
+  /* Main area */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    overflow: auto;
+  }
+
+  /* Toolbar */
+  #toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .zone-btn {
+    padding: 6px 14px;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #2a2a4e;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .zone-btn.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+  .zone-btn[data-zone="crit"] { background: #ff0000; color: #fff; }
+  .zone-btn[data-zone="hit"] { background: #ffff00; color: #000; }
+  .zone-btn[data-zone="graze"] { background: #00ff00; color: #000; }
+  .zone-btn[data-zone="erase"] { background: #444; color: #fff; }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .toolbar-group label {
+    font-size: 12px;
+    color: #aaa;
+  }
+  #brushSizeSlider { width: 100px; }
+  #brushSizeValue { font-size: 12px; color: #ccc; min-width: 30px; }
+
+  .action-btn {
+    padding: 6px 14px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #16213e;
+    color: #e0e0e0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .action-btn:hover { background: #1a3a6e; }
+  .action-btn.download { background: #0a5; color: #fff; border-color: #0a5; }
+  .action-btn.download:hover { background: #0b6; }
+  .action-btn.reset { background: #a50; color: #fff; border-color: #a50; }
+  .action-btn.reset:hover { background: #b60; }
+
+  /* Canvas area */
+  #canvas-wrapper {
+    position: relative;
+    width: 512px;
+    height: 512px;
+    border: 2px solid #0f3460;
+    border-radius: 4px;
+    background: repeating-conic-gradient(#333 0% 25%, #2a2a2a 0% 50%) 50% / 32px 32px;
+    cursor: crosshair;
+  }
+  #canvas-wrapper canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 512px;
+    height: 512px;
+    image-rendering: pixelated;
+  }
+  #spriteCanvas { z-index: 1; }
+  #maskCanvas { z-index: 2; opacity: 0.5; }
+  #cursorCanvas { z-index: 3; pointer-events: none; }
+
+  /* Info bar */
+  #info-bar {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #888;
+  }
+  kbd {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>Stone Giant Frames</h2>
+  <div class="frame-group-label">Idle (Throw Heavy)</div>
+  <div id="idle-frames"></div>
+  <div class="frame-group-label">Throw</div>
+  <div id="throw-frames"></div>
+</div>
+
+<div id="main">
+  <div id="toolbar">
+    <button class="zone-btn active" data-zone="crit" title="Key: 1">1 Crit</button>
+    <button class="zone-btn" data-zone="hit" title="Key: 2">2 Hit</button>
+    <button class="zone-btn" data-zone="graze" title="Key: 3">3 Graze</button>
+    <button class="zone-btn" data-zone="erase" title="Key: 0">0 Erase</button>
+
+    <div class="toolbar-group">
+      <label>Brush:</label>
+      <input type="range" id="brushSizeSlider" min="1" max="32" value="8">
+      <span id="brushSizeValue">8</span>
+    </div>
+
+    <button class="action-btn" id="copyPrevBtn" title="Copy mask from previous frame (Shift+C)">Copy from Prev</button>
+    <button class="action-btn" id="trimBtn" title="Trim mask to sprite bounds — removes mask where sprite is transparent (Shift+T)">Trim to Sprite</button>
+    <button class="action-btn reset" id="resetBtn" title="Reset mask to auto-generated zones">Reset to Auto</button>
+    <button class="action-btn download" id="downloadBtn">Download Mask</button>
+    <button class="action-btn" id="downloadAllBtn">Download All Masks</button>
+  </div>
+
+  <div id="canvas-wrapper">
+    <canvas id="spriteCanvas" width="128" height="128"></canvas>
+    <canvas id="maskCanvas" width="128" height="128"></canvas>
+    <canvas id="cursorCanvas" width="512" height="512"></canvas>
+  </div>
+
+  <div id="info-bar">
+    <kbd>1</kbd> Crit &nbsp; <kbd>2</kbd> Hit &nbsp; <kbd>3</kbd> Graze &nbsp; <kbd>0</kbd> Erase &nbsp;
+    <kbd>Ctrl+Z</kbd> Undo &nbsp;
+    <kbd>Shift+C</kbd> Copy prev &nbsp;
+    <kbd>Shift+T</kbd> Trim &nbsp; | &nbsp;
+    Left click = paint &nbsp; Right click = erase
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Stone Giant Zone Editor — vanilla JS, no dependencies
+// ============================================================
+
+const CANVAS_SIZE = 128;
+const DISPLAY_SIZE = 512;
+const SCALE = DISPLAY_SIZE / CANVAS_SIZE;
+const MAX_UNDO = 50;
+
+// Zone colors (RGBA)
+const ZONES = {
+  crit:  { r: 255, g: 0,   b: 0,   a: 255, label: 'Crit',  key: '1' },
+  hit:   { r: 255, g: 255, b: 0,   a: 255, label: 'Hit',   key: '2' },
+  graze: { r: 0,   g: 255, b: 0,   a: 255, label: 'Graze', key: '3' },
+  erase: { r: 0,   g: 0,   b: 0,   a: 0,   label: 'Erase', key: '0' },
+};
+
+// Frame definitions
+const FRAMES = [];
+for (let i = 0; i < 10; i++) {
+  const pad = String(i).padStart(2, '0');
+  FRAMES.push({ name: `idle_${pad}`, anim: 'idle', index: i, path: `frames/idle_${pad}.png` });
+}
+for (let i = 0; i < 7; i++) {
+  const pad = String(i).padStart(2, '0');
+  FRAMES.push({ name: `throw_${pad}`, anim: 'throw', index: i, path: `frames/throw_${pad}.png` });
+}
+
+// State
+let currentFrameIdx = 0;
+let currentZone = 'crit';
+let brushSize = 8;
+let isPainting = false;
+let paintZone = null; // zone being painted (could differ from currentZone if right-click)
+
+// Per-frame mask data: ImageData stored per frame name
+const maskDataStore = {};
+// Per-frame undo stacks
+const undoStacks = {};
+// Loaded sprite images
+const spriteImages = {};
+
+// DOM elements
+const spriteCanvas = document.getElementById('spriteCanvas');
+const spriteCtx = spriteCanvas.getContext('2d');
+const maskCanvas = document.getElementById('maskCanvas');
+const maskCtx = maskCanvas.getContext('2d');
+const cursorCanvas = document.getElementById('cursorCanvas');
+const cursorCtx = cursorCanvas.getContext('2d');
+
+const brushSlider = document.getElementById('brushSizeSlider');
+const brushValue = document.getElementById('brushSizeValue');
+const copyPrevBtn = document.getElementById('copyPrevBtn');
+const trimBtn = document.getElementById('trimBtn');
+const resetBtn = document.getElementById('resetBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+// ============================================================
+// Frame list UI
+// ============================================================
+function buildFrameList() {
+  const idleContainer = document.getElementById('idle-frames');
+  const throwContainer = document.getElementById('throw-frames');
+
+  FRAMES.forEach((frame, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'frame-btn';
+    btn.textContent = frame.name;
+    btn.dataset.index = idx;
+    btn.addEventListener('click', () => selectFrame(idx));
+
+    if (frame.anim === 'idle') {
+      idleContainer.appendChild(btn);
+    } else {
+      throwContainer.appendChild(btn);
+    }
+  });
+}
+
+function updateFrameListUI() {
+  document.querySelectorAll('.frame-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.index) === currentFrameIdx);
+  });
+}
+
+// ============================================================
+// Zone button UI
+// ============================================================
+function updateZoneUI() {
+  document.querySelectorAll('.zone-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.zone === currentZone);
+  });
+}
+
+document.querySelectorAll('.zone-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentZone = btn.dataset.zone;
+    updateZoneUI();
+  });
+});
+
+// ============================================================
+// Brush size
+// ============================================================
+brushSlider.addEventListener('input', () => {
+  brushSize = parseInt(brushSlider.value);
+  brushValue.textContent = brushSize;
+});
+
+// ============================================================
+// Load sprite images
+// ============================================================
+function loadAllSprites() {
+  return Promise.all(FRAMES.map(frame => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        spriteImages[frame.name] = img;
+        resolve();
+      };
+      img.onerror = () => {
+        console.warn(`Failed to load ${frame.path} — run download_frames.sh first`);
+        resolve(); // don't block on missing frames
+      };
+      img.src = frame.path;
+    });
+  }));
+}
+
+// ============================================================
+// Auto-generate mask from sprite bounding box
+// ============================================================
+function autoGenerateMask(frameName) {
+  const img = spriteImages[frameName];
+  if (!img) {
+    // Return empty mask
+    return new ImageData(CANVAS_SIZE, CANVAS_SIZE);
+  }
+
+  // Draw sprite to temp canvas to read pixels
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = CANVAS_SIZE;
+  tmpCanvas.height = CANVAS_SIZE;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.drawImage(img, 0, 0);
+  const spriteData = tmpCtx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+  // Find bounding box of non-transparent pixels
+  let minX = CANVAS_SIZE, minY = CANVAS_SIZE, maxX = -1, maxY = -1;
+  for (let y = 0; y < CANVAS_SIZE; y++) {
+    for (let x = 0; x < CANVAS_SIZE; x++) {
+      const idx = (y * CANVAS_SIZE + x) * 4;
+      if (spriteData.data[idx + 3] > 0) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  const maskData = new ImageData(CANVAS_SIZE, CANVAS_SIZE);
+
+  if (maxX < 0) return maskData; // fully transparent sprite
+
+  const bbHeight = maxY - minY + 1;
+  const thirdH = bbHeight / 3;
+
+  for (let y = 0; y < CANVAS_SIZE; y++) {
+    for (let x = 0; x < CANVAS_SIZE; x++) {
+      const idx = (y * CANVAS_SIZE + x) * 4;
+      if (spriteData.data[idx + 3] > 0) {
+        // Which third of the bounding box?
+        const relY = y - minY;
+        let zone;
+        if (relY < thirdH) {
+          zone = ZONES.crit;
+        } else if (relY < thirdH * 2) {
+          zone = ZONES.hit;
+        } else {
+          zone = ZONES.graze;
+        }
+        maskData.data[idx]     = zone.r;
+        maskData.data[idx + 1] = zone.g;
+        maskData.data[idx + 2] = zone.b;
+        maskData.data[idx + 3] = zone.a;
+      }
+      // else: stays transparent (all zeros)
+    }
+  }
+
+  return maskData;
+}
+
+// ============================================================
+// Get/ensure mask data for a frame
+// ============================================================
+function getMaskData(frameName) {
+  if (!maskDataStore[frameName]) {
+    maskDataStore[frameName] = autoGenerateMask(frameName);
+    undoStacks[frameName] = [];
+  }
+  return maskDataStore[frameName];
+}
+
+// ============================================================
+// Render
+// ============================================================
+function renderSprite() {
+  const frame = FRAMES[currentFrameIdx];
+  spriteCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  const img = spriteImages[frame.name];
+  if (img) {
+    spriteCtx.drawImage(img, 0, 0);
+  }
+}
+
+function renderMask() {
+  const frame = FRAMES[currentFrameIdx];
+  const maskData = getMaskData(frame.name);
+  maskCtx.putImageData(maskData, 0, 0);
+}
+
+function render() {
+  renderSprite();
+  renderMask();
+  updateFrameListUI();
+}
+
+// ============================================================
+// Select frame
+// ============================================================
+function selectFrame(idx) {
+  currentFrameIdx = idx;
+  render();
+}
+
+// ============================================================
+// Undo system
+// ============================================================
+function pushUndo(frameName) {
+  const stack = undoStacks[frameName] || (undoStacks[frameName] = []);
+  const current = maskDataStore[frameName];
+  // Clone the ImageData
+  const clone = new ImageData(
+    new Uint8ClampedArray(current.data),
+    CANVAS_SIZE, CANVAS_SIZE
+  );
+  stack.push(clone);
+  // Limit stack size
+  if (stack.length > MAX_UNDO) {
+    stack.shift();
+  }
+}
+
+function undo() {
+  const frameName = FRAMES[currentFrameIdx].name;
+  const stack = undoStacks[frameName];
+  if (!stack || stack.length === 0) return;
+  maskDataStore[frameName] = stack.pop();
+  renderMask();
+}
+
+// ============================================================
+// Painting
+// ============================================================
+function getCanvasPos(e) {
+  const rect = maskCanvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / SCALE);
+  const y = Math.floor((e.clientY - rect.top) / SCALE);
+  return { x, y };
+}
+
+function paintAt(x, y, zone) {
+  const frameName = FRAMES[currentFrameIdx].name;
+  const maskData = getMaskData(frameName);
+  const data = maskData.data;
+  const z = ZONES[zone];
+  const r = Math.floor(brushSize / 2);
+
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      // Circle brush
+      if (dx * dx + dy * dy > r * r) continue;
+      const px = x + dx;
+      const py = y + dy;
+      if (px < 0 || px >= CANVAS_SIZE || py < 0 || py >= CANVAS_SIZE) continue;
+      const idx = (py * CANVAS_SIZE + px) * 4;
+      data[idx]     = z.r;
+      data[idx + 1] = z.g;
+      data[idx + 2] = z.b;
+      data[idx + 3] = z.a;
+    }
+  }
+  renderMask();
+}
+
+// Mouse/pointer events on maskCanvas
+maskCanvas.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const pos = getCanvasPos(e);
+  const frameName = FRAMES[currentFrameIdx].name;
+  pushUndo(frameName);
+
+  if (e.button === 2) {
+    // Right click = erase
+    paintZone = 'erase';
+  } else {
+    paintZone = currentZone;
+  }
+  isPainting = true;
+  paintAt(pos.x, pos.y, paintZone);
+});
+
+maskCanvas.addEventListener('mousemove', (e) => {
+  // Update cursor preview
+  const pos = getCanvasPos(e);
+  drawCursor(pos.x, pos.y);
+
+  if (!isPainting) return;
+  paintAt(pos.x, pos.y, paintZone);
+});
+
+window.addEventListener('mouseup', () => {
+  isPainting = false;
+  paintZone = null;
+});
+
+// Prevent context menu on canvas
+maskCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ============================================================
+// Cursor preview
+// ============================================================
+function drawCursor(x, y) {
+  cursorCtx.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+  const cx = x * SCALE + SCALE / 2;
+  const cy = y * SCALE + SCALE / 2;
+  const r = (brushSize / 2) * SCALE;
+  cursorCtx.beginPath();
+  cursorCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  cursorCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+  cursorCtx.lineWidth = 1;
+  cursorCtx.stroke();
+}
+
+// Clear cursor when mouse leaves
+const canvasWrapper = document.getElementById('canvas-wrapper');
+canvasWrapper.addEventListener('mouseleave', () => {
+  cursorCtx.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+});
+
+// ============================================================
+// Keyboard shortcuts
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === '1') { currentZone = 'crit';  updateZoneUI(); }
+  if (e.key === '2') { currentZone = 'hit';   updateZoneUI(); }
+  if (e.key === '3') { currentZone = 'graze'; updateZoneUI(); }
+  if (e.key === '0') { currentZone = 'erase'; updateZoneUI(); }
+
+  if (e.ctrlKey && e.key === 'z') {
+    e.preventDefault();
+    undo();
+  }
+  if (e.shiftKey && e.key === 'C') { copyMaskFromPrev(); }
+  if (e.shiftKey && e.key === 'T') { trimMaskToSprite(); }
+});
+
+// ============================================================
+// Copy mask from previous frame
+// ============================================================
+function copyMaskFromPrev() {
+  if (currentFrameIdx === 0) return;
+  const currentName = FRAMES[currentFrameIdx].name;
+  const prevName = FRAMES[currentFrameIdx - 1].name;
+  const prevMask = getMaskData(prevName);
+  pushUndo(currentName);
+  maskDataStore[currentName] = new ImageData(
+    new Uint8ClampedArray(prevMask.data),
+    CANVAS_SIZE, CANVAS_SIZE
+  );
+  renderMask();
+}
+
+copyPrevBtn.addEventListener('click', copyMaskFromPrev);
+
+// ============================================================
+// Trim mask to sprite — remove mask pixels where sprite is transparent
+// ============================================================
+function trimMaskToSprite() {
+  const frameName = FRAMES[currentFrameIdx].name;
+  const img = spriteImages[frameName];
+  if (!img) return;
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = CANVAS_SIZE;
+  tmpCanvas.height = CANVAS_SIZE;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.drawImage(img, 0, 0);
+  const spriteData = tmpCtx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+  const maskData = getMaskData(frameName);
+  pushUndo(frameName);
+
+  const md = maskData.data;
+  const sd = spriteData.data;
+  for (let i = 0; i < md.length; i += 4) {
+    if (sd[i + 3] === 0) {
+      md[i] = 0;
+      md[i + 1] = 0;
+      md[i + 2] = 0;
+      md[i + 3] = 0;
+    }
+  }
+  renderMask();
+}
+
+trimBtn.addEventListener('click', trimMaskToSprite);
+
+// ============================================================
+// Reset to auto
+// ============================================================
+resetBtn.addEventListener('click', () => {
+  const frameName = FRAMES[currentFrameIdx].name;
+  pushUndo(frameName);
+  maskDataStore[frameName] = autoGenerateMask(frameName);
+  undoStacks[frameName] = undoStacks[frameName] || [];
+  renderMask();
+});
+
+// ============================================================
+// Export / Download
+// ============================================================
+function downloadMask(frameName) {
+  const maskData = getMaskData(frameName);
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = CANVAS_SIZE;
+  tmpCanvas.height = CANVAS_SIZE;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.putImageData(maskData, 0, 0);
+
+  const frame = FRAMES.find(f => f.name === frameName);
+  const pad = String(frame.index).padStart(2, '0');
+  const filename = `mask_${frame.anim}_${pad}.png`;
+
+  tmpCanvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+downloadBtn.addEventListener('click', () => {
+  const frameName = FRAMES[currentFrameIdx].name;
+  downloadMask(frameName);
+});
+
+downloadAllBtn.addEventListener('click', () => {
+  // Download all masks with a small delay between each to avoid browser blocking
+  FRAMES.forEach((frame, idx) => {
+    // Ensure mask exists (auto-generate if not edited yet)
+    getMaskData(frame.name);
+    setTimeout(() => downloadMask(frame.name), idx * 200);
+  });
+});
+
+// ============================================================
+// Init
+// ============================================================
+buildFrameList();
+
+loadAllSprites().then(() => {
+  console.log('All sprites loaded, initializing editor');
+  render();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "id": "stone-giant",
+  "spriteKey": "stone_giant",
+  "displayWidth": 200,
+  "source": {
+    "tool": "pixellab",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e",
+    "characterId": "457462cf-0337-47fe-89a4-a1c9cc6e51a3"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 10,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "7ca1c28b-a1a0-46a7-b277-e80bba207b5a",
+        "direction": "south"
+      }
+    },
+    "attack": {
+      "frameCount": 7,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "f199fe94-5395-4a96-a1df-21dcf766377a",
+        "direction": "south"
+      }
+    }
+  }
+}

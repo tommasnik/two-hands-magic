@@ -1,0 +1,39 @@
+{
+  "id": "plague-rat",
+  "spriteKey": "plague_rat",
+  "displayWidth": 180,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "87e33e92-4e8a-4c42-875e-9c796f9a3b94",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e",
+    "groupId": "a9176afc-daa7-4100-8cec-5beaf4849918",
+    "groupStates": {
+      "idle": "87e33e92-4e8a-4c42-875e-9c796f9a3b94",
+      "jump": "83d00770-8cf9-4e3b-b519-8d00796e31c9"
+    }
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": false,
+      "source": {
+        "animationId": "a3d0dbdc-8807-4482-ba45-be47ba008e7e",
+        "direction": "south",
+        "description": "The rat sits in a steady position"
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "155b4cb9-06ec-4d2a-8265-62e7f581e60f",
+        "direction": "south",
+        "description": "The rat crouches slightly, tensing before lunge"
+      }
+    }
+  }
+}

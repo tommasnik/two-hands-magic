@@ -1,0 +1,42 @@
+{
+  "id": "ice-giant",
+  "spriteKey": "ice_giant",
+  "displayWidth": 124,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "2ca185d7-f3d3-4cbc-8c11-046cb3ae1ddd",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e",
+    "groupId": "4cc095bd-c5ea-481a-8c71-1383a0e4ca93",
+    "groupStates": {
+      "idle": "2ca185d7-f3d3-4cbc-8c11-046cb3ae1ddd",
+      "mid-throw": "6a99a535-78ed-44c0-bfb6-853e47a927d2"
+    }
+  },
+  "animations": {
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "dbb729cb-88e4-423b-9fab-b139a18488b7",
+        "characterId": "2ca185d7-f3d3-4cbc-8c11-046cb3ae1ddd",
+        "direction": "south",
+        "description": "Start throwing — pick a stone from the ground"
+      }
+    },
+    "throw": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "6ff13a27-bce0-43b4-9d3e-9a4d3c5bca80",
+        "characterId": "6a99a535-78ed-44c0-bfb6-853e47a927d2",
+        "direction": "south",
+        "description": "Throw the stone down (from mid-throw state)"
+      }
+    }
+  },
+  "_notes": "No idle animation yet — needs PixelLab idle generation. Two attack phases: windup (attack) and throw execution (throw)."
+}
