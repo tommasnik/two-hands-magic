@@ -12,12 +12,3 @@ bypass_git_hooks: false
 check_active_branches: false
 active_branch_days: 30
 task_prefix: "task"
-definition_of_done:
-  - "Všechny AC jsou zaškrtnuty"
-  - "Hard unit testy napsány pro novou funkcionalitu a procházejí (npm run test)"
-  - "E2E testy napsány pro novou funkcionalitu a procházejí (npm run test:e2e)"
-  - "Game design testy napsány pro novou funkcionalitu a procházejí (npm run test:design) — povinné pro: enemy, skill, combat, level"
-  - "Všechny testy procházejí: npm run test && npm run test:e2e && npm run test:design"
-  - "Pokrytí kódu v src/game/ je 100 % (npm run test:coverage)"
-  - "Pokud byl přidán nový symbol do src/game/: žádná Phaser závislost (grep 'from .phaser' src/game/)"
-  - "Pokud byla přidána konstanta: zkontrolováno, zda není odvozena od jiné existující konstanty"

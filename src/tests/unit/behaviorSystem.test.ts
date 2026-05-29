@@ -19,6 +19,7 @@ import {
   ENEMY_APPROACH_SPEED,
   ENEMY_STONE_GIANT,
   ENEMY_PLAGUE_RAT,
+  ENEMY_INSECT_SWARM,
 } from '../../game/constants'
 import type { EnemyBehaviorDef } from '../../types'
 
@@ -171,9 +172,9 @@ describe('BehaviorSystem — zigzag pattern', () => {
     expect(pos.y).toBe(ORIGIN_Y)
   })
 
-  it('Plague Rat uses zigzag behavior', () => {
-    expect(ENEMY_PLAGUE_RAT.behavior).toBeDefined()
-    expect(ENEMY_PLAGUE_RAT.behavior!.pattern).toBe('zigzag')
+  it('Insect Swarm flies left-to-right (lr_oscillate)', () => {
+    expect(ENEMY_INSECT_SWARM.behavior).toBeDefined()
+    expect(ENEMY_INSECT_SWARM.behavior!.pattern).toBe('lr_oscillate')
   })
 
 })
@@ -343,8 +344,8 @@ describe('BehaviorSystem — determinism across patterns', () => {
 
 describe('resolveBehavior — fallback behavior', () => {
   it('returns the enemy behavior when behavior is defined', () => {
-    const result = resolveBehavior(ENEMY_PLAGUE_RAT)
-    expect(result.pattern).toBe('zigzag')
+    const result = resolveBehavior(ENEMY_INSECT_SWARM)
+    expect(result.pattern).toBe('lr_oscillate')
   })
 
   it('returns static fallback when behavior is undefined on EnemyDef', () => {

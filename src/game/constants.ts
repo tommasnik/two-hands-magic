@@ -83,7 +83,7 @@ export const PLAYER_START_LEVEL = 1
  * Unit: level. Must match the highest key in XP_LEVEL_THRESHOLDS.
  * Affects: when level-up picks stop being offered.
  */
-export const PLAYER_MAX_LEVEL = 8
+export const PLAYER_MAX_LEVEL = 12
 
 /**
  * Cumulative kill counts that promote the player to each level.
@@ -100,6 +100,10 @@ export const XP_LEVEL_THRESHOLDS: Readonly<Record<number, number>> = {
   6: 5,
   7: 6,
   8: 7,
+  9: 8,
+  10: 9,
+  11: 10,
+  12: 11,
 }
 
 /**
@@ -630,7 +634,7 @@ export const DEFAULT_HIT_ZONE_MAP: readonly HitZoneEntry[] = [
 ]
 
 // ============================================================
-// Enemy definitions — 7 sprite-based characters
+// Enemy definitions — 11 sprite-based characters
 // ============================================================
 
 /**
@@ -682,14 +686,14 @@ export const ENEMY_CRYSTAL_SPIDER: EnemyDef = {
   displayWidth: 224,
 }
 
-/** Plague Rat — extremely small and fast-moving. Accuracy is the true obstacle. */
+/** Plague Rat — extremely small. Accuracy is the true obstacle. Holds position (no lateral movement). */
 export const ENEMY_PLAGUE_RAT: EnemyDef = {
   name: 'Plague Rat',
   maxHp: 13,
   manifestId: 'plague-rat',
   spriteKey: 'plague_rat',
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
-  behavior: { pattern: 'zigzag', speed: ENEMY_MOVE_SPEED_SLOW },
+  behavior: { pattern: 'static', speed: 0 },
   displayWidth: 180,
 }
 
@@ -714,6 +718,57 @@ export const ENEMY_ANCIENT_TREANT: EnemyDef = {
   behavior: { pattern: 'static', speed: 0 },
 }
 
+/** Goblin Scout — small, lightly armoured skirmisher. Low HP, easy warm-up enemy. */
+export const ENEMY_GOBLIN_SCOUT: EnemyDef = {
+  name: 'Goblin Scout',
+  maxHp: 18,
+  manifestId: 'goblin-scout',
+  spriteKey: 'goblin_scout',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 120,
+}
+
+/** Orc Warrior — heavy bruiser with an axe. High HP, punishes slow play. */
+export const ENEMY_ORC_WARRIOR: EnemyDef = {
+  name: 'Orc Warrior',
+  maxHp: 55,
+  manifestId: 'orc-warrior',
+  spriteKey: 'orc_warrior',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 220,
+}
+
+/** Mirror Knight — armoured duelist with sword and shield. Tanky mid-campaign wall. */
+export const ENEMY_MIRROR_KNIGHT: EnemyDef = {
+  name: 'Mirror Knight',
+  maxHp: 60,
+  manifestId: 'mirror-knight',
+  spriteKey: 'mirror_knight',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 160,
+}
+
+/**
+ * Insect Swarm — a cloud of insects that flies left-to-right across the arena.
+ * Moderate HP, but the constant lateral sweep makes it the hardest enemy to track.
+ */
+export const ENEMY_INSECT_SWARM: EnemyDef = {
+  name: 'Insect Swarm',
+  maxHp: 25,
+  manifestId: 'insect-swarm',
+  spriteKey: 'insect_swarm',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: {
+    pattern: 'lr_oscillate',
+    speed: ENEMY_MOVE_SPEED_BASE,
+    amplitude: ENEMY_LR_AMPLITUDE_WIDE,
+  },
+  displayWidth: 128,
+}
+
 // ============================================================
 // Enemy pool — sequential rotation through all sprite-based characters
 // ============================================================
@@ -727,6 +782,10 @@ export const ENEMY_POOL: readonly EnemyDef[] = [
   ENEMY_EMBER_WISP,
   ENEMY_IRON_GOLEM,
   ENEMY_ANCIENT_TREANT,
+  ENEMY_GOBLIN_SCOUT,
+  ENEMY_ORC_WARRIOR,
+  ENEMY_MIRROR_KNIGHT,
+  ENEMY_INSECT_SWARM,
 ]
 
 // ============================================================

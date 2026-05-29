@@ -1,7 +1,7 @@
 # Two Hands Magic — Agent Instructions
 
 Phaser 3 + TypeScript + Vite mobile game. Portrait-only, touch-first.
-Reference implementation: `sites/laser-shot/index.html` (single-file canvas game with identical input mechanic).
+Vstupní mechanika (rotující laser reticle ovládaný dotykem) vychází z prototypu „laser-shot".
 
 ---
 
@@ -331,7 +331,7 @@ Masky jsou PNG obrázky kde barva pixelu kóduje hit zónu:
 | Žlutá               | `R > 200 && G > 200`  | `torso`    | HIT         |
 | Zelená              | `G > 200 && R < 50`   | `leftLeg`  | GRAZE       |
 
-Masky se malují v **stone-giant-editor** (`sites/stone-giant-editor/`) — canvas tool pro ruční painting zón přes sprite framy.
+Masky se malují v **sprite-masks-editoru** (`tools/sprite-masks-editor/`, spusť `npm run masks-editor`) — canvas tool pro ruční painting zón přes sprite framy.
 
 ### PixelLab MCP — povinný kontext
 
@@ -428,58 +428,58 @@ Kompletní postup pro stažení a kategorizaci všeho z PixelLabu:
 4. **Stáhni framy** — curl z CDN (viz URL vzor výše), přejmenuj na `{animKey}_{NN}.png`
 5. **Vytvoř manifest.json** podle šablony výše
 6. **Generuj masky** — `python3 scripts/generate_masks.py src/assets/characters/{id}`
-7. **(Volitelné) Zpřesni masky** v stone-giant-editor — red/yellow/green zóny
+7. **(Volitelné) Zpřesni masky** v sprite-masks-editoru (`tools/sprite-masks-editor/`) — red/yellow/green zóny
 8. **Přidej do constants.ts a loaderu**
 
 ### Inventář assetů
 
+Pořadí níže = pořadí v `ENEMY_POOL` (kampaň, 11 nepřátel). První sloupec = nativní px framu.
+
 ```
 src/assets/
   characters/
-    stone-giant/        128x128  idle(10f) + attack(7f) + idle_v2(9f)   masky: kompletní (ručně malované)
-    plague-rat/         180x180  idle(9f) + attack(9f)                  masky: zelené (auto-generated)
-    ice-giant/          124x124  attack(9f) + throw(9f)                 masky: zelené — chybí idle animace
-    crystal-spider/     224x224  attack(9f) + mandible(9f) + bite(9f)   masky: zelené — chybí idle animace
-    ember-wisp/         256x256  attack(9f)                             masky: zelené — 1-direction, PixelLab object použitý jako character
+    stone-giant/        128x128  idle(10f) + attack(7f)                 masky: ručně malované
+    plague-rat/         180x180  idle(9f) + attack(9f)                  masky: ručně malované
+    ice-giant/          124x124  attack(9f) + throw(9f)                 masky: ručně malované — chybí idle animace
+    crystal-spider/     224x224  attack(9f) + attack_mandible(9f) + bite(9f)  masky: ručně malované — chybí idle animace
+    ember-wisp/         256x256  idle(5f) + attack(9f)                  masky: zelené (auto-generated) — 1-direction, PixelLab object použitý jako character
+    iron-golem/         236x236  idle(9f) + attack(9f)                  masky: ručně malované
+    ancient-treant/     248x248  idle(9f) + attack(9f)                  masky: ručně malované
+    goblin-scout/       88x88    idle(9f) + attack(9f)                  masky: ručně malované
+    orc-warrior/        184x184  idle(9f) + attack(9f)                  masky: ručně malované
+    mirror-knight/      120x120  idle(9f) + attack(9f)                  masky: ručně malované
+    insect-swarm/       64x64    idle(9f) + attack(13f)                 masky: ručně malované — pohyb lr_oscillate (lítá zleva doprava)
 ```
 
 PixelLab project ID: `10f15a6e-f984-4afa-8be1-b703bfaeb07e`
 
 ### Mapování na EnemyDef
 
+`EnemyDef` odkazuje na manifest přes `manifestId`. Animace, masky a `displayWidth`
+se čtou genericky z manifestu — `EnemyDef` jen vybere nepřítele a doladí pár polí.
+
 ```ts
 // constants.ts
 export const ENEMY_STONE_GIANT: EnemyDef = {
-  spriteKey: 'stone_giant',        // → manifest.spriteKey
-  displayWidth: 200,               // → manifest.displayWidth
-  maskConfig: {                    // → odvozeno z manifest.animations
-    idle:   { frameCount: 10, prefix: 'mask_idle_' },
-    attack: { frameCount: 7,  prefix: 'mask_attack_' },
-  },
-  // … ostatní fieldy
+  name: 'Stone Giant',
+  maxHp: 70,
+  manifestId: 'stone-giant',          // → klíč do CharacterRegistry (animace, masky, displayWidth)
+  spriteKey: 'stone_giant',           // → Phaser texture key prefix (= manifest.spriteKey)
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,    // fallback rect zóny; reálná detekce běží přes masky
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 400,                   // override; jinak se vezme manifest.displayWidth
 }
 ```
 
-Budoucí cíl: `maskConfig` a frame konstanty se budou **generovat z manifest.json** — ne duplikovat ručně.
-
-### Co je aktuálně hardcoded (k refaktoru)
-
-| Místo                  | Problém                                          |
-|------------------------|--------------------------------------------------|
-| `LoadingScene.ts`      | For-loop smyčky specificky pro Stone Giant        |
-| `BattleScene.ts:1605`  | `if (spriteKey === 'stone_giant')` branch          |
-| `constants.ts`         | `STONE_GIANT_*` konstanty mimo manifest           |
-
-Implementační task by měl: přečíst manifesty, genericky načíst framy/masky, a genericky renderovat animované sprity bez per-enemy branching.
+Načítání framů/masek i rendering jsou **plně generické**: `LoadingScene` projde
+registr a načte všechny framy + masky podle manifestu, `GameStateMachine._loadLevel`
+zapne `MaskHitDetector`, jakmile manifest hlásí `hasMasks`. Žádný per-enemy branching.
 
 ---
 
 ## Backlog Workflow
 
-See root `CLAUDE.md` for full Backlog.md CLI reference.
-Backlog lives at `sites/two-hands-magic/backlog/`.
-
-Run backlog commands from `sites/two-hands-magic/`:
+Backlog žije v `backlog/` (kořen repa). Backlog příkazy se spouští z kořene repa:
 ```bash
 backlog task list --plain
 backlog task 1 --plain
@@ -498,3 +498,32 @@ npm run test:coverage  # With 100 % coverage enforcement
 npm run test:e2e       # Playwright (starts dev server automatically)
 npm run test:design    # Game design specs only
 ```
+
+<!-- BACKLOG.MD MCP GUIDELINES START -->
+
+<CRITICAL_INSTRUCTION>
+
+## BACKLOG WORKFLOW INSTRUCTIONS
+
+This project uses Backlog.md MCP for all task and project management activities.
+
+**CRITICAL GUIDANCE**
+
+- If your client supports MCP resources, read `backlog://workflow/overview` to understand when and how to use Backlog for this project.
+- If your client only supports tools or the above request fails, call `backlog.get_backlog_instructions()` to load the tool-oriented overview. Use the `instruction` selector when you need `task-creation`, `task-execution`, or `task-finalization`.
+
+- **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
+- **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
+- **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
+
+These guides cover:
+- Decision framework for when to create tasks
+- Search-first workflow to avoid duplicates
+- Links to detailed guides for task creation, execution, and finalization
+- MCP tools reference
+
+You MUST read the overview resource to understand the complete workflow. The information is NOT summarized here.
+
+</CRITICAL_INSTRUCTION>
+
+<!-- BACKLOG.MD MCP GUIDELINES END -->

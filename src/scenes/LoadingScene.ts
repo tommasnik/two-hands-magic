@@ -11,6 +11,9 @@ import emberWispManifest from '../assets/characters/ember-wisp/manifest.json'
 import ironGolemManifest from '../assets/characters/iron-golem/manifest.json'
 import mirrorKnightManifest from '../assets/characters/mirror-knight/manifest.json'
 import ancientTreantManifest from '../assets/characters/ancient-treant/manifest.json'
+import goblinScoutManifest from '../assets/characters/goblin-scout/manifest.json'
+import orcWarriorManifest from '../assets/characters/orc-warrior/manifest.json'
+import insectSwarmManifest from '../assets/characters/insect-swarm/manifest.json'
 
 /** All character manifests to register and load. */
 const ALL_MANIFESTS: CharacterManifest[] = [
@@ -22,6 +25,9 @@ const ALL_MANIFESTS: CharacterManifest[] = [
   ironGolemManifest as CharacterManifest,
   mirrorKnightManifest as CharacterManifest,
   ancientTreantManifest as CharacterManifest,
+  goblinScoutManifest as CharacterManifest,
+  orcWarriorManifest as CharacterManifest,
+  insectSwarmManifest as CharacterManifest,
 ]
 
 export class LoadingScene extends Phaser.Scene {

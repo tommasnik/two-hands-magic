@@ -12,7 +12,7 @@
       "frameCount": 9,
       "frameDurationMs": 150,
       "loop": true,
-      "hasMasks": false,
+      "hasMasks": true,
       "source": {
         "animationId": "661a0bdd-d565-491d-8f29-89a17a435680",
         "direction": "south"
@@ -33,7 +33,7 @@
       "frameCount": 9,
       "frameDurationMs": 100,
       "loop": false,
-      "hasMasks": false,
+      "hasMasks": true,
       "source": {
         "animationId": "dfcd7819-50ca-4d95-8785-d955d04e3cf8",
         "direction": "south"
