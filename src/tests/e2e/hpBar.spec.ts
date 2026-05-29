@@ -67,7 +67,7 @@ test('HP bar width decreases after a confirmed hit', async ({ page }) => {
 })
 
 // AC#7: enemy name text matches level 1 enemy name
-test('enemy name matches level 1 enemy (Goblin Scout)', async ({ page }) => {
+test('enemy name matches level 1 enemy (Stone Giant)', async ({ page }) => {
   await page.goto('http://localhost:5274')
   await waitForBridge(page)
 
@@ -81,5 +81,5 @@ test('enemy name matches level 1 enemy (Goblin Scout)', async ({ page }) => {
   await expect(enemyNameEl).toBeVisible()
 
   const text = await enemyNameEl.textContent()
-  expect(text?.trim().toLowerCase()).toBe('goblin scout')
+  expect(text?.trim().toLowerCase()).toBe('stone giant')
 })

@@ -1,0 +1,54 @@
+{
+  "id": "iron-golem",
+  "spriteKey": "iron_golem",
+  "displayWidth": 240,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "2dafd9f3-4e56-4f61-bb3e-e24fae974d71",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "a8373b22-6f73-425b-a98c-57b451ceb22c",
+        "direction": "south"
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "4aec714c-41e4-49d5-aba3-e8dec3d829ed",
+        "direction": "south"
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
+    }
+  }
+}

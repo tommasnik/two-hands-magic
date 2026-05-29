@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { EnemyAttackSystem } from '../../game/systems/EnemyAttackSystem'
-import { GOBLIN_SCOUT_PEBBLE_ATTACK } from '../../game/constants'
 import type { EnemyAttackDef } from '../../types'
 
 const enemyAt = { x: 100, y: 100 }
@@ -153,23 +152,3 @@ describe('EnemyAttackSystem — weighted random selection across multiple attack
   })
 })
 
-describe('EnemyAttackSystem — Goblin Scout default attack matches spec', () => {
-  it('GOBLIN_SCOUT_PEBBLE_ATTACK is configured for a slow telegraphed strike', () => {
-    expect(GOBLIN_SCOUT_PEBBLE_ATTACK.damage).toBeGreaterThan(0)
-    expect(GOBLIN_SCOUT_PEBBLE_ATTACK.cooldownMs).toBeGreaterThan(2000)
-    expect(GOBLIN_SCOUT_PEBBLE_ATTACK.projectileSpeedCmS).toBeGreaterThan(0)
-  })
-
-  it('first missile lands well before 6 seconds at default distance', () => {
-    const sys = new EnemyAttackSystem()
-    sys.setAttacks([GOBLIN_SCOUT_PEBBLE_ATTACK])
-    let elapsed = 0
-    let hits = 0
-    while (elapsed < 6000 && hits === 0) {
-      const events = sys.update(50, { x: 195, y: 270 }, { x: 195, y: 700 })
-      hits += events.length
-      elapsed += 50
-    }
-    expect(hits).toBeGreaterThan(0)
-  })
-})

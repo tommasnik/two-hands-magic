@@ -366,6 +366,12 @@ Po vytvoření characteru/objektu a **PŘED** generováním jakékoliv animace:
 - Žádný generic punch/slam pokud má sprite konkrétní zbraň
 - Ověřit vizuálně po pre-checku spritu — zbraň na spritu je autoritativní, ne popis v tasku
 
+#### 5. Výběr kandidátů — VŽDY uživatel
+- Pokud PixelLab vygeneruje více kandidátů (review status), agent je NIKDY nevybírá sám
+- Agent zobrazí kandidáty uživateli (get_object s include_preview) a popíše je
+- Uživatel rozhodne, který kandidát(y) se vyberou (`select_object_frames`)
+- Platí pro characters i objects — jakýkoliv review s více kandidáty
+
 ### PixelLab → Hra pipeline
 
 #### Bulk stažení všech assetů z PixelLabu

@@ -12,7 +12,7 @@ import {
   XP_LEVEL_THRESHOLDS,
   PLAYER_START_LEVEL,
   PLAYER_MAX_LEVEL,
-  LEVELS,
+  ENEMY_POOL,
   SLOW_SKILL_DAMAGE,
   CRIT_DAMAGE_MULTIPLIER,
   MAX_DELTA_MS,
@@ -35,7 +35,7 @@ function killCurrentEnemyAndAdvance(gsm: GameStateMachine): void {
     gsm._applyHitForTesting('CRIT', 'slow_shot')
   }
   const phase = gsm.getState().phase
-  if (phase === 'fight_overview' && gsm.getState().currentLevel < LEVELS.length) {
+  if (phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
   }
@@ -44,7 +44,7 @@ function killCurrentEnemyAndAdvance(gsm: GameStateMachine): void {
 /** Returns true when all levels are done (fight_overview at last level). */
 function isRunComplete(gsm: GameStateMachine): boolean {
   const state = gsm.getState()
-  return state.phase === 'fight_overview' && state.currentLevel >= LEVELS.length
+  return state.phase === 'fight_overview' && state.currentLevel >= ENEMY_POOL.length
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ describe('Game Design: Player XP & leveling pace', () => {
     }
   })
 
-  it('full run: PLAYER_MAX_LEVEL is reached after defeating every enemy in LEVELS', () => {
+  it('full run: PLAYER_MAX_LEVEL is reached after defeating every enemy in ENEMY_POOL', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     while (!isRunComplete(gsm)) {
@@ -79,7 +79,7 @@ describe('Game Design: Player XP & leveling pace', () => {
     }
     const state = gsm.getState()
     expect(state.playerLevel).toBe(PLAYER_MAX_LEVEL)
-    expect(state.playerXp).toBe(LEVELS.length)
+    expect(state.playerXp).toBe(ENEMY_POOL.length)
   })
 
   it('exactly (PLAYER_MAX_LEVEL - PLAYER_START_LEVEL) level-ups occur across a full run', () => {
@@ -133,7 +133,7 @@ describe('Game Design: Player XP & leveling pace', () => {
         confirms++
         gsm.confirmLevelUpUpgrade()
       }
-      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < LEVELS.length) {
+      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
         gsm.nextLevel()
       }
     }
@@ -146,11 +146,11 @@ describe('Game Design: Player XP & leveling pace', () => {
 })
 
 describe('Game Design: power user vs casual player leveling pace', () => {
-  it('power user: clears LEVELS.length enemies efficiently within the SLOW_CRIT TTK budget', () => {
+  it('power user: clears ENEMY_POOL.length enemies efficiently within the SLOW_CRIT TTK budget', () => {
     // Difficulty intent: a power user reaches PLAYER_MAX_LEVEL in the same kill
-    // count as the campaign provides (= LEVELS.length kills). This is a sanity
+    // count as the campaign provides (= ENEMY_POOL.length kills). This is a sanity
     // check that the pacing constants do not require more kills than exist.
-    expect(XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL]).toBeLessThanOrEqual(LEVELS.length)
+    expect(XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL]).toBeLessThanOrEqual(ENEMY_POOL.length)
 
     const gsm = new GameStateMachine()
     gsm.startBattle()
@@ -160,12 +160,12 @@ describe('Game Design: power user vs casual player leveling pace', () => {
         gsm._applyHitForTesting('CRIT', 'slow_shot')
       }
       kills++
-      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < LEVELS.length) {
+      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
     }
-    expect(kills).toBe(LEVELS.length)
+    expect(kills).toBe(ENEMY_POOL.length)
     expect(gsm.getState().playerLevel).toBe(PLAYER_MAX_LEVEL)
     void SLOW_CRIT // referenced to document the budget unit used by power users
   })

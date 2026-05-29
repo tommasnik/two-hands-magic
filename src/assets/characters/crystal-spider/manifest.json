@@ -23,7 +23,18 @@
         "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
         "direction": "south",
         "description": "Lunge stretch — spider lunges forward"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     },
     "attack_mandible": {
       "frameCount": 9,
@@ -35,7 +46,18 @@
         "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7",
         "direction": "south",
         "description": "Mandible attack — spider bites with mandibles"
-      }
+      },
+      "masksEdited": [
+        "attack_mandible_00",
+        "attack_mandible_01",
+        "attack_mandible_02",
+        "attack_mandible_03",
+        "attack_mandible_04",
+        "attack_mandible_05",
+        "attack_mandible_06",
+        "attack_mandible_07",
+        "attack_mandible_08"
+      ]
     },
     "bite": {
       "frameCount": 9,
@@ -47,7 +69,18 @@
         "characterId": "7f186dfb-70ee-4fa3-9935-dbe50018ae9e",
         "direction": "south",
         "description": "Bite from stretched body state"
-      }
+      },
+      "masksEdited": [
+        "bite_00",
+        "bite_01",
+        "bite_02",
+        "bite_03",
+        "bite_04",
+        "bite_05",
+        "bite_06",
+        "bite_07",
+        "bite_08"
+      ]
     }
   },
   "_notes": "No idle animation yet — needs PixelLab idle generation. Three attack variants from two character states."

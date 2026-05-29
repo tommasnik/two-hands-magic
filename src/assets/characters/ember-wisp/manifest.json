@@ -9,6 +9,15 @@
     "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
   },
   "animations": {
+    "idle": {
+      "frameCount": 5,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "description": "Ping-pong from attack frames 0-1-2-1-0 (placeholder until proper idle is generated)"
+      }
+    },
     "attack": {
       "frameCount": 9,
       "frameDurationMs": 100,

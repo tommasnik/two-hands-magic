@@ -37,24 +37,7 @@ export interface TouchPointDef {
 
 
 /**
- * Enemy size category — controls visual scale and base hit zone area.
- * tiny < small < medium < large < huge < enormous
- */
-export type EnemySize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'enormous'
-
-/**
- * Enemy movement pattern — describes how the enemy moves during combat.
- * - static:   does not move
- * - strafe:   moves left and right at a steady pace
- * - zigzag:   alternates direction rapidly (erratic horizontal movement)
- * - diagonal: moves diagonally across the screen
- * - approach: moves steadily toward the player (urgency mechanic)
- */
-export type EnemyMovementPattern = 'static' | 'strafe' | 'zigzag' | 'diagonal' | 'approach'
-
-/**
  * BehaviorSystem movement pattern — typed union consumed by BehaviorSystem.
- * Maps to EnemyMovementPattern but uses domain-precise naming:
  * - static:       does not move; position is fixed each tick
  * - lr_oscillate: smooth left-right oscillation (cosine wave); rhythmic, predictable
  * - zigzag:       sharp direction reversals at speed; erratic horizontal movement
@@ -92,73 +75,6 @@ export interface EnemyBehaviorDef {
    * Unit: px. Ignored for other patterns.
    */
   amplitude?: number
-}
-
-/**
- * Shape descriptor for procedural enemy rendering.
- * Describes the visual form of an enemy body — type and scale parameters.
- *
- * type:
- *   - 'humanoid'  : bipedal body with head, torso, arms, legs
- *   - 'beast'     : quadruped-like silhouette (wide, low torso, no arms)
- *   - 'wisp'      : single glowing orb with no limbs
- *   - 'spider'    : low, wide body with multiple legs
- *   - 'blob'      : amorphous rounded mass
- *   - 'elemental' : tall, narrow crystalline form
- *   - 'drake'     : large reptilian body with a tail
- *   - 'treant'    : wide, branching form
- *   - 'wraith'    : wispy elongated translucent form
- *
- * scale: overall body size multiplier relative to the base humanoid dimensions.
- * headScale: additional multiplier for the head/crit zone size (stacks with critZoneScale).
- * widthRatio: torso width relative to height (1.0 = square torso).
- */
-export interface ShapeDescriptor {
-  /** Visual body type — drives procedural rendering in BattleScene. */
-  type: 'humanoid' | 'beast' | 'wisp' | 'spider' | 'blob' | 'elemental' | 'drake' | 'treant' | 'wraith'
-  /** Overall body scale multiplier. Unit: dimensionless. Default: 1.0 */
-  scale: number
-  /** Extra scale applied to the head/crit zone circle. Unit: dimensionless. Default: 1.0 */
-  headScale: number
-  /** Torso width-to-height ratio. Unit: dimensionless. Default: 1.0 */
-  widthRatio: number
-}
-
-/**
- * Hit zone layout for an enemy.
- * Defines the CRIT / HIT / GRAZE detection geometry as circles relative to the enemy centre.
- *
- * All offsets (dx, dy) are relative to the enemy's torso centre (x, y).
- * All radii are in canvas pixels.
- *
- * The three zones map to hit results:
- *   crit  → CRIT   (head / weak point)
- *   mid   → HIT    (torso / body)
- *   low   → GRAZE  (limbs / extremities — represented as a ring around the mid zone)
- *
- * For the 'low' (GRAZE) zone: a point is in GRAZE if it is within lowRadius of (cx + lowDx, cy + lowDy)
- * but NOT within midRadius of (cx + midDx, cy + midDy). This makes GRAZE an annular region.
- * Priority: crit > mid > low > miss.
- */
-export interface HitZoneLayout {
-  /** CRIT zone circle centre offset X from enemy torso centre. Unit: px. */
-  critDx: number
-  /** CRIT zone circle centre offset Y from enemy torso centre. Unit: px. */
-  critDy: number
-  /** CRIT zone circle radius. Unit: px. */
-  critRadius: number
-  /** HIT zone circle centre offset X from enemy torso centre. Unit: px. */
-  midDx: number
-  /** HIT zone circle centre offset Y from enemy torso centre. Unit: px. */
-  midDy: number
-  /** HIT zone circle radius. Unit: px. */
-  midRadius: number
-  /** GRAZE zone circle centre offset X from enemy torso centre. Unit: px. */
-  lowDx: number
-  /** GRAZE zone circle centre offset Y from enemy torso centre. Unit: px. */
-  lowDy: number
-  /** GRAZE zone outer radius. Unit: px. */
-  lowRadius: number
 }
 
 /**
@@ -204,15 +120,9 @@ export interface EnemyDef {
   /** Maximum hit points for this enemy. Unit: HP. */
   maxHp: number
   /**
-   * Multiplier applied to the default head radius for crit zone size.
-   * 1.0 = default ENEMY_HEAD_RADIUS_CM. Lower = smaller, harder-to-hit crit zone.
-   * Unit: dimensionless multiplier.
-   */
-  critZoneScale: number
-  /**
    * Character manifest ID (kebab-case) referencing a manifest.json in
    * src/assets/characters/{manifestId}/. Used by CharacterRegistry to look up
-   * spriteKey, displayWidth, animation defs and mask config.
+   * spriteKey, displayWidth, animation defs, and mask config.
    * Optional — enemies without manifests use procedural rendering.
    */
   manifestId?: string
@@ -230,46 +140,11 @@ export interface EnemyDef {
    */
   hitZoneMap?: readonly HitZoneEntry[]
   /**
-   * Visual and physical size category of the enemy.
-   * Affects hit zone area and visual rendering scale.
-   * Optional — defaults to 'medium' when not specified.
-   */
-  size?: EnemySize
-  /**
-   * Movement pattern during combat.
-   * Optional — defaults to 'static' when not specified.
-   */
-  movementPattern?: EnemyMovementPattern
-  /**
-   * Hit zone size as a fraction of the enemy's total body area.
-   * Range: 0–1. Higher = easier to hit.
-   * Optional — defaults to 1.0 when not specified.
-   */
-  hitZone?: number
-  /**
-   * Crit zone size as a fraction of the enemy's hit zone area.
-   * Range: 0–1. Higher = easier to crit.
-   * Optional — defaults to critZoneScale when not specified.
-   */
-  critZone?: number
-  /**
    * Machine-readable behavior descriptor consumed by BehaviorSystem.
    * Defines how the enemy moves each game tick.
    * Optional — defaults to static (no movement) when not specified.
    */
   behavior?: EnemyBehaviorDef
-  /**
-   * Visual shape descriptor for procedural rendering.
-   * Drives BattleScene's _drawEnemy to render the correct body form.
-   * Optional — defaults to a standard medium humanoid when not specified.
-   */
-  shape?: ShapeDescriptor
-  /**
-   * Hit detection geometry — three-zone layout (crit/mid/low) relative to enemy centre.
-   * Used by Enemy.getHitZone() and Enemy.getHitResult() instead of global body constants.
-   * Optional — defaults to DEFAULT_HIT_ZONE_LAYOUT when not specified.
-   */
-  hitZoneLayout?: HitZoneLayout
   /**
    * Attack patterns this enemy uses to damage the player.
    * Each entry has an independent cooldown; weighted random picks among ready ones.
@@ -277,38 +152,10 @@ export interface EnemyDef {
    */
   attacks?: readonly EnemyAttackDef[]
   /**
-   * Per-animation PNG mask configuration for pixel-perfect hit detection.
-   * When present, MaskHitDetector is used instead of the legacy hitZoneLayout.
-   * Optional — enemies without maskConfig use the standard three-circle model.
-   */
-  maskConfig?: MaskConfig
-  /**
-   * Display width in pixels when rendering the sprite. Used for world-to-mask
-   * coordinate conversion. Defaults to 128 if omitted.
+   * Display width override in pixels when rendering the sprite.
+   * When omitted, the value from CharacterRegistry manifest is used.
    */
   displayWidth?: number
-}
-
-/**
- * Configuration for per-animation PNG hit masks.
- * Each animation key (idle, throw) maps to a frame count and file prefix
- * used to locate mask PNGs in the asset directory.
- */
-export interface MaskConfig {
-  /** Idle animation mask config — looping idle cycle. */
-  idle: { frameCount: number; prefix: string }
-  /** Attack animation mask config — one-shot attack animation. */
-  attack: { frameCount: number; prefix: string }
-}
-
-/**
- * Data descriptor for a single level encounter.
- */
-export interface LevelDef {
-  /** Level number (1-based). */
-  level: number
-  /** Enemy encountered in this level. */
-  enemyDef: EnemyDef
 }
 
 /**
@@ -660,13 +507,6 @@ export interface GameState {
   /** Most recent hit event, or null if no hit has occurred yet. */
   lastHit: { result: HitResult; timestamp: number; damage: number; hitZone: HitZoneName; position: { x: number; y: number } | null } | null
   /**
-   * Per-touch-point interaction state (legacy: keyed by named TouchPointId).
-   * Kept for backward compatibility in tests that reference named keys.
-   * Only populated for the 6 fixed named touch points; unused slots are inactive.
-   * @deprecated Prefer activeSlots for dynamic layout rendering.
-   */
-  touchStates: Record<TouchPointId, { active: boolean; dragOffsetX: number; touchStartMs: number }>
-  /**
    * Active skill slot states for the current skill configuration.
    * Used by BattleScene to render dynamic touch point circles and lasers.
    * Each entry corresponds to one slot in the player's skill config.
@@ -703,12 +543,6 @@ export interface GameState {
    * Exposed for the test bridge (window.__game.getState().enemyHitZonesPx).
    */
   enemyHitZonesPx: HitZoneEntryPx[]
-  /**
-   * Shape descriptor for the active enemy.
-   * Read by BattleScene to choose the correct procedural drawing routine.
-   * Always defined — falls back to DEFAULT_SHAPE if the EnemyDef has no shape.
-   */
-  enemyShape: ShapeDescriptor
   /** Player HP state — drives the player HP bar and game-over check. */
   player: Player
   /** All enemy missiles currently in flight toward the player. */
@@ -766,4 +600,9 @@ export interface GameState {
    * Undefined for enemies without a manifest.
    */
   enemyManifestId?: string
+  /**
+   * Display width of the active enemy in pixels.
+   * Used by BattleScene for rendering size; overrides manifest.displayWidth when set.
+   */
+  enemyDisplayWidth?: number
 }

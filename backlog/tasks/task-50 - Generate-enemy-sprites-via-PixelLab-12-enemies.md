@@ -38,7 +38,7 @@ Vygenerovat base sprite + idle animaci + attack animaci pro 12 enemies přes Pix
 3. Iron Golem (humanoid, 128px)
 4. Mirror Knight (humanoid, 64px)
 5. Ancient Treant (humanoid, 128px)
-6. Swarm (object/humanoid fallback, 64px)
+6. Black Hole (object/humanoid fallback, 64px)
 7. Shadow Dancer (humanoid, 48px)
 8. Lava Slug (object/quadruped fallback, 96px)
 9. Stone Drake (quadruped lion, 96px)
@@ -73,7 +73,7 @@ Po vytvoření characteru/objektu a **PŘED** generováním jakékoliv animace:
 ## Poznámky
 - Většina enemies = humanoid character
 - Stone Drake = quadruped (lion template)
-- Swarm, Lava Slug, Thunder Hawk = PixelLab object (nejsou humanoid/quadruped)
+- Black Hole, Lava Slug, Thunder Hawk = PixelLab object (nejsou humanoid/quadruped)
 - Všechny idle popisy jsou detailní a reflektují agresivitu enemy
 - Všechny animace south-facing only (hra je portrait)
 <!-- SECTION:DESCRIPTION:END -->

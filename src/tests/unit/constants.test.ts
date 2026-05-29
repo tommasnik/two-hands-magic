@@ -19,9 +19,7 @@ import {
   ENEMY_HEAD_RADIUS_CM,
   ENEMY_TORSO_WIDTH_CM,
   ENEMY_TORSO_HEIGHT_CM,
-  ENEMY_ARM_LENGTH_CM,
   ENEMY_LEG_LENGTH_CM,
-  ENEMY_LIMB_RADIUS_CM,
   ENEMY_DEFAULT_Y,
   CRIT_SCORE,
   HIT_SCORE,
@@ -29,8 +27,10 @@ import {
   MISS_SCORE,
   SLOW_SKILL_DAMAGE,
   FAST_SKILL_DAMAGE,
-  WHITE_SHOT_SKILL_DAMAGE,
-  FIREBALL_SKILL_DAMAGE,
+  WHITE_SHOT_SKILL_DAMAGE_MIN,
+  WHITE_SHOT_SKILL_DAMAGE_MAX,
+  FIREBALL_SKILL_DAMAGE_MIN,
+  FIREBALL_SKILL_DAMAGE_MAX,
   NEW_SKILL_GREEN_ZONE_MULTIPLIER,
   SLOW_SKILL_ROTATION_PERIOD_MS,
   FAST_SKILL_ROTATION_PERIOD_MS,
@@ -40,11 +40,8 @@ import {
   HIT_DAMAGE_MULTIPLIER,
   GRAZE_DAMAGE_MULTIPLIER,
   GREEN_ZONE_DAMAGE_MULTIPLIER,
-  ENEMY_GOBLIN_SCOUT,
-  ENEMY_ORC_WARRIOR,
-  ENEMY_STONE_TROLL,
   ENEMY_STONE_GIANT,
-  LEVELS,
+  ENEMY_POOL,
   FLOAT_TEXT_FONT_CRIT,
   FLOAT_TEXT_FONT_HIT,
   FLOAT_TEXT_FONT_GRAZE,
@@ -210,28 +207,12 @@ describe('enemy dimensions — derived constant', () => {
     expect(ENEMY_TORSO_HEIGHT_CM).toBe(3.6)
   })
 
-  it('ENEMY_ARM_LENGTH_CM is 3.4', () => {
-    expect(ENEMY_ARM_LENGTH_CM).toBe(3.4)
-  })
-
   it('ENEMY_LEG_LENGTH_CM is 4.2', () => {
     expect(ENEMY_LEG_LENGTH_CM).toBe(4.2)
   })
 
-  it('ENEMY_LIMB_RADIUS_CM is derived from ENEMY_TORSO_WIDTH_CM * (0.45 / 2.6)', () => {
-    expect(ENEMY_LIMB_RADIUS_CM).toBeCloseTo(ENEMY_TORSO_WIDTH_CM * (0.45 / 2.6), 10)
-  })
-
-  it('ENEMY_LIMB_RADIUS_CM is approximately 0.45 cm', () => {
-    expect(ENEMY_LIMB_RADIUS_CM).toBeCloseTo(0.45, 5)
-  })
-
   it('torso is wider than head radius * 2 (torso spans more than head)', () => {
     expect(ENEMY_TORSO_WIDTH_CM).toBeGreaterThan(ENEMY_HEAD_RADIUS_CM * 2)
-  })
-
-  it('legs are longer than arms', () => {
-    expect(ENEMY_LEG_LENGTH_CM).toBeGreaterThan(ENEMY_ARM_LENGTH_CM)
   })
 })
 
@@ -275,27 +256,19 @@ describe('skill damage values', () => {
     expect(SLOW_SKILL_DAMAGE).toBeGreaterThan(FAST_SKILL_DAMAGE)
   })
 
-  // task-38: white_shot and fireball damage constants
-  it('WHITE_SHOT_SKILL_DAMAGE is in range 2–4 (AC#1)', () => {
-    expect(WHITE_SHOT_SKILL_DAMAGE).toBeGreaterThanOrEqual(2)
-    expect(WHITE_SHOT_SKILL_DAMAGE).toBeLessThanOrEqual(4)
+  // task-38: white_shot and fireball damage ranges (min/max spread)
+  it('WHITE_SHOT damage spread is 2–4 (AC#1)', () => {
+    expect(WHITE_SHOT_SKILL_DAMAGE_MIN).toBe(2)
+    expect(WHITE_SHOT_SKILL_DAMAGE_MAX).toBe(4)
   })
 
-  it('WHITE_SHOT_SKILL_DAMAGE is derived from FAST_SKILL_DAMAGE * 0.3', () => {
-    expect(WHITE_SHOT_SKILL_DAMAGE).toBeCloseTo(FAST_SKILL_DAMAGE * 0.3, 10)
+  it('FIREBALL damage spread is 10–14 (AC#2)', () => {
+    expect(FIREBALL_SKILL_DAMAGE_MIN).toBe(10)
+    expect(FIREBALL_SKILL_DAMAGE_MAX).toBe(14)
   })
 
-  it('FIREBALL_SKILL_DAMAGE is in range 10–15 (AC#2)', () => {
-    expect(FIREBALL_SKILL_DAMAGE).toBeGreaterThanOrEqual(10)
-    expect(FIREBALL_SKILL_DAMAGE).toBeLessThanOrEqual(15)
-  })
-
-  it('FIREBALL_SKILL_DAMAGE is derived from SLOW_SKILL_DAMAGE * 0.6', () => {
-    expect(FIREBALL_SKILL_DAMAGE).toBeCloseTo(SLOW_SKILL_DAMAGE * 0.6, 10)
-  })
-
-  it('fireball deals more damage than white_shot (burst vs rapid-fire)', () => {
-    expect(FIREBALL_SKILL_DAMAGE).toBeGreaterThan(WHITE_SHOT_SKILL_DAMAGE)
+  it('fireball min damage exceeds white_shot max (burst vs rapid-fire)', () => {
+    expect(FIREBALL_SKILL_DAMAGE_MIN).toBeGreaterThan(WHITE_SHOT_SKILL_DAMAGE_MAX)
   })
 
   it('NEW_SKILL_GREEN_ZONE_MULTIPLIER is 0.5 (50% vs green zone, AC#1, AC#2)', () => {
@@ -374,68 +347,16 @@ describe('damage multipliers', () => {
 })
 
 describe('enemy definitions', () => {
-  it('Goblin Scout has name "Goblin Scout"', () => {
-    expect(ENEMY_GOBLIN_SCOUT.name).toBe('Goblin Scout')
-  })
-
-  it('Goblin Scout has 60 HP', () => {
-    expect(ENEMY_GOBLIN_SCOUT.maxHp).toBe(60)
-  })
-
-  it('Goblin Scout has critZoneScale 1.0 (default head radius)', () => {
-    expect(ENEMY_GOBLIN_SCOUT.critZoneScale).toBe(1.0)
-  })
-
-  it('Orc Warrior has name "Orc Warrior"', () => {
-    expect(ENEMY_ORC_WARRIOR.name).toBe('Orc Warrior')
-  })
-
-  it('Orc Warrior has 80 HP', () => {
-    expect(ENEMY_ORC_WARRIOR.maxHp).toBe(80)
-  })
-
-  it('Orc Warrior has critZoneScale 0.7 (smaller crit zone)', () => {
-    expect(ENEMY_ORC_WARRIOR.critZoneScale).toBe(0.7)
-  })
-
-  it('Stone Troll has name "Stone Troll"', () => {
-    expect(ENEMY_STONE_TROLL.name).toBe('Stone Troll')
-  })
-
-  it('Stone Troll has 104 HP', () => {
-    expect(ENEMY_STONE_TROLL.maxHp).toBe(104)
-  })
-
-  it('Stone Troll has critZoneScale 0.55 (smallest crit zone)', () => {
-    expect(ENEMY_STONE_TROLL.critZoneScale).toBe(0.55)
-  })
-
   it('Stone Giant has name "Stone Giant"', () => {
     expect(ENEMY_STONE_GIANT.name).toBe('Stone Giant')
   })
 
-  it('Stone Giant has 140 HP', () => {
-    expect(ENEMY_STONE_GIANT.maxHp).toBe(140)
+  it('Stone Giant has 70 HP', () => {
+    expect(ENEMY_STONE_GIANT.maxHp).toBe(70)
   })
 
-  it('Stone Giant has critZoneScale 0.55', () => {
-    expect(ENEMY_STONE_GIANT.critZoneScale).toBe(0.55)
-  })
-
-  it('Stone Giant has maskConfig with idle and attack animations', () => {
-    expect(ENEMY_STONE_GIANT.maskConfig).toBeDefined()
-    expect(ENEMY_STONE_GIANT.maskConfig!.idle.frameCount).toBe(10)
-    expect(ENEMY_STONE_GIANT.maskConfig!.attack.frameCount).toBe(7)
-  })
-
-  it('HP increases with each level 1-3 enemy (difficulty scaling)', () => {
-    expect(ENEMY_ORC_WARRIOR.maxHp).toBeGreaterThan(ENEMY_GOBLIN_SCOUT.maxHp)
-    expect(ENEMY_STONE_GIANT.maxHp).toBeGreaterThan(ENEMY_ORC_WARRIOR.maxHp)
-  })
-
-  it('critZoneScale decreases with each level 1-3 enemy (smaller crit zone = harder)', () => {
-    expect(ENEMY_ORC_WARRIOR.critZoneScale).toBeLessThan(ENEMY_GOBLIN_SCOUT.critZoneScale)
-    expect(ENEMY_STONE_GIANT.critZoneScale).toBeLessThan(ENEMY_ORC_WARRIOR.critZoneScale)
+  it('Stone Giant has displayWidth override for 2x upscale', () => {
+    expect(ENEMY_STONE_GIANT.displayWidth).toBe(400)
   })
 })
 
@@ -541,35 +462,19 @@ describe('getHitResultColor — renderer color mapping', () => {
   })
 })
 
-describe('LEVELS array', () => {
-  it('has 18 levels', () => {
-    expect(LEVELS.length).toBe(18)
+describe('ENEMY_POOL', () => {
+  it('level 1 uses Stone Giant', () => {
+    expect(ENEMY_POOL[0].name).toBe('Stone Giant')
   })
 
-  it('level numbers are sequential 1–18', () => {
-    LEVELS.forEach((l, i) => expect(l.level).toBe(i + 1))
+  it('level 2 uses Plague Rat', () => {
+    expect(ENEMY_POOL[1].name).toBe('Plague Rat')
   })
 
-  it('level 1 uses Goblin Scout', () => {
-    expect(LEVELS[0].enemyDef.name).toBe('Goblin Scout')
-  })
-
-  it('level 2 uses Orc Warrior', () => {
-    expect(LEVELS[1].enemyDef.name).toBe('Orc Warrior')
-  })
-
-  it('level 3 uses Stone Giant', () => {
-    expect(LEVELS[2].enemyDef.name).toBe('Stone Giant')
-  })
-
-  it('level 18 uses Titan Lord as final boss', () => {
-    expect(LEVELS[17].enemyDef.name).toBe('Titan Lord')
-  })
-
-  it('all levels reference a defined enemyDef with positive maxHp', () => {
-    for (const level of LEVELS) {
-      expect(level.enemyDef).toBeDefined()
-      expect(level.enemyDef.maxHp).toBeGreaterThan(0)
+  it('all pool entries have a name and positive maxHp', () => {
+    for (const enemyDef of ENEMY_POOL) {
+      expect(enemyDef.name).toBeTruthy()
+      expect(enemyDef.maxHp).toBeGreaterThan(0)
     }
   })
 })
@@ -594,8 +499,8 @@ describe('XP & player leveling constants', () => {
     }
   })
 
-  it('XP_LEVEL_THRESHOLDS top threshold equals the campaign kill count', () => {
-    expect(XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL]).toBe(LEVELS.length)
+  it('player reaches max level on the final kill (top threshold = campaign length)', () => {
+    expect(XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL]).toBe(ENEMY_POOL.length)
   })
 
   it('start level is below max level — at least one level-up exists in a run', () => {

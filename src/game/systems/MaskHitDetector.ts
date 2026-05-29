@@ -98,4 +98,10 @@ export class MaskHitDetector {
   hasMask(spriteKey: string, animKey: string, frameIndex: number): boolean {
     return this._masks.has(`${spriteKey}:${animKey}:${frameIndex}`)
   }
+
+  getMaskDimensions(spriteKey: string, animKey: string, frameIndex: number): { width: number; height: number } | undefined {
+    const entry = this._masks.get(`${spriteKey}:${animKey}:${frameIndex}`)
+    if (!entry) return undefined
+    return { width: entry.width, height: entry.height }
+  }
 }

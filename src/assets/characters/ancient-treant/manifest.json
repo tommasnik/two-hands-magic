@@ -1,0 +1,54 @@
+{
+  "id": "ancient-treant",
+  "spriteKey": "ancient_treant",
+  "displayWidth": 260,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "addb02e2-2aa4-40ef-89d6-6e17b970ae48",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "7ccb0b10-7a67-4c2f-bd76-1f1bf7f8db2c",
+        "direction": "south"
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "6717bec2-0442-41ca-89d1-ed6deadba8c2",
+        "direction": "south"
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
+    }
+  }
+}

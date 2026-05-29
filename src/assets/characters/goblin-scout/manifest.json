@@ -16,7 +16,18 @@
       "source": {
         "animationId": "661a0bdd-d565-491d-8f29-89a17a435680",
         "direction": "south"
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
     },
     "attack": {
       "frameCount": 9,
@@ -26,7 +37,18 @@
       "source": {
         "animationId": "dfcd7819-50ca-4d95-8785-d955d04e3cf8",
         "direction": "south"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   }
 }

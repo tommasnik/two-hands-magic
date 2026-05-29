@@ -25,7 +25,7 @@ import {
   UPGRADE_NODES,
   UPGRADE_PATH_TITLES,
   UPGRADE_TREE_COLUMNS,
-  LEVELS,
+  ENEMY_POOL,
 } from '../game/constants'
 import { characterRegistry } from '../game/CharacterRegistry'
 import { computeReticle } from '../game/systems/AimSystem'
@@ -427,7 +427,7 @@ export class BattleScene extends Phaser.Scene {
         const state = gameMachine.getState()
         if (this._victoryToast) this._victoryToast.classList.add('hidden')
         if (this._fightOverviewOverlay) {
-          const isLastLevel = state.currentLevel >= LEVELS.length
+          const isLastLevel = state.currentLevel >= ENEMY_POOL.length
           const btn = document.getElementById('fight-overview-btn')
           if (btn) {
             if (state.pendingLevelUp) btn.textContent = 'Level Up →'
@@ -903,14 +903,13 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     if (!frame?.source.image) return
 
     const img = frame.source.image as HTMLImageElement
-    // Get display width and anchor from CharacterRegistry
+    // Get display width from GameState (EnemyDef), anchor from CharacterRegistry
     const manifestId = state.enemyManifestId
-    let drawW = 128
+    let drawW = state.enemyDisplayWidth ?? 128
     let anchorX = 0.5
     let anchorY = 0.6
     if (manifestId && characterRegistry.has(manifestId)) {
       const manifest = characterRegistry.get(manifestId)
-      drawW = manifest.displayWidth
       if (manifest.anchorX !== undefined) anchorX = manifest.anchorX
       if (manifest.anchorY !== undefined) anchorY = manifest.anchorY
     }

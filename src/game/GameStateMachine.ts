@@ -3,7 +3,7 @@
 // Orchestrates all game systems and tracks state transitions.
 // ============================================================
 
-import type { GameState, InputEvent, TouchPointId, HitResult, SkillType, Phase, HitZoneName, ActiveSlotState, HitZoneEntry, HitZoneEntryPx, HitZoneLayout, ShapeDescriptor, PlayerHitEvent, GlobalUpgradeState, UpgradeNodeId, FightStats, SkillFightStats } from '../types'
+import type { GameState, InputEvent, HitResult, SkillType, Phase, HitZoneName, ActiveSlotState, HitZoneEntry, HitZoneEntryPx, PlayerHitEvent, GlobalUpgradeState, UpgradeNodeId, FightStats, SkillFightStats } from '../types'
 import { InputManager } from './systems/InputManager'
 import type { TouchPointEntry } from './systems/InputManager'
 import { computeReticle } from './systems/AimSystem'
@@ -24,10 +24,10 @@ import { generateTouchPointLayout } from './entities/touchPoints'
 import type { ActiveTouchPointPos } from './entities/touchPoints'
 import {
   MAX_DELTA_MS, CRIT_SCORE, HIT_SCORE, GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM,
-  LEVELS, ENEMY_GOBLIN_SCOUT, ENEMY_DEFAULT_Y, DEFAULT_SKILL_CONFIG,
-  ENEMY_SPRITE_PLACEHOLDER_KEY, DEFAULT_HIT_ZONE_MAP,
+  ENEMY_DEFAULT_Y, DEFAULT_SKILL_CONFIG,
+  DEFAULT_HIT_ZONE_MAP,
   ENEMY_TORSO_WIDTH_PX, ENEMY_TORSO_HEIGHT_PX, ENEMY_HEAD_RADIUS_PX, ENEMY_LEG_LENGTH_PX,
-  DEFAULT_HIT_ZONE_LAYOUT, DEFAULT_SHAPE, PLAYER_MAX_HP, LASER_ORIGIN_Y,
+  PLAYER_MAX_HP, LASER_ORIGIN_Y,
   PLAYER_START_LEVEL, PLAYER_MAX_LEVEL, XP_LEVEL_THRESHOLDS,
   DEFAULT_GLOBAL_UPGRADE_STATE,
   ENEMY_POOL,
@@ -45,12 +45,15 @@ export function resolveBehavior(enemyDef: EnemyDef): EnemyBehaviorDef {
   return enemyDef.behavior ?? DEFAULT_ENEMY_BEHAVIOR
 }
 
+/** Fallback Phaser texture key when an EnemyDef has no spriteKey. */
+const SPRITE_KEY_FALLBACK = 'enemy_placeholder'
+
 /**
  * Extract the sprite key from an EnemyDef, falling back to the placeholder key if undefined.
  * Pure function — fully unit-testable.
  */
 export function resolveSpriteKey(enemyDef: EnemyDef): string {
-  return enemyDef.spriteKey ?? ENEMY_SPRITE_PLACEHOLDER_KEY
+  return enemyDef.spriteKey ?? SPRITE_KEY_FALLBACK
 }
 
 /**
@@ -60,27 +63,6 @@ export function resolveSpriteKey(enemyDef: EnemyDef): string {
 export function resolveHitZoneMap(enemyDef: EnemyDef): readonly HitZoneEntry[] {
   return enemyDef.hitZoneMap ?? DEFAULT_HIT_ZONE_MAP
 }
-
-/**
- * Extract the hit zone layout from an EnemyDef, falling back to the default layout.
- * The layout drives Enemy.getHitZone() and Enemy.getHitResult() per-enemy geometry.
- * Pure function — fully unit-testable.
- */
-export function resolveHitZoneLayout(enemyDef: EnemyDef): HitZoneLayout {
-  return enemyDef.hitZoneLayout ?? DEFAULT_HIT_ZONE_LAYOUT
-}
-
-/**
- * Extract the shape descriptor from an EnemyDef, falling back to the default humanoid shape.
- * The shape drives BattleScene's procedural drawing when no sprite is loaded.
- * Pure function — fully unit-testable.
- */
-export function resolveShape(enemyDef: EnemyDef): ShapeDescriptor {
-  return enemyDef.shape ?? DEFAULT_SHAPE
-}
-
-// Legacy named touch point IDs for backward-compatible touchStates map.
-const LEGACY_TOUCH_IDS: TouchPointId[] = ['green', 'violet', 'orange', 'blue', 'red', 'yellow']
 
 /**
  * Central game state machine.
@@ -97,19 +79,17 @@ export class GameStateMachine {
   private _enemyOriginX = GAME_WIDTH / 2
   private _enemyOriginY = ENEMY_DEFAULT_Y
   // Active behavior def — updated on level load; defaults to static
-  private _enemyBehavior: EnemyBehaviorDef = resolveBehavior(ENEMY_GOBLIN_SCOUT)
-  // Active shape descriptor — updated on level load; drives procedural rendering
-  private _enemyShape: ShapeDescriptor = resolveShape(ENEMY_GOBLIN_SCOUT)
+  private _enemyBehavior: EnemyBehaviorDef = resolveBehavior(ENEMY_POOL[0])
   private enemy = new Enemy(GAME_WIDTH / 2, ENEMY_DEFAULT_Y)
   // Index into ENEMY_POOL for sequential rotation (wraps around modulo pool length)
   private _enemyPoolIndex = 0
   private currentLevel = 1
-  private enemyHp = ENEMY_GOBLIN_SCOUT.maxHp
-  private enemyMaxHp = ENEMY_GOBLIN_SCOUT.maxHp
-  private enemyName = ENEMY_GOBLIN_SCOUT.name
-  private _enemySpriteKey = resolveSpriteKey(ENEMY_GOBLIN_SCOUT)
-  private _enemyManifestId?: string = ENEMY_GOBLIN_SCOUT.manifestId
-  private _enemyHitZoneMap: readonly HitZoneEntry[] = resolveHitZoneMap(ENEMY_GOBLIN_SCOUT)
+  private enemyHp = ENEMY_POOL[0].maxHp
+  private enemyMaxHp = ENEMY_POOL[0].maxHp
+  private enemyName = ENEMY_POOL[0].name
+  private _enemySpriteKey = resolveSpriteKey(ENEMY_POOL[0])
+  private _enemyManifestId?: string = ENEMY_POOL[0].manifestId
+  private _enemyHitZoneMap: readonly HitZoneEntry[] = resolveHitZoneMap(ENEMY_POOL[0])
   private inputManager: InputManager
   private projectileSystem = new ProjectileSystem()
   private enemyAttackSystem = new EnemyAttackSystem()
@@ -179,7 +159,7 @@ export class GameStateMachine {
 
   /**
    * Transition from 'loading' → 'battle'.
-   * Initializes enemy HP from the current level's LevelDef.
+   * Initializes enemy HP from the first ENEMY_POOL entry.
    * Idempotent if already in battle.
    */
   startBattle(): void {
@@ -192,7 +172,7 @@ export class GameStateMachine {
 
   /**
    * Advance to the next level.
-   * Loads new LevelDef (enemy name, HP, critZoneScale).
+   * Loads the next ENEMY_POOL entry (enemy name, HP, behavior).
    * Resets phase to 'battle' for the new fight.
    * Does nothing if not in 'level_complete' or 'fight_overview' phase.
    * Blocked while pendingLevelUp is true — the upgrade pick gate must clear first.
@@ -201,7 +181,7 @@ export class GameStateMachine {
     if (this.phase !== 'level_complete' && this.phase !== 'fight_overview') return
     if (this.pendingLevelUp) return
     // Guard: if already on the last level, nextLevel() is not valid — use completeFightOverview() instead.
-    if (this.currentLevel >= LEVELS.length) return
+    if (this.currentLevel >= ENEMY_POOL.length) return
     this.currentLevel++
     // Sequential enemy rotation from ENEMY_POOL
     this._enemyPoolIndex = (this._enemyPoolIndex + 1) % ENEMY_POOL.length
@@ -263,7 +243,7 @@ export class GameStateMachine {
    */
   completeFightOverview(): void {
     if (this.phase !== 'fight_overview') return
-    if (this.currentLevel >= LEVELS.length) {
+    if (this.currentLevel >= ENEMY_POOL.length) {
       // Last level was completed — restart the full game
       this.restartGame()
     } else {
@@ -297,7 +277,7 @@ export class GameStateMachine {
   /**
    * Set the pixel-perfect mask detector for sprite-based enemies.
    * Called from BattleScene after mask PNG data has been loaded from textures.
-   * The detector is passed into Enemy constructors for enemies that have maskConfig.
+   * The detector is passed into Enemy constructors for enemies whose manifest declares hasMasks.
    */
   setMaskDetector(detector: MaskHitDetector): void {
     this._maskDetector = detector
@@ -550,13 +530,6 @@ export class GameStateMachine {
       }
     })
 
-    // Build legacy touchStates for backward compat (maps named TouchPointId → inactive state)
-    // Active slots with matching IDs are reflected; others stay inactive.
-    const legacyTouchStates = {} as Record<TouchPointId, { active: boolean; dragOffsetX: number; touchStartMs: number }>
-    for (const id of LEGACY_TOUCH_IDS) {
-      legacyTouchStates[id] = { active: false, dragOffsetX: 0, touchStartMs: 0 }
-    }
-
     // Count slots per side
     const leftCount = this._layout.filter(s => s.side === 'left').length
     const rightCount = this._layout.filter(s => s.side === 'right').length
@@ -585,19 +558,18 @@ export class GameStateMachine {
       activeProjectiles: this.projectileSystem.getProjectiles().map((p) => ({ ...p })),
       elapsedMs: this.elapsedMs,
       lastHit: this.lastHit ? { ...this.lastHit } : null,
-      touchStates: legacyTouchStates,
       activeSlots,
       enemyHp: this.enemyHp,
       enemyMaxHp: this.enemyMaxHp,
       enemyName: this.enemyName,
       enemySpriteKey: this._enemySpriteKey,
       enemyManifestId: this._enemyManifestId,
+      enemyDisplayWidth: this.enemy.displayWidth,
       enemyAnimKey: this.enemy.currentAnimKey,
       enemyFrameIndex: this.enemy.currentFrameIndex,
       currentLevel: this.currentLevel,
       touchPointsPerSide: { left: leftCount, right: rightCount },
       enemyHitZonesPx,
-      enemyShape: { ...this._enemyShape },
       player: { hp: this.player.hp, maxHp: this.player.maxHp },
       incomingMissiles: this.enemyAttackSystem.getMissiles(),
       lastPlayerHit: this.lastPlayerHit ? { ...this.lastPlayerHit } : null,
@@ -686,20 +658,28 @@ export class GameStateMachine {
     this._enemySpriteKey = resolveSpriteKey(enemyDef)
     this._enemyManifestId = enemyDef.manifestId
     this._enemyHitZoneMap = resolveHitZoneMap(enemyDef)
-    this._enemyShape = resolveShape(enemyDef)
     this._enemyBehavior = resolveBehavior(enemyDef)
 
-    // Build AnimationController from CharacterRegistry if manifest is registered
+    // Build AnimationController and resolve mask/display from CharacterRegistry manifest
     let animController: AnimationController | undefined
+    let useMask: MaskHitDetector | undefined
+    let displayW = enemyDef.displayWidth ?? 128
     const manifestId = enemyDef.manifestId
     if (manifestId && characterRegistry.has(manifestId)) {
+      const manifest = characterRegistry.get(manifestId)
       const animDefs = characterRegistry.getAnimationDefs(manifestId)
       animController = new AnimationController(animDefs)
+      displayW = enemyDef.displayWidth ?? manifest.displayWidth
+
+      const hasMasks = Object.values(manifest.animations).some(a => a.hasMasks)
+      if (hasMasks) {
+        if (!this._maskDetector) {
+          throw new Error(`Enemy "${enemyDef.name}" manifest declares hasMasks but no MaskHitDetector is available`)
+        }
+        useMask = this._maskDetector
+      }
     }
 
-    // Pass maskDetector to Enemy only when the enemyDef has maskConfig
-    const useMask = enemyDef.maskConfig !== undefined ? this._maskDetector : undefined
-    const displayW = enemyDef.displayWidth ?? 128
     this.enemy = new Enemy(
       this._enemyOriginX,
       this._enemyOriginY,
@@ -826,7 +806,7 @@ export class GameStateMachine {
         durationMs: this._fightStats.durationMs,
       }
       this._onEnemyKilled()
-      if (this.currentLevel >= LEVELS.length) {
+      if (this.currentLevel >= ENEMY_POOL.length) {
         // Upgrade picker has no purpose after the run ends — clear the gate
         // so UI never has to disambiguate fight_overview vs. pending pick.
         this.pendingLevelUp = false
@@ -871,6 +851,14 @@ export class GameStateMachine {
       this.playerLevel = nextLevel
       this.pendingLevelUp = true
     }
+  }
+
+  /**
+   * Test-only: apply damage to the player (simulates an enemy missile hit).
+   * Prefix: underscore signals test-only API — not called by production code.
+   */
+  _applyPlayerHitForTesting(damage: number): void {
+    this._applyPlayerHit(damage)
   }
 
   /**

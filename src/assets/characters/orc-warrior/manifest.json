@@ -1,0 +1,54 @@
+{
+  "id": "orc-warrior",
+  "spriteKey": "orc_warrior",
+  "displayWidth": 220,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "25b93650-97c5-4026-9eb2-22b0159e3ca3",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "0851df30-0396-4803-91ed-72da307447cf",
+        "direction": "south"
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "c5cfe6e4-0d72-4f0a-892a-ec9542826501",
+        "direction": "south"
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
+    }
+  }
+}

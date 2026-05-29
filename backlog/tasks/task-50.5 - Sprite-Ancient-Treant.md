@@ -1,9 +1,10 @@
 ---
 id: TASK-50.5
 title: 'Sprite: Ancient Treant'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-29 11:51'
+updated_date: '2026-05-29 19:47'
 labels:
   - sprites
   - pixellab
@@ -44,3 +45,26 @@ ordinal: 5000
 - Create manifest.json
 - Generate masks
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Ancient Treant sprite — idle(9f) + attack(9f), manifest, auto-generated masks.
+
+## Co bylo uděláno
+- PixelLab character `addb02e2-2aa4-40ef-89d6-6e17b970ae48` (v3, 128px, humanoid)
+- Pre-check sprite: masivní stromový tvor s tmavě hnědou kůrou, zelenými listy, svítícími žluto-zelenými očima
+- Idle animace (9 framů, south) — seamless loop, pomalé houpání větví
+- Attack animace (9 framů, south) — horizontální sweep větvovou paží
+- Framy staženy do `src/assets/characters/ancient-treant/frames/`
+- Manifest vytvořen: `displayWidth: 260`, `spriteKey: ancient_treant`
+- 18 masek auto-generováno (zelené GRAZE zóny)
+- `ENEMY_ANCIENT_TREANT` přidán do `constants.ts` (HP: 90, critZoneScale: 0.45, static)
+- Přidán do `ENEMY_POOL` (7. enemy)
+- LoadingScene: přidán import manifestu (+ iron-golem, mirror-knight které chyběly)
+- TypeScript: 0 errors, 727 testů prochází
+
+## Odchylky od tasku
+- Idle má 9 framů místo 10 (PixelLab limit pro 248px canvas: max 8 framů + 1 reference = 9)
+- Attack má 9 framů místo 8 (8 + 1 reference)
+<!-- SECTION:FINAL_SUMMARY:END -->

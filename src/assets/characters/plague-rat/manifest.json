@@ -15,25 +15,47 @@
   "animations": {
     "idle": {
       "frameCount": 9,
-      "frameDurationMs": 150,
+      "frameDurationMs": 200,
       "loop": true,
       "hasMasks": true,
       "source": {
         "animationId": "a3d0dbdc-8807-4482-ba45-be47ba008e7e",
         "direction": "south",
         "description": "The rat sits in a steady position"
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
     },
     "attack": {
       "frameCount": 9,
-      "frameDurationMs": 100,
+      "frameDurationMs": 130,
       "loop": false,
       "hasMasks": true,
       "source": {
         "animationId": "155b4cb9-06ec-4d2a-8265-62e7f581e60f",
         "direction": "south",
         "description": "The rat crouches slightly, tensing before lunge"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   }
 }

@@ -18,8 +18,6 @@ async function waitForBridge(page: import('@playwright/test').Page): Promise<voi
 async function drainEnemyHp(
   api: ReturnType<typeof gameApi>,
 ): Promise<void> {
-  // Use CRITs with slow_shot (highest damage: 20 * 2 = 40) to minimise iterations
-  // Max 20 iterations covers Titan Lord (500 HP / 40 = 12.5 → 13 shots)
   for (let i = 0; i < 20; i++) {
     const state = await api.getState()
     if (state.enemyHp <= 0 || state.phase !== 'battle') break
@@ -36,27 +34,27 @@ test('AC#5: Level 2 enemy name appears after level 1 complete', async ({ page })
   const api = gameApi(page)
   await api.startBattle()
 
-  // Verify level 1 starts with Goblin Scout
+  // Verify level 1 starts with Stone Giant (ENEMY_POOL[0])
   const initialState = await api.getState()
   expect(initialState.currentLevel).toBe(1)
-  expect(initialState.enemyName.toLowerCase()).toContain('goblin')
+  expect(initialState.enemyName.toLowerCase()).toContain('stone')
 
-  // Drain level 1 enemy HP → phase transitions to level_complete
+  // Drain level 1 enemy HP → phase transitions to fight_overview
   await drainEnemyHp(api)
 
   const afterLevel1 = await api.getState()
-  expect(afterLevel1.phase).toBe('level_complete')
+  expect(afterLevel1.phase).toBe('fight_overview')
   expect(afterLevel1.enemyHp).toBe(0)
 
-  // Advance to level 2 — confirm the pending level-up first, then call nextLevel()
+  // Confirm pending level-up, then advance to level 2
   await api.confirmLevelUpUpgrade()
-  await api.nextLevel()
+  await api.completeFightOverview()
   await page.waitForTimeout(50)
 
   const level2State = await api.getState()
   expect(level2State.currentLevel).toBe(2)
-  // Level 2 enemy is Orc Warrior
-  expect(level2State.enemyName.toLowerCase()).toContain('orc')
+  // Level 2 enemy is Plague Rat (ENEMY_POOL[1])
+  expect(level2State.enemyName.toLowerCase()).toContain('plague')
   expect(level2State.phase).toBe('battle')
   // HP fully restored for new enemy
   expect(level2State.enemyHp).toBe(level2State.enemyMaxHp)
@@ -66,22 +64,19 @@ test('AC#5: Level 2 enemy name appears after level 1 complete', async ({ page })
   await page.waitForTimeout(100)
   const enemyNameEl = page.locator('#hud-enemy-name')
   const hudText = await enemyNameEl.textContent()
-  expect(hudText?.toLowerCase()).toContain('orc')
+  expect(hudText?.toLowerCase()).toContain('plague')
 })
 
-// AC#6: 'victory' phase reached after the last level enemy is defeated
-// (The campaign has 18 levels; we advance through all of them quickly via the test bridge)
-test('AC#6: victory phase reached after all levels are completed', async ({ page }) => {
-  test.setTimeout(120_000) // 18-level loop takes ~30–60 s in headless browser
+// AC#6: fight_overview phase reached after the last level enemy is defeated
+test('AC#6: campaign completes after all 6 levels', async ({ page }) => {
+  test.setTimeout(60_000)
   await page.goto('http://localhost:5274')
   await waitForBridge(page)
 
   const api = gameApi(page)
   await api.startBattle()
 
-  // Fast-forward through the 18-level campaign using the test bridge
-  // Level 1 is already started; drain and advance through levels 1–17, then drain level 18 → victory
-  const TOTAL_LEVELS = 18
+  const TOTAL_LEVELS = 6
   for (let lvl = 1; lvl <= TOTAL_LEVELS; lvl++) {
     let state = await api.getState()
     expect(state.currentLevel).toBe(lvl)
@@ -91,16 +86,14 @@ test('AC#6: victory phase reached after all levels are completed', async ({ page
     await drainEnemyHp(api)
     state = await api.getState()
     expect(state.enemyHp).toBe(0)
+    expect(state.phase).toBe('fight_overview')
 
     if (lvl < TOTAL_LEVELS) {
-      // Intermediate level → level_complete, then advance
-      expect(state.phase).toBe('level_complete')
+      // Intermediate level → confirm upgrade + advance
       await api.confirmLevelUpUpgrade()
-      await api.nextLevel()
-    } else {
-      // Final level → victory
-      expect(state.phase).toBe('victory')
+      await api.completeFightOverview()
     }
+    // Last level: fight_overview is the terminal state for the run
   }
 })
 
@@ -122,23 +115,23 @@ test('AC#7: only 1 touch point per side in initial layout', async ({ page }) => 
   expect(battleState.touchPointsPerSide.right).toBe(1)
 })
 
-// AC#7 (task-31): After killing the goblin, game doesn't freeze and shows new enemy
-test('AC#7: after killing goblin, game transitions to new enemy without freezing', async ({ page }) => {
+// AC#7 (task-31): After killing the first enemy, game transitions to next without freezing
+test('AC#7: after killing first enemy, game transitions to new enemy without freezing', async ({ page }) => {
   await page.goto('http://localhost:5274')
   await waitForBridge(page)
 
   const api = gameApi(page)
   await api.startBattle()
 
-  // Kill the goblin
+  // Kill the first enemy
   await drainEnemyHp(api)
   const afterKill = await api.getState()
-  expect(afterKill.phase).toBe('level_complete')
+  expect(afterKill.phase).toBe('fight_overview')
   expect(afterKill.enemyHp).toBe(0)
 
-  // Advance to level 2 — clear the level-up pick gate first, then nextLevel()
+  // Advance to level 2
   await api.confirmLevelUpUpgrade()
-  await api.nextLevel()
+  await api.completeFightOverview()
   await page.waitForTimeout(100)
 
   // Game must be in battle phase (not frozen/stuck)
@@ -149,12 +142,12 @@ test('AC#7: after killing goblin, game transitions to new enemy without freezing
   // New enemy must be shown with full HP
   expect(level2State.enemyHp).toBeGreaterThan(0)
   expect(level2State.enemyHp).toBe(level2State.enemyMaxHp)
-  expect(level2State.enemyName.toLowerCase()).toContain('orc')
+  expect(level2State.enemyName.toLowerCase()).toContain('plague')
 
   // HUD must display the new enemy name
   await page.waitForTimeout(50)
   const hudName = await page.locator('#hud-enemy-name').textContent()
-  expect(hudName?.toLowerCase()).toContain('orc')
+  expect(hudName?.toLowerCase()).toContain('plague')
 
   // HUD must display the new level number
   const hudLevel = await page.locator('#hud-level').textContent()

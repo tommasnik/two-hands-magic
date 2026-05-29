@@ -30,7 +30,7 @@ expect(machine.getState().enemyHp).toBe(20) // ❌ breaks when damage changes
 **Good — derived from constants:**
 ```ts
 machine._applyHitForTesting('CRIT', 'slow_shot')
-const expected = ENEMY_GOBLIN_SCOUT.maxHp - SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
+const expected = LEVELS[0].enemyDef.maxHp - SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
 expect(machine.getState().enemyHp).toBe(expected) // ✓ survives config changes
 ```
 

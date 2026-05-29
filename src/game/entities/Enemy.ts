@@ -167,18 +167,21 @@ export class Enemy {
    *   drawn rectangle: (ex - displayWidth/2, ey - displayHeight * 0.6).
    *   Frame pixel = (worldX - frameOriginX) * (maskWidth / displayWidth)
    *
-   * Mask dimensions are assumed to be 128x128 (matching the downloaded assets).
+   * Mask dimensions are read per-frame from the MaskHitDetector (getMaskDimensions),
+   * so non-square and varying-size masks map correctly.
    */
   private _resolveZoneFromMask(
     px: number, py: number,
     ex: number, ey: number,
   ): HitZoneName {
-    const MASK_SIZE = 128
+    const dims = this.maskDetector!.getMaskDimensions(this.spriteKey, this.currentAnimKey, this.currentFrameIndex)
+    if (!dims) return 'none'
+
     const frameOriginX = ex - this.displayWidth / 2
     const frameOriginY = ey - this.displayHeight * 0.6
 
-    const frameX = (px - frameOriginX) * (MASK_SIZE / this.displayWidth)
-    const frameY = (py - frameOriginY) * (MASK_SIZE / this.displayHeight)
+    const frameX = (px - frameOriginX) * (dims.width / this.displayWidth)
+    const frameY = (py - frameOriginY) * (dims.height / this.displayHeight)
 
     return this.maskDetector!.getZone(this.spriteKey, this.currentAnimKey, this.currentFrameIndex, frameX, frameY)
   }

@@ -3,12 +3,12 @@
 //
 // White Shot (left, white, fast): rapid low-damage skill
 //   - rotationPeriod: WHITE_SHOT_ROTATION_PERIOD_MS (600ms)
-//   - base damage: WHITE_SHOT_SKILL_DAMAGE (2–4 range, value=3)
+//   - base damage: WHITE_SHOT_SKILL_DAMAGE_MIN/MAX (2–4 range)
 //   - crit: ×2, vs.green: 50%
 //
 // Fireball (right, orange, slow): burst high-damage skill
 //   - rotationPeriod: FIREBALL_ROTATION_PERIOD_MS (2000ms)
-//   - base damage: FIREBALL_SKILL_DAMAGE (10–15 range, value=12)
+//   - base damage: FIREBALL_SKILL_DAMAGE_MIN/MAX (10–14 range)
 //   - crit: ×2, vs.green: 50%
 //
 // Tests verify:
@@ -193,9 +193,9 @@ describe('TASK-38 AC#2 — Fireball SkillDef', () => {
 
 // ============================================================
 // Kill scenario — White Shot (power user: multiple crits)
-// white_shot CRIT = WHITE_SHOT_SKILL_DAMAGE × 2
-// Goblin Scout HP = ENEMY_POOL[0].maxHp
-// Shots to kill = ceil(HP / CRIT_DAMAGE) = ceil(60 / 6) = 10
+// white_shot CRIT = WHITE_SHOT_SKILL_DAMAGE_MIN × CRIT_DAMAGE_MULTIPLIER
+// First pool enemy HP = ENEMY_POOL[0].maxHp (Stone Giant)
+// Shots to kill = ceil(HP / CRIT_DAMAGE) — all derived from constants below.
 // ============================================================
 
 describe('TASK-38 — White Shot kill scenario (power user)', () => {
@@ -259,9 +259,9 @@ describe('TASK-38 — White Shot kill scenario (power user)', () => {
 
 // ============================================================
 // Kill scenario — Fireball (power user: fewer but powerful crits)
-// fireball CRIT = FIREBALL_SKILL_DAMAGE × 2
-// Goblin Scout HP = ENEMY_POOL[0].maxHp = 60
-// Shots to kill = ceil(60 / 24) = 3
+// fireball CRIT = FIREBALL_SKILL_DAMAGE_MIN × CRIT_DAMAGE_MULTIPLIER
+// First pool enemy HP = ENEMY_POOL[0].maxHp (Stone Giant)
+// Shots to kill = ceil(HP / CRIT_DAMAGE) — all derived from constants below.
 // ============================================================
 
 describe('TASK-38 — Fireball kill scenario (power user)', () => {

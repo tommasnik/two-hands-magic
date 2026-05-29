@@ -96,5 +96,11 @@ export function gameApi(page: Page) {
             >
           )['__game'].getTouchPointPositions(),
       ),
+
+    /** Complete the fight overview screen — advances to next level or restarts game. */
+    completeFightOverview: (): Promise<void> =>
+      page.evaluate(
+        () => (window as unknown as Record<string, { completeFightOverview: () => void }>)['__game'].completeFightOverview(),
+      ),
   }
 }

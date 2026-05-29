@@ -18,7 +18,7 @@ priority: high
 - [x] #4 Enemy: Crystal Spider — malý s velkým crit fieldem; test ověří že i casual player snadno crittuje, ale potřebuje víc hitů kvůli nízkému HP
 - [x] #5 Enemy: Shadow Dancer — pohybuje se ze strany na stranu; test ověří že power user trefí víc critů díky předvídání pohybu
 - [x] #6 Enemy: Plague Rat — extrémně malý a rychle se pohybující; test ověří že damage není high ale obtížnost tkví v přesnosti
-- [x] #7 Enemy: Swarm — 3 malí enemies najednou (každý s malým HP); test ověří multi-target pattern
+- [x] #7 Enemy: Black Hole — 3 malí enemies najednou (každý s malým HP); test ověří multi-target pattern
 - [x] #8 Enemy: Stone Drake — pomalu se přibližuje (urgency); test ověří že power user ho zabije dřív než dosáhne blízkosti
 - [x] #9 Enemy: Thornback — cikcak pohyb; test ověří že casual player má nižší hit rate než na statickém enemy
 - [x] #10 Enemy: Ancient Treant — enormní velikost, enormní HP; test ověří že je potřeba sustained DPS (mnoho hitů)

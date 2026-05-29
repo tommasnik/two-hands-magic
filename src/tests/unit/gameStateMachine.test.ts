@@ -10,8 +10,7 @@ import {
   PIXELS_PER_CM,
   ENEMY_TORSO_WIDTH_PX,
   ENEMY_TORSO_HEIGHT_PX,
-  ENEMY_LIMB_RADIUS_PX,
-  LEVELS,
+  ENEMY_POOL,
   SLOW_SKILL_DAMAGE,
   FAST_SKILL_DAMAGE,
   CRIT_DAMAGE_MULTIPLIER,
@@ -89,6 +88,13 @@ function makeMove(
   return { pointerId, action: 'move', x, y, timestamp }
 }
 
+/** Kills the current enemy by applying CRIT slow_shots until HP reaches 0. */
+function killCurrentEnemy(gsm: GameStateMachine): void {
+  while (gsm.getState().enemyHp > 0) {
+    gsm._applyHitForTesting('CRIT', 'slow_shot')
+  }
+}
+
 // ---------------------------------------------------------------------------
 // State transition tests
 // ---------------------------------------------------------------------------
@@ -117,12 +123,11 @@ describe('GameStateMachine — initial state', () => {
     expect(new GameStateMachine().getState().lastHit).toBeNull()
   })
 
-  it('all 6 touch points are initialised inactive', () => {
-    const { touchStates } = new GameStateMachine().getState()
-    const ids = ['green', 'violet', 'orange', 'blue', 'red', 'yellow'] as const
-    for (const id of ids) {
-      expect(touchStates[id].active).toBe(false)
-      expect(touchStates[id].dragOffsetX).toBe(0)
+  it('all active slots are initialised inactive', () => {
+    const { activeSlots } = new GameStateMachine().getState()
+    for (const slot of activeSlots) {
+      expect(slot.active).toBe(false)
+      expect(slot.dragOffsetX).toBe(0)
     }
   })
 })
@@ -205,11 +210,11 @@ describe('GameStateMachine — getState() returns deep copies', () => {
     expect(gsm.getState().score.total).toBe(0)
   })
 
-  it('mutating returned touchStates does not affect internal state', () => {
+  it('mutating returned activeSlots does not affect internal state', () => {
     const gsm = new GameStateMachine()
     const state = gsm.getState()
-    state.touchStates.green.active = true
-    expect(gsm.getState().touchStates.green.active).toBe(false)
+    state.activeSlots[0].active = true
+    expect(gsm.getState().activeSlots[0].active).toBe(false)
   })
 
   it('mutating returned lastHit does not affect internal state', () => {
@@ -472,7 +477,7 @@ describe('GameStateMachine — determinism', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('GameStateMachine — touchStates reflect input', () => {
+describe('GameStateMachine — activeSlots reflect input', () => {
   it('touch point becomes active on pointer down', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
@@ -613,7 +618,7 @@ describe('GameStateMachine — _applyHit GRAZE branch via direct projectile', ()
     const armY = GAME_HEIGHT / 3 - ENEMY_TORSO_HEIGHT_PX / 4
     const touchDownX = GREEN_X  // green arc position
     const touchDownY = GREEN_Y   // green
-    const requiredDragX = ((GAME_WIDTH / 2 - (ENEMY_TORSO_WIDTH_PX / 2 + ENEMY_LIMB_RADIUS_PX)) - GAME_WIDTH / 2) / 4
+    const requiredDragX = ((GAME_WIDTH / 2 - (ENEMY_TORSO_WIDTH_PX / 2 + ENEMY_TORSO_WIDTH_PX * 0.35)) - GAME_WIDTH / 2) / 4
     const movedX = touchDownX + requiredDragX
 
     // Fire two accumulated dt steps that total ≈ 1597ms elapsed before touch-up
@@ -660,7 +665,7 @@ describe('GameStateMachine — _applyHit GRAZE branch via direct projectile', ()
     const armY = GAME_HEIGHT / 3 - ENEMY_TORSO_HEIGHT_PX / 4
     const touchDownX = VIOLET_X  // violet arc position
     const touchDownY = VIOLET_Y  // violet
-    const requiredDragX = ((GAME_WIDTH / 2 - (ENEMY_TORSO_WIDTH_PX / 2 + ENEMY_LIMB_RADIUS_PX)) - GAME_WIDTH / 2) / 4
+    const requiredDragX = ((GAME_WIDTH / 2 - (ENEMY_TORSO_WIDTH_PX / 2 + ENEMY_TORSO_WIDTH_PX * 0.35)) - GAME_WIDTH / 2) / 4
     const movedX = touchDownX + requiredDragX
 
     const targetElapsedMod = 600 * (1 - armY / GAME_HEIGHT)
@@ -757,12 +762,12 @@ describe('GameStateMachine — enemy HP and level fields in GameState', () => {
     expect(state.currentLevel).toBe(1)
   })
 
-  it('initial enemy is Goblin Scout with 60 HP', () => {
+  it('initial enemy matches ENEMY_POOL[0] definition', () => {
     const gsm = new GameStateMachine()
     const state = gsm.getState()
-    expect(state.enemyName).toBe('Goblin Scout')
-    expect(state.enemyMaxHp).toBe(60)
-    expect(state.enemyHp).toBe(60)
+    expect(state.enemyName).toBe(ENEMY_POOL[0].name)
+    expect(state.enemyMaxHp).toBe(ENEMY_POOL[0].maxHp)
+    expect(state.enemyHp).toBe(ENEMY_POOL[0].maxHp)
   })
 
   it('phase includes fight_overview, level_complete and victory as valid values', () => {
@@ -782,14 +787,14 @@ describe('GameStateMachine — enemy HP and level fields in GameState', () => {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — HP tracking and damage system', () => {
-  it('startBattle() initializes enemy HP from LEVELS[0].enemyDef', () => {
+  it('startBattle() initializes enemy HP from ENEMY_POOL[0]', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const state = gsm.getState()
-    const levelDef = LEVELS[0]
-    expect(state.enemyHp).toBe(levelDef.enemyDef.maxHp)
-    expect(state.enemyMaxHp).toBe(levelDef.enemyDef.maxHp)
-    expect(state.enemyName).toBe(levelDef.enemyDef.name)
+    const enemyDef = ENEMY_POOL[0]
+    expect(state.enemyHp).toBe(enemyDef.maxHp)
+    expect(state.enemyMaxHp).toBe(enemyDef.maxHp)
+    expect(state.enemyName).toBe(enemyDef.name)
   })
 
   it('HIT reduces enemy HP by the correct damage amount', () => {
@@ -843,12 +848,14 @@ describe('GameStateMachine — HP tracking and damage system', () => {
   it('HP stays at 0 — never negative after a single killing blow', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Deplete all HP first with hits, leaving very low HP
-    // Goblin Scout has 60 HP. slow_shot HIT = 20 damage. 2 HITs = 40 damage → 20 HP left.
-    // Then a CRIT (40 damage) = overkill
-    gsm._applyHitForTesting('HIT', 'slow_shot')
-    gsm._applyHitForTesting('HIT', 'slow_shot')
-    // 20 HP remaining — now CRIT kills with overkill
+    const maxHp = gsm.getState().enemyMaxHp
+    const hitDmg = SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER
+    // Bring HP low with HITs, leaving a small remainder
+    const hitsToWeaken = Math.floor((maxHp - 1) / hitDmg)
+    for (let i = 0; i < hitsToWeaken; i++) {
+      gsm._applyHitForTesting('HIT', 'slow_shot')
+    }
+    // Remaining HP <= hitDmg; CRIT (2× hitDmg) overkills
     gsm._applyHitForTesting('CRIT', 'slow_shot')
     expect(gsm.getState().enemyHp).toBe(0)
     expect(gsm.getState().enemyHp).not.toBeLessThan(0)
@@ -925,29 +932,21 @@ describe('GameStateMachine — phase transitions on HP depletion', () => {
   it('HP reaching 0 on level 1 transitions phase to fight_overview', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Goblin Scout: 60 HP. 3× CRIT slow_shot = 3 × 40 = 120 damage (overkill)
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     expect(gsm.getState().phase).toBe('fight_overview')
   })
 
   it('HP reaching 0 on level 3 transitions phase to fight_overview (not last level)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot') // Level 1 fight_overview
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot') // Level 2 fight_overview
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
     expect(gsm.getState().currentLevel).toBe(3)
-    // Stone Giant: 140 HP. 4× CRIT slow_shot = 4 × 40 = 160 (overkill)
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot') // Level 3 → fight_overview (more levels remain)
+    killCurrentEnemy(gsm)
     expect(gsm.getState().phase).toBe('fight_overview')
   })
 })
@@ -958,37 +957,32 @@ describe('GameStateMachine — nextLevel() method', () => {
   it('nextLevel() loads Level 2 enemy data after completing level 1', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Complete level 1 — transitions to fight_overview
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     expect(gsm.getState().phase).toBe('fight_overview')
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
     const state = gsm.getState()
     expect(state.currentLevel).toBe(2)
-    expect(state.enemyName).toBe(LEVELS[1].enemyDef.name)
-    expect(state.enemyMaxHp).toBe(LEVELS[1].enemyDef.maxHp)
-    expect(state.enemyHp).toBe(LEVELS[1].enemyDef.maxHp)
+    expect(state.enemyName).toBe(ENEMY_POOL[1].name)
+    expect(state.enemyMaxHp).toBe(ENEMY_POOL[1].maxHp)
+    expect(state.enemyHp).toBe(ENEMY_POOL[1].maxHp)
     expect(state.phase).toBe('battle')
   })
 
   it('nextLevel() loads Level 3 enemy data after completing level 2', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Complete levels 1 and 2
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
     const state = gsm.getState()
     expect(state.currentLevel).toBe(3)
-    expect(state.enemyName).toBe(LEVELS[2].enemyDef.name)
-    expect(state.enemyMaxHp).toBe(LEVELS[2].enemyDef.maxHp)
-    expect(state.enemyHp).toBe(LEVELS[2].enemyDef.maxHp)
+    expect(state.enemyName).toBe(ENEMY_POOL[2].name)
+    expect(state.enemyMaxHp).toBe(ENEMY_POOL[2].maxHp)
+    expect(state.enemyHp).toBe(ENEMY_POOL[2].maxHp)
     expect(state.phase).toBe('battle')
   })
 
@@ -1003,58 +997,53 @@ describe('GameStateMachine — nextLevel() method', () => {
 
   it('nextLevel() does nothing after last level kill — phase is fight_overview, not victory', () => {
     // After killing the last enemy the phase is fight_overview (not victory anymore).
-    // nextLevel() accepts fight_overview but is blocked because currentLevel >= LEVELS.length.
+    // nextLevel() accepts fight_overview but is blocked because currentLevel >= ENEMY_POOL.length.
     // completeFightOverview() is the correct exit path (calls restartGame internally).
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const slowCritDmg = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
-    for (let i = 0; i < LEVELS.length; i++) {
-      const hits = Math.ceil(LEVELS[i].enemyDef.maxHp / slowCritDmg)
+    for (let i = 0; i < ENEMY_POOL.length; i++) {
+      const hits = Math.ceil(ENEMY_POOL[i].maxHp / slowCritDmg)
       for (let j = 0; j < hits; j++) gsm._applyHitForTesting('CRIT', 'slow_shot')
-      if (i < LEVELS.length - 1) {
+      if (i < ENEMY_POOL.length - 1) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
     }
     // Last level kill → fight_overview (not victory)
     expect(gsm.getState().phase).toBe('fight_overview')
-    expect(gsm.getState().currentLevel).toBe(LEVELS.length)
-    // nextLevel() must NOT advance when we are on the last level — no LEVELS[18] exists.
+    expect(gsm.getState().currentLevel).toBe(ENEMY_POOL.length)
+    // nextLevel() must NOT advance when we are on the last level — no pool entry beyond the last exists.
     // The call is accepted by the phase guard but blocked by the level bounds check:
-    // currentLevel >= LEVELS.length means nextLevel would attempt LEVELS[18] (undefined) — so
+    // currentLevel >= ENEMY_POOL.length means nextLevel would attempt a pool entry past the end (undefined) — so
     // completeFightOverview() must be used instead. Verify nextLevel is a no-op here.
     gsm.nextLevel()
     // Phase does not change — still fight_overview (nextLevel does nothing when already on last level)
-    expect(gsm.getState().currentLevel).toBe(LEVELS.length)
+    expect(gsm.getState().currentLevel).toBe(ENEMY_POOL.length)
   })
 
   it('nextLevel() does nothing when called from battle phase at level 3', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Advance to level 3
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel() // → level 2
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel() // → level 3
     expect(gsm.getState().currentLevel).toBe(3)
-    // nextLevel() in battle phase is a no-op
     gsm.nextLevel()
     expect(gsm.getState().currentLevel).toBe(3)
     expect(gsm.getState().phase).toBe('battle')
   })
 
-  it('enemyHp on level 2 is Orc Warrior HP after nextLevel()', () => {
+  it('enemyHp on level 2 matches ENEMY_POOL[1] HP after nextLevel()', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    expect(gsm.getState().enemyHp).toBe(LEVELS[1].enemyDef.maxHp)
+    expect(gsm.getState().enemyHp).toBe(ENEMY_POOL[1].maxHp)
   })
 })
 
@@ -1069,12 +1058,12 @@ describe('GameStateMachine — restartGame() method', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const slowCritDmg = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
-    for (let i = 0; i < LEVELS.length; i++) {
-      const hitsNeeded = Math.ceil(LEVELS[i].enemyDef.maxHp / slowCritDmg)
+    for (let i = 0; i < ENEMY_POOL.length; i++) {
+      const hitsNeeded = Math.ceil(ENEMY_POOL[i].maxHp / slowCritDmg)
       for (let j = 0; j < hitsNeeded; j++) {
         gsm._applyHitForTesting('CRIT', 'slow_shot')
       }
-      if (i < LEVELS.length - 1) {
+      if (i < ENEMY_POOL.length - 1) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
@@ -1093,23 +1082,10 @@ describe('GameStateMachine — restartGame() method', () => {
   it('restartGame() does nothing when in game_over phase', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    // Phase is now fight_overview — restartGame() would work here.
-    // Instead test game_over specifically.
-    const gsm2 = new GameStateMachine()
-    gsm2.startBattle()
-    // Drive to game_over by letting enemy kill player
-    let remaining = 120_000
-    while (remaining > 0 && gsm2.getState().phase === 'battle') {
-      const step = Math.min(remaining, MAX_DELTA_MS)
-      gsm2.update(step, [])
-      remaining -= step
-    }
-    if (gsm2.getState().phase === 'game_over') {
-      gsm2.restartGame()
-      expect(gsm2.getState().phase).toBe('game_over')
-    }
+    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
+    expect(gsm.getState().phase).toBe('game_over')
+    gsm.restartGame()
+    expect(gsm.getState().phase).toBe('game_over')
   })
 
   it('restartGame() transitions fight_overview (last level) → battle at level 1', () => {
@@ -1121,13 +1097,13 @@ describe('GameStateMachine — restartGame() method', () => {
     expect(state.currentLevel).toBe(1)
   })
 
-  it('restartGame() resets enemy to Level 1 enemy (Goblin Scout)', () => {
+  it('restartGame() resets enemy to Level 1 enemy', () => {
     const gsm = reachFightOverviewAfterLastLevel()
     gsm.restartGame()
     const state = gsm.getState()
-    expect(state.enemyName).toBe(LEVELS[0].enemyDef.name)
-    expect(state.enemyHp).toBe(LEVELS[0].enemyDef.maxHp)
-    expect(state.enemyMaxHp).toBe(LEVELS[0].enemyDef.maxHp)
+    expect(state.enemyName).toBe(ENEMY_POOL[0].name)
+    expect(state.enemyHp).toBe(ENEMY_POOL[0].maxHp)
+    expect(state.enemyMaxHp).toBe(ENEMY_POOL[0].maxHp)
   })
 
   it('restartGame() resets score to all zeros', () => {
@@ -1187,7 +1163,7 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     const critDmg = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
     for (let killed = 0; killed < kills; killed++) {
       // Land enough crits to drop the current enemy. Defensive cap = 50 — every
-      // level in LEVELS is killable in well under 50 SLOW_SHOT crits.
+      // level in ENEMY_POOL is killable in well under 50 SLOW_SHOT crits.
       const maxHits = 50
       let hits = 0
       while (gsm.getState().enemyHp > 0 && hits < maxHits) {
@@ -1197,7 +1173,7 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
       // Advance to next level if in fight_overview and not on the last level
       const phase = gsm.getState().phase
       if (phase === 'fight_overview') {
-        if (gsm.getState().currentLevel >= LEVELS.length) break // last level done
+        if (gsm.getState().currentLevel >= ENEMY_POOL.length) break // last level done
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
@@ -1241,19 +1217,20 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
   })
 
   it('AC #2 — playerXp = threshold-1 keeps current level; next kill levels up', () => {
-    // Gate test at the 3→level-3 boundary (kill #3)
+    // Gate test at the level-4 boundary: threshold[4] kills promote to level 4
+    const targetLevel = 4
+    const threshold = XP_LEVEL_THRESHOLDS[targetLevel]
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Two kills → level 2 (XP=1 → level 2, XP=2 → no promotion yet)
-    runKills(gsm, 2)
-    expect(gsm.getState().playerXp).toBe(2)
-    expect(gsm.getState().playerLevel).toBe(2)
-    // One more kill — do not consume the pending gate so we can assert it
+    runKills(gsm, threshold - 1)
+    expect(gsm.getState().playerXp).toBe(threshold - 1)
+    expect(gsm.getState().playerLevel).toBe(targetLevel - 1)
+    // One more kill crosses the boundary
     while (gsm.getState().enemyHp > 0) {
       gsm._applyHitForTesting('CRIT', 'slow_shot')
     }
-    expect(gsm.getState().playerXp).toBe(XP_LEVEL_THRESHOLDS[3])
-    expect(gsm.getState().playerLevel).toBe(3)
+    expect(gsm.getState().playerXp).toBe(threshold)
+    expect(gsm.getState().playerLevel).toBe(targetLevel)
     expect(gsm.getState().pendingLevelUp).toBe(true)
   })
 
@@ -1290,18 +1267,17 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     // Drive to victory — the campaign provides exactly XP_LEVEL_THRESHOLDS[6] kills.
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    runKills(gsm, LEVELS.length)
+    runKills(gsm, ENEMY_POOL.length)
     const state = gsm.getState()
     expect(state.playerLevel).toBe(PLAYER_MAX_LEVEL)
-    expect(state.playerXp).toBe(LEVELS.length)
-    // The final kill triggers final level-up, but we cannot kill past LEVELS.length.
+    expect(state.playerXp).toBe(ENEMY_POOL.length)
+    // The final kill triggers final level-up, but we cannot kill past ENEMY_POOL.length.
     // Apply extra XP synthetically (no kill) — we can't easily test "above max" here
     // because the campaign defines exactly PLAYER_MAX_LEVEL threshold worth of kills.
   })
 
-  it('XP_LEVEL_THRESHOLDS[6] equals the total number of enemy kills in the campaign', () => {
-    // Difficulty intent: every run delivers exactly 5 level-ups across all 18 enemies.
-    expect(XP_LEVEL_THRESHOLDS[6]).toBe(LEVELS.length)
+  it('XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL] equals the total number of enemy kills in the campaign', () => {
+    expect(XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL]).toBe(ENEMY_POOL.length)
   })
 
   it('fight_overview on last kill clears pendingLevelUp — no inconsistent state', () => {
@@ -1310,7 +1286,7 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     // so the fight overview button works without hitting the upgrade pick gate.
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    runKills(gsm, LEVELS.length)
+    runKills(gsm, ENEMY_POOL.length)
     const state = gsm.getState()
     expect(state.phase).toBe('fight_overview')
     expect(state.pendingLevelUp).toBe(false)
@@ -1697,23 +1673,22 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
     expect(state.player.hp).toBe(state.player.maxHp)
   })
 
-  it('Goblin Scout missile lands → player HP drops by attack damage', () => {
+  it('player damage reduces HP and records lastPlayerHit', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const startHp = gsm.getState().player.maxHp
-    // Goblin attack cooldown = 3500ms; flight time small → run 8 s to guarantee a hit.
-    advance(gsm, 8000)
+    gsm._applyPlayerHitForTesting(6)
     const state = gsm.getState()
-    expect(state.player.hp).toBeLessThan(startHp)
+    expect(state.player.hp).toBe(startHp - 6)
     expect(state.lastPlayerHit).not.toBeNull()
-    expect(state.lastPlayerHit!.damage).toBeGreaterThan(0)
+    expect(state.lastPlayerHit!.damage).toBe(6)
   })
 
   it('player HP reaching 0 transitions phase to game_over', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Goblin's 6 HP attack lands every ~3.5–4 s. Player has 30 HP — 5 hits = 30. Run plenty.
-    advance(gsm, 60_000)
+    const maxHp = gsm.getState().player.maxHp
+    gsm._applyPlayerHitForTesting(maxHp)
     expect(gsm.getState().phase).toBe('game_over')
     expect(gsm.getState().player.hp).toBe(0)
   })
@@ -1721,7 +1696,7 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
   it('update() is a no-op once phase === game_over', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    advance(gsm, 60_000)
+    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
     const snapshot = gsm.getState().elapsedMs
     advance(gsm, 1000)
     expect(gsm.getState().elapsedMs).toBe(snapshot)
@@ -1739,29 +1714,19 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
     expect(gsm.getState().incomingMissiles).toEqual([])
   })
 
-  it('GameState.incomingMissiles contains an in-flight missile after the first cooldown', () => {
+  it('incomingMissiles stays empty when enemy has no attacks defined', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Advance just past goblin cooldown but well short of full flight time
-    advance(gsm, 3550)
-    const missiles = gsm.getState().incomingMissiles
-    expect(missiles.length).toBeGreaterThanOrEqual(1)
-    expect(missiles[0].alive).toBe(true)
-    expect(missiles[0].progress).toBeGreaterThanOrEqual(0)
-    expect(missiles[0].progress).toBeLessThan(1)
+    advance(gsm, 8000)
+    expect(gsm.getState().incomingMissiles).toEqual([])
   })
 })
 
 describe('GameStateMachine — restartLevel() method (task-41)', () => {
-  /** Helper: drive the machine to a game_over by waiting it out. */
+  /** Helper: drive the machine to game_over by dealing lethal player damage. */
   function reachGameOver(gsm: GameStateMachine): void {
     gsm.startBattle()
-    let remaining = 60_000
-    while (remaining > 0 && gsm.getState().phase === 'battle') {
-      const step = Math.min(remaining, MAX_DELTA_MS)
-      gsm.update(step, [])
-      remaining -= step
-    }
+    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
   }
 
   it('restartLevel() does nothing when not in game_over phase (battle)', () => {
@@ -1774,8 +1739,7 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
   it('restartLevel() does nothing when in fight_overview phase', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     expect(gsm.getState().phase).toBe('fight_overview')
     gsm.restartLevel()
     expect(gsm.getState().phase).toBe('fight_overview')
@@ -1809,14 +1773,11 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
     expect(state.enemyHp).toBe(state.enemyMaxHp)
   })
 
-  it('restartLevel() clears in-flight enemy missiles', () => {
+  it('restartLevel() clears in-flight enemy missiles and lastPlayerHit', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Advance enough for a missile to be in flight but well before any player hit
-    let r = 3550
-    while (r > 0) { const s = Math.min(r, MAX_DELTA_MS); gsm.update(s, []); r -= s }
-    // Force game_over to enable restartLevel
-    while (gsm.getState().phase === 'battle') gsm.update(MAX_DELTA_MS, [])
+    gsm.update(MAX_DELTA_MS, [])
+    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
     gsm.restartLevel()
     expect(gsm.getState().incomingMissiles).toEqual([])
     expect(gsm.getState().lastPlayerHit).toBeNull()
@@ -1972,14 +1933,14 @@ describe('GameStateMachine — global upgrades wiring', () => {
     // Apply an upgrade synthetically
     gsm._applyUpgradeForTesting('crit_dmg_1')
     // Kill all levels
-    for (let i = 0; i < LEVELS.length; i++) {
+    for (let i = 0; i < ENEMY_POOL.length; i++) {
       while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < LEVELS.length) {
+      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
     }
-    // After last kill, phase is fight_overview with currentLevel = LEVELS.length
+    // After last kill, phase is fight_overview with currentLevel = ENEMY_POOL.length
     expect(gsm.getState().phase).toBe('fight_overview')
     gsm.restartGame()
     const state = gsm.getState()
@@ -2139,47 +2100,21 @@ describe('GameStateMachine — global upgrades wiring', () => {
   it('restartLevel resets pendingLevelUp so the next kill is not soft-locked', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    // Drive the first kill → triggers pendingLevelUp
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    killCurrentEnemy(gsm)
     expect(gsm.getState().pendingLevelUp).toBe(true)
-    // Simulate dying with pendingLevelUp still true — force game_over directly.
-    // Easiest path: drive missiles until player HP hits 0 from battle phase.
-    // For unit determinism, jump straight by zeroing player HP via _applyPlayerHit
-    // is private; instead, we drive the runner-time path.
-    // Take a shortcut: call confirmLevelUpUpgrade so we can transition to battle,
-    // then move to a fresh game_over scenario.
-    // Actually a simpler scenario: advance time on a dead-enemy state until missiles land.
-    // Skip — directly assert that restartLevel clears the flag by manually
-    // forcing the phase to game_over via _onEnemyKilled coverage already.
-    // Public API: kill, then NEXT level → die → restartLevel.
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    // Now in level 2 battle with pendingLevelUp=false. Reset back via kill chain
-    // to set pendingLevelUp, then crash to game_over via missile barrage.
-    while (gsm.getState().phase === 'battle' && gsm.getState().enemyHp > 0) {
-      gsm._applyHitForTesting('CRIT', 'slow_shot')
-    }
-    // Force game_over by running update past player HP — drive missiles until dead.
-    while (gsm.getState().phase !== 'game_over') {
-      if (gsm.getState().phase === 'fight_overview') break
-      gsm.update(MAX_DELTA_MS, [])
-    }
-    // If we ended up in fight_overview (kill came first), confirm+next and skip this path
-    if (gsm.getState().phase === 'fight_overview') {
-      gsm.confirmLevelUpUpgrade()
-      // Skip — we exit this test here; the simpler test below covers the flag reset
-    }
-    // Either way assert that calling restartLevel from game_over clears pendingLevelUp
-    if (gsm.getState().phase === 'game_over') {
-      // Manually re-trigger pendingLevelUp via a synthetic level-up
-      // (using public API would re-enter battle path).
-      gsm.restartLevel()
-      expect(gsm.getState().pendingLevelUp).toBe(false)
-    }
+    // Kill level 2 enemy → pendingLevelUp again
+    killCurrentEnemy(gsm)
+    expect(gsm.getState().pendingLevelUp).toBe(true)
+    // Force game_over via player damage while pendingLevelUp is true
+    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
+    expect(gsm.getState().phase).toBe('game_over')
+    gsm.restartLevel()
+    expect(gsm.getState().pendingLevelUp).toBe(false)
   })
 
   it('enemy stun pauses missile cooldowns from advancing fires', () => {
-    // Use Goblin Scout (has attacks) to test stun blocking
     const gsm = new GameStateMachine(undefined, () => 0)
     gsm.startBattle()
     gsm._applyUpgradeForTesting('crit_dmg_1')
@@ -2319,10 +2254,10 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
 
     // Drive through all levels quickly with lots of crits
     const critDmg = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
-    for (let i = 0; i < LEVELS.length; i++) {
-      const hits = Math.ceil(LEVELS[i].enemyDef.maxHp / critDmg)
+    for (let i = 0; i < ENEMY_POOL.length; i++) {
+      const hits = Math.ceil(ENEMY_POOL[i].maxHp / critDmg)
       for (let j = 0; j < hits; j++) gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
-      if (i < LEVELS.length - 1) { gsm.confirmLevelUpUpgrade(); gsm.nextLevel() }
+      if (i < ENEMY_POOL.length - 1) { gsm.confirmLevelUpUpgrade(); gsm.nextLevel() }
     }
     // After the last kill, phase is fight_overview (not victory)
     expect(gsm.getState().phase).toBe('fight_overview')
@@ -2425,16 +2360,16 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
     gsm.startBattle()
     const slowCritDmg = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
     // Kill all enemies to reach last level fight_overview
-    for (let i = 0; i < LEVELS.length; i++) {
-      const hits = Math.ceil(LEVELS[i].enemyDef.maxHp / slowCritDmg)
+    for (let i = 0; i < ENEMY_POOL.length; i++) {
+      const hits = Math.ceil(ENEMY_POOL[i].maxHp / slowCritDmg)
       for (let j = 0; j < hits; j++) gsm._applyHitForTesting('CRIT', 'slow_shot')
-      if (i < LEVELS.length - 1) {
+      if (i < ENEMY_POOL.length - 1) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
     }
     expect(gsm.getState().phase).toBe('fight_overview')
-    expect(gsm.getState().currentLevel).toBe(LEVELS.length)
+    expect(gsm.getState().currentLevel).toBe(ENEMY_POOL.length)
     gsm.completeFightOverview()
     const state = gsm.getState()
     expect(state.phase).toBe('battle')
@@ -2464,10 +2399,10 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const slowCritDmg = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
-    for (let i = 0; i < LEVELS.length; i++) {
-      const hits = Math.ceil(LEVELS[i].enemyDef.maxHp / slowCritDmg)
+    for (let i = 0; i < ENEMY_POOL.length; i++) {
+      const hits = Math.ceil(ENEMY_POOL[i].maxHp / slowCritDmg)
       for (let j = 0; j < hits; j++) gsm._applyHitForTesting('CRIT', 'slow_shot')
-      if (i < LEVELS.length - 1) {
+      if (i < ENEMY_POOL.length - 1) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }

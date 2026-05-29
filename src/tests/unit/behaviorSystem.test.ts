@@ -14,21 +14,11 @@ import {
   GAME_HEIGHT,
   ENEMY_DEFAULT_Y,
   ENEMY_MOVE_SPEED_BASE,
-  ENEMY_MOVE_SPEED_SLOW,
   ENEMY_MOVE_SPEED_FAST,
   ENEMY_LR_AMPLITUDE_DEFAULT,
-  ENEMY_LR_AMPLITUDE_WIDE,
   ENEMY_APPROACH_SPEED,
-  ENEMY_GOBLIN_SCOUT,
-  ENEMY_SHADOW_DANCER,
+  ENEMY_STONE_GIANT,
   ENEMY_PLAGUE_RAT,
-  ENEMY_THORNBACK,
-  ENEMY_THUNDER_HAWK,
-  ENEMY_STONE_DRAKE,
-  ENEMY_LAVA_SLUG,
-  ENEMY_VOID_WRAITH,
-  ENEMY_TITAN_LORD,
-  ENEMY_SWARM,
 } from '../../game/constants'
 import type { EnemyBehaviorDef } from '../../types'
 
@@ -59,9 +49,9 @@ describe('BehaviorSystem — static pattern', () => {
     expect(t3.x).toBe(ORIGIN_X)
   })
 
-  it('Goblin Scout uses static behavior', () => {
-    expect(ENEMY_GOBLIN_SCOUT.behavior).toBeDefined()
-    expect(ENEMY_GOBLIN_SCOUT.behavior!.pattern).toBe('static')
+  it('Stone Giant uses static behavior', () => {
+    expect(ENEMY_STONE_GIANT.behavior).toBeDefined()
+    expect(ENEMY_STONE_GIANT.behavior!.pattern).toBe('static')
   })
 })
 
@@ -126,35 +116,6 @@ describe('BehaviorSystem — lr_oscillate pattern', () => {
     expect(pos.y).toBe(ORIGIN_Y)
   })
 
-  it('Shadow Dancer uses lr_oscillate behavior', () => {
-    expect(ENEMY_SHADOW_DANCER.behavior).toBeDefined()
-    expect(ENEMY_SHADOW_DANCER.behavior!.pattern).toBe('lr_oscillate')
-    expect(ENEMY_SHADOW_DANCER.behavior!.speed).toBeGreaterThan(0)
-    expect(ENEMY_SHADOW_DANCER.behavior!.amplitude).toBeDefined()
-  })
-
-  it('Lava Slug uses lr_oscillate with slow speed', () => {
-    expect(ENEMY_LAVA_SLUG.behavior).toBeDefined()
-    expect(ENEMY_LAVA_SLUG.behavior!.pattern).toBe('lr_oscillate')
-    expect(ENEMY_LAVA_SLUG.behavior!.speed).toBe(ENEMY_MOVE_SPEED_SLOW)
-  })
-
-  it('Swarm uses lr_oscillate behavior', () => {
-    expect(ENEMY_SWARM.behavior).toBeDefined()
-    expect(ENEMY_SWARM.behavior!.pattern).toBe('lr_oscillate')
-  })
-
-  it('Void Wraith uses lr_oscillate with wide amplitude', () => {
-    expect(ENEMY_VOID_WRAITH.behavior).toBeDefined()
-    expect(ENEMY_VOID_WRAITH.behavior!.pattern).toBe('lr_oscillate')
-    expect(ENEMY_VOID_WRAITH.behavior!.amplitude).toBe(ENEMY_LR_AMPLITUDE_WIDE)
-  })
-
-  it('Titan Lord uses lr_oscillate with wide amplitude', () => {
-    expect(ENEMY_TITAN_LORD.behavior).toBeDefined()
-    expect(ENEMY_TITAN_LORD.behavior!.pattern).toBe('lr_oscillate')
-    expect(ENEMY_TITAN_LORD.behavior!.amplitude).toBe(ENEMY_LR_AMPLITUDE_WIDE)
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -215,10 +176,6 @@ describe('BehaviorSystem — zigzag pattern', () => {
     expect(ENEMY_PLAGUE_RAT.behavior!.pattern).toBe('zigzag')
   })
 
-  it('Thornback uses zigzag behavior', () => {
-    expect(ENEMY_THORNBACK.behavior).toBeDefined()
-    expect(ENEMY_THORNBACK.behavior!.pattern).toBe('zigzag')
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -265,11 +222,6 @@ describe('BehaviorSystem — diagonal pattern', () => {
     expect(pos.y).toBe(ORIGIN_Y)
   })
 
-  it('Thunder Hawk uses diagonal behavior with fast speed', () => {
-    expect(ENEMY_THUNDER_HAWK.behavior).toBeDefined()
-    expect(ENEMY_THUNDER_HAWK.behavior!.pattern).toBe('diagonal')
-    expect(ENEMY_THUNDER_HAWK.behavior!.speed).toBe(ENEMY_MOVE_SPEED_FAST)
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -328,28 +280,16 @@ describe('BehaviorSystem — approach pattern', () => {
     expect(pos.y).toBe(ORIGIN_Y)
   })
 
-  it('Stone Drake uses approach behavior', () => {
-    expect(ENEMY_STONE_DRAKE.behavior).toBeDefined()
-    expect(ENEMY_STONE_DRAKE.behavior!.pattern).toBe('approach')
-  })
 })
 
 // ---------------------------------------------------------------------------
 // All 15 extended enemy types have behavior defined
 // ---------------------------------------------------------------------------
 
-describe('BehaviorSystem — all extended enemy types have behavior', () => {
+describe('BehaviorSystem — sprite-based enemy types have behavior', () => {
   const extendedEnemies = [
-    { name: 'Goblin Scout', def: ENEMY_GOBLIN_SCOUT },
-    { name: 'Shadow Dancer', def: ENEMY_SHADOW_DANCER },
-    { name: 'Plague Rat',    def: ENEMY_PLAGUE_RAT    },
-    { name: 'Thornback',     def: ENEMY_THORNBACK     },
-    { name: 'Thunder Hawk',  def: ENEMY_THUNDER_HAWK  },
-    { name: 'Stone Drake',   def: ENEMY_STONE_DRAKE   },
-    { name: 'Lava Slug',     def: ENEMY_LAVA_SLUG     },
-    { name: 'Void Wraith',   def: ENEMY_VOID_WRAITH   },
-    { name: 'Titan Lord',    def: ENEMY_TITAN_LORD    },
-    { name: 'Swarm',         def: ENEMY_SWARM         },
+    { name: 'Stone Giant',  def: ENEMY_STONE_GIANT  },
+    { name: 'Plague Rat',   def: ENEMY_PLAGUE_RAT   },
   ]
 
   for (const { name, def } of extendedEnemies) {
@@ -403,8 +343,8 @@ describe('BehaviorSystem — determinism across patterns', () => {
 
 describe('resolveBehavior — fallback behavior', () => {
   it('returns the enemy behavior when behavior is defined', () => {
-    const result = resolveBehavior(ENEMY_SHADOW_DANCER)
-    expect(result.pattern).toBe('lr_oscillate')
+    const result = resolveBehavior(ENEMY_PLAGUE_RAT)
+    expect(result.pattern).toBe('zigzag')
   })
 
   it('returns static fallback when behavior is undefined on EnemyDef', () => {

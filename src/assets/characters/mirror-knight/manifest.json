@@ -17,7 +17,18 @@
         "animationId": "f7af8754-16c9-408f-ae62-b2f2e89cdc63",
         "direction": "south",
         "description": "Poised guard stance with subtle weight shifts, sword diagonal across body, shield forward"
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
     },
     "attack": {
       "frameCount": 9,
@@ -28,7 +39,18 @@
         "animationId": "f9c8417e-293a-47bd-b27f-7c2a90f14309",
         "direction": "south",
         "description": "Swift horizontal sword slash with elegant footwork, shield braced"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   }
 }

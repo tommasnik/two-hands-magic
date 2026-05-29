@@ -6,9 +6,9 @@
 
 import { describe, it, expect } from 'vitest'
 import { scaleHitZoneMap } from '../../game/systems/HitZoneSystem'
-import { resolveSpriteKey, resolveHitZoneMap, resolveHitZoneLayout, resolveShape } from '../../game/GameStateMachine'
-import { DEFAULT_HIT_ZONE_MAP, DEFAULT_HIT_ZONE_LAYOUT, DEFAULT_SHAPE, ENEMY_GOBLIN_SCOUT, ENEMY_SPRITE_PLACEHOLDER_KEY } from '../../game/constants'
-import type { HitZoneEntry, HitZoneLayout, ShapeDescriptor, EnemyDef } from '../../types'
+import { resolveSpriteKey, resolveHitZoneMap } from '../../game/GameStateMachine'
+import { DEFAULT_HIT_ZONE_MAP, ENEMY_STONE_GIANT } from '../../game/constants'
+import type { HitZoneEntry, EnemyDef } from '../../types'
 
 // ---- helpers ---------------------------------------------------------------
 
@@ -207,22 +207,15 @@ describe('scaleHitZoneMap', () => {
 
 describe('resolveSpriteKey', () => {
   it('returns the spriteKey when defined on EnemyDef', () => {
-    expect(resolveSpriteKey(ENEMY_GOBLIN_SCOUT)).toBe('goblin_scout')
+    expect(resolveSpriteKey(ENEMY_STONE_GIANT)).toBe('stone_giant')
   })
 
-  it('returns ENEMY_SPRITE_PLACEHOLDER_KEY when spriteKey is undefined', () => {
+  it('returns fallback placeholder when spriteKey is undefined', () => {
     const defWithoutSprite: EnemyDef = {
       name: 'Test',
       maxHp: 50,
-      critZoneScale: 1.0,
-      // no spriteKey
     }
-    expect(resolveSpriteKey(defWithoutSprite)).toBe(ENEMY_SPRITE_PLACEHOLDER_KEY)
-  })
-
-  it('returns exactly ENEMY_SPRITE_PLACEHOLDER_KEY for the fallback', () => {
-    const minimalDef: EnemyDef = { name: 'X', maxHp: 1, critZoneScale: 1 }
-    expect(resolveSpriteKey(minimalDef)).toBe('enemy_placeholder')
+    expect(resolveSpriteKey(defWithoutSprite)).toBe('enemy_placeholder')
   })
 })
 
@@ -233,7 +226,7 @@ describe('resolveHitZoneMap', () => {
     const customMap: readonly HitZoneEntry[] = [
       { zone: 'head', rect: { x: 0, y: 0, w: 1, h: 0.5 }, active: true },
     ]
-    const def: EnemyDef = { name: 'Custom', maxHp: 50, critZoneScale: 1.0, hitZoneMap: customMap }
+    const def: EnemyDef = { name: 'Custom', maxHp: 50, hitZoneMap: customMap }
     expect(resolveHitZoneMap(def)).toBe(customMap)
   })
 
@@ -241,75 +234,12 @@ describe('resolveHitZoneMap', () => {
     const defWithoutMap: EnemyDef = {
       name: 'Test',
       maxHp: 50,
-      critZoneScale: 1.0,
-      // no hitZoneMap
     }
     expect(resolveHitZoneMap(defWithoutMap)).toBe(DEFAULT_HIT_ZONE_MAP)
   })
 
   it('returned DEFAULT_HIT_ZONE_MAP has 4 entries', () => {
-    const minimalDef: EnemyDef = { name: 'X', maxHp: 1, critZoneScale: 1 }
+    const minimalDef: EnemyDef = { name: 'X', maxHp: 1 }
     expect(resolveHitZoneMap(minimalDef)).toHaveLength(4)
-  })
-})
-
-// ---- resolveHitZoneLayout tests -------------------------------------------
-
-describe('resolveHitZoneLayout', () => {
-  it('returns the hitZoneLayout when defined on EnemyDef', () => {
-    const customLayout: HitZoneLayout = {
-      critDx: 0, critDy: -50, critRadius: 30,
-      midDx: 0,  midDy: 0,   midRadius: 50,
-      lowDx: 0,  lowDy: 20,  lowRadius: 100,
-    }
-    const def: EnemyDef = { name: 'Custom', maxHp: 50, critZoneScale: 1.0, hitZoneLayout: customLayout }
-    expect(resolveHitZoneLayout(def)).toBe(customLayout)
-  })
-
-  it('returns DEFAULT_HIT_ZONE_LAYOUT when hitZoneLayout is undefined', () => {
-    const defWithoutLayout: EnemyDef = { name: 'Test', maxHp: 50, critZoneScale: 1.0 }
-    expect(resolveHitZoneLayout(defWithoutLayout)).toBe(DEFAULT_HIT_ZONE_LAYOUT)
-  })
-
-  it('ENEMY_GOBLIN_SCOUT has a hitZoneLayout defined', () => {
-    expect(ENEMY_GOBLIN_SCOUT.hitZoneLayout).toBeDefined()
-    expect(resolveHitZoneLayout(ENEMY_GOBLIN_SCOUT)).toBe(ENEMY_GOBLIN_SCOUT.hitZoneLayout)
-  })
-
-  it('DEFAULT_HIT_ZONE_LAYOUT has positive critRadius, midRadius, lowRadius', () => {
-    expect(DEFAULT_HIT_ZONE_LAYOUT.critRadius).toBeGreaterThan(0)
-    expect(DEFAULT_HIT_ZONE_LAYOUT.midRadius).toBeGreaterThan(0)
-    expect(DEFAULT_HIT_ZONE_LAYOUT.lowRadius).toBeGreaterThan(0)
-  })
-
-  it('DEFAULT_HIT_ZONE_LAYOUT lowRadius is greater than midRadius', () => {
-    expect(DEFAULT_HIT_ZONE_LAYOUT.lowRadius).toBeGreaterThan(DEFAULT_HIT_ZONE_LAYOUT.midRadius)
-  })
-})
-
-// ---- resolveShape tests ---------------------------------------------------
-
-describe('resolveShape', () => {
-  it('returns the shape when defined on EnemyDef', () => {
-    const customShape: ShapeDescriptor = { type: 'wisp', scale: 0.5, headScale: 0.8, widthRatio: 1.0 }
-    const def: EnemyDef = { name: 'Custom', maxHp: 50, critZoneScale: 1.0, shape: customShape }
-    expect(resolveShape(def)).toBe(customShape)
-  })
-
-  it('returns DEFAULT_SHAPE when shape is undefined', () => {
-    const defWithoutShape: EnemyDef = { name: 'Test', maxHp: 50, critZoneScale: 1.0 }
-    expect(resolveShape(defWithoutShape)).toBe(DEFAULT_SHAPE)
-  })
-
-  it('ENEMY_GOBLIN_SCOUT has a shape defined', () => {
-    expect(ENEMY_GOBLIN_SCOUT.shape).toBeDefined()
-    expect(resolveShape(ENEMY_GOBLIN_SCOUT)).toBe(ENEMY_GOBLIN_SCOUT.shape)
-  })
-
-  it('DEFAULT_SHAPE is humanoid type with scale 1.0', () => {
-    expect(DEFAULT_SHAPE.type).toBe('humanoid')
-    expect(DEFAULT_SHAPE.scale).toBe(1.0)
-    expect(DEFAULT_SHAPE.headScale).toBe(1.0)
-    expect(DEFAULT_SHAPE.widthRatio).toBe(1.0)
   })
 })

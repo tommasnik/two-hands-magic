@@ -23,7 +23,18 @@
         "characterId": "2ca185d7-f3d3-4cbc-8c11-046cb3ae1ddd",
         "direction": "south",
         "description": "Start throwing — pick a stone from the ground"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     },
     "throw": {
       "frameCount": 9,
@@ -35,7 +46,18 @@
         "characterId": "6a99a535-78ed-44c0-bfb6-853e47a927d2",
         "direction": "south",
         "description": "Throw the stone down (from mid-throw state)"
-      }
+      },
+      "masksEdited": [
+        "throw_00",
+        "throw_01",
+        "throw_02",
+        "throw_03",
+        "throw_04",
+        "throw_05",
+        "throw_06",
+        "throw_07",
+        "throw_08"
+      ]
     }
   },
   "_notes": "No idle animation yet — needs PixelLab idle generation. Two attack phases: windup (attack) and throw execution (throw)."

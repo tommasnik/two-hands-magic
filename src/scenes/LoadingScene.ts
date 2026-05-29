@@ -8,6 +8,9 @@ import plagueRatManifest from '../assets/characters/plague-rat/manifest.json'
 import iceGiantManifest from '../assets/characters/ice-giant/manifest.json'
 import crystalSpiderManifest from '../assets/characters/crystal-spider/manifest.json'
 import emberWispManifest from '../assets/characters/ember-wisp/manifest.json'
+import ironGolemManifest from '../assets/characters/iron-golem/manifest.json'
+import mirrorKnightManifest from '../assets/characters/mirror-knight/manifest.json'
+import ancientTreantManifest from '../assets/characters/ancient-treant/manifest.json'
 
 /** All character manifests to register and load. */
 const ALL_MANIFESTS: CharacterManifest[] = [
@@ -16,6 +19,9 @@ const ALL_MANIFESTS: CharacterManifest[] = [
   iceGiantManifest as CharacterManifest,
   crystalSpiderManifest as CharacterManifest,
   emberWispManifest as CharacterManifest,
+  ironGolemManifest as CharacterManifest,
+  mirrorKnightManifest as CharacterManifest,
+  ancientTreantManifest as CharacterManifest,
 ]
 
 export class LoadingScene extends Phaser.Scene {
