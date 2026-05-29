@@ -1,0 +1,34 @@
+{
+  "id": "mirror-knight",
+  "spriteKey": "mirror_knight",
+  "displayWidth": 160,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "e0f03c4c-acb9-492d-997d-4278839e8c63",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "f7af8754-16c9-408f-ae62-b2f2e89cdc63",
+        "direction": "south",
+        "description": "Poised guard stance with subtle weight shifts, sword diagonal across body, shield forward"
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "f9c8417e-293a-47bd-b27f-7c2a90f14309",
+        "direction": "south",
+        "description": "Swift horizontal sword slash with elegant footwork, shield braced"
+      }
+    }
+  }
+}
