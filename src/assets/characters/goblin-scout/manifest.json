@@ -1,0 +1,32 @@
+{
+  "id": "goblin-scout",
+  "spriteKey": "goblin_scout",
+  "displayWidth": 120,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "fd1577fb-d4a3-481a-8c02-8ccc377d067a",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": false,
+      "source": {
+        "animationId": "661a0bdd-d565-491d-8f29-89a17a435680",
+        "direction": "south"
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": false,
+      "source": {
+        "animationId": "dfcd7819-50ca-4d95-8785-d955d04e3cf8",
+        "direction": "south"
+      }
+    }
+  }
+}

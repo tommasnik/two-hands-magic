@@ -11,7 +11,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --pass-with-no-tests",
     "test:design": "vitest run src/tests/game-design",
-    "backlog:browser": "backlog browser"
+    "backlog:browser": "backlog browser",
+    "masks-editor": "node tools/sprite-masks-editor/server.cjs"
   },
   "dependencies": {
     "phaser": "^3.88.2"
