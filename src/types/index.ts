@@ -210,6 +210,13 @@ export interface EnemyDef {
    */
   critZoneScale: number
   /**
+   * Character manifest ID (kebab-case) referencing a manifest.json in
+   * src/assets/characters/{manifestId}/. Used by CharacterRegistry to look up
+   * spriteKey, displayWidth, animation defs and mask config.
+   * Optional — enemies without manifests use procedural rendering.
+   */
+  manifestId?: string
+  /**
    * Phaser texture key for the enemy sprite.
    * If the texture is not loaded, BattleScene falls back to a placeholder rendering.
    * Defaults to 'enemy_placeholder' if not specified.

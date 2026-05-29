@@ -1,15 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { ProjectileSystem } from '../../game/systems/ProjectileSystem'
 import { Enemy } from '../../game/entities/Enemy'
+import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 import {
   PROJECTILE_SPEED_CM,
   FIREBALL_SPEED_CM,
   PIXELS_PER_CM,
-  ENEMY_TORSO_WIDTH_PX,
-  ENEMY_TORSO_HEIGHT_PX,
-  ENEMY_LIMB_RADIUS_PX,
-  ENEMY_HEAD_RADIUS_PX,
-  ENEMY_GOBLIN_SCOUT,
   PROJECTILE_BASE_RADIUS_PX,
 } from '../../game/constants'
 
@@ -21,8 +17,56 @@ import {
 const EX = 195
 const EY = 422
 
+/**
+ * Creates a simple Enemy without mask detector — all hits return MISS.
+ * Used for tests that only care about projectile lifecycle/flight timing.
+ */
 function makeEnemy(): Enemy {
   return new Enemy(EX, EY)
+}
+
+const MASK_W = 128
+const MASK_H = 128
+
+/**
+ * Creates a mask-based Enemy with a full 128x128 yellow (torso/HIT) mask.
+ * Every hit on this enemy returns HIT. Used for tests that need
+ * specific hit results from ProjectileSystem.
+ */
+function makeMaskEnemy(enemyX = EX, enemyY = EY, displayW = 400, displayH = 400): { enemy: Enemy; detector: MaskHitDetector } {
+  const detector = new MaskHitDetector()
+  const data = new Uint8Array(MASK_W * MASK_H * 4)
+  // Fill entire mask with yellow (torso/HIT)
+  for (let i = 0; i < MASK_W * MASK_H; i++) {
+    data[i * 4] = 255; data[i * 4 + 1] = 255; data[i * 4 + 2] = 0; data[i * 4 + 3] = 255
+  }
+  detector.loadMaskData('test', 'idle', 0, data, MASK_W, MASK_H)
+  const enemy = new Enemy(enemyX, enemyY, 'test', undefined, detector, displayW, displayH)
+  return { enemy, detector }
+}
+
+/**
+ * Creates a mask-based Enemy where the top quarter is red (CRIT), rest is yellow (HIT).
+ * Used for tests that need to distinguish CRIT from HIT regions.
+ */
+function makeCritMaskEnemy(enemyX = EX, enemyY = EY, displayW = 400, displayH = 400): { enemy: Enemy; detector: MaskHitDetector } {
+  const detector = new MaskHitDetector()
+  const data = new Uint8Array(MASK_W * MASK_H * 4)
+  for (let y = 0; y < MASK_H; y++) {
+    for (let x = 0; x < MASK_W; x++) {
+      const i = (y * MASK_W + x) * 4
+      if (y < MASK_H / 4) {
+        // Top quarter = red (CRIT)
+        data[i] = 255; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255
+      } else {
+        // Rest = yellow (HIT)
+        data[i] = 255; data[i + 1] = 255; data[i + 2] = 0; data[i + 3] = 255
+      }
+    }
+  }
+  detector.loadMaskData('test', 'idle', 0, data, MASK_W, MASK_H)
+  const enemy = new Enemy(enemyX, enemyY, 'test', undefined, detector, displayW, displayH)
+  return { enemy, detector }
 }
 
 /** Compute expected flight time in ms for given distance (px) and speed (cm/s). */
@@ -143,13 +187,14 @@ describe('ProjectileSystem.update() — hit events', () => {
 
   it('returns a ProjectileHitEvent when progress >= 1', () => {
     const origin = { x: 0, y: 0 }
-    // Fire toward enemy torso centre
+    // Fire toward enemy centre — mask-based enemy with full HIT mask
+    const { enemy } = makeMaskEnemy()
     sys.fire(origin, { x: EX, y: EY }, 'fireball')
 
     const distPx = dist(origin, { x: EX, y: EY })
     const flightMs = expectedFlightMs(distPx, FIREBALL_SPEED_CM)
 
-    const hits = sys.update(flightMs, makeEnemy())
+    const hits = sys.update(flightMs, enemy)
     expect(hits).toHaveLength(1)
     expect(hits[0].projectileId).toBeDefined()
     expect(hits[0].position).toEqual({ x: EX, y: EY })
@@ -256,9 +301,9 @@ describe('ProjectileSystem — MISS when target misses enemy', () => {
 // ---------------------------------------------------------------------------
 
 describe('ProjectileSystem — HIT when target is enemy torso centre', () => {
-  it('projectile aimed at torso centre → HIT', () => {
+  it('projectile aimed at torso centre → HIT (mask-based enemy)', () => {
     const sys = new ProjectileSystem()
-    const enemy = makeEnemy()
+    const { enemy } = makeMaskEnemy()
 
     const origin = { x: 0, y: EY } // same Y as torso, far left
     const target = { x: EX, y: EY } // torso centre
@@ -304,20 +349,41 @@ describe('ProjectileSystem.reset()', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('ProjectileSystem — GRAZE when target is enemy limb', () => {
-  it('projectile aimed at left arm → GRAZE', () => {
+describe('ProjectileSystem — GRAZE when target is in mask graze zone', () => {
+  it('projectile aimed at graze zone of mask-based enemy → GRAZE', () => {
     const sys = new ProjectileSystem()
-    // Enemy at (195, 281)
-    const ex = EX
-    const ey = 281
-    const enemy = new Enemy(ex, ey)
+    // Create an enemy with mask: top = red (CRIT), middle = yellow (HIT), bottom = green (GRAZE)
+    const detector = new MaskHitDetector()
+    const data = new Uint8Array(MASK_W * MASK_H * 4)
+    for (let y = 0; y < MASK_H; y++) {
+      for (let x = 0; x < MASK_W; x++) {
+        const i = (y * MASK_W + x) * 4
+        if (y < MASK_H / 3) {
+          data[i] = 255; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255 // red = CRIT
+        } else if (y < MASK_H * 2 / 3) {
+          data[i] = 255; data[i + 1] = 255; data[i + 2] = 0; data[i + 3] = 255 // yellow = HIT
+        } else {
+          data[i] = 0; data[i + 1] = 255; data[i + 2] = 0; data[i + 3] = 255 // green = GRAZE
+        }
+      }
+    }
+    detector.loadMaskData('test', 'idle', 0, data, MASK_W, MASK_H)
 
-    // Left arm centre
-    const leftArmX = ex - ENEMY_TORSO_WIDTH_PX / 2 - ENEMY_LIMB_RADIUS_PX
-    const armY = ey - ENEMY_TORSO_HEIGHT_PX / 4
+    // Position the enemy so the graze zone bottom is reachable
+    const displayW = 400
+    const displayH = 400
+    const enemyX = EX
+    const enemyY = EY
+    const enemy = new Enemy(enemyX, enemyY, 'test', undefined, detector, displayW, displayH)
 
-    const origin = { x: 0, y: armY }
-    const target = { x: leftArmX, y: armY }
+    // Compute a target in the bottom third of the mask (graze zone)
+    // frameOriginX = EX - 200, frameOriginY = EY - 240
+    // We need frameY to be in the bottom third (y >= 85)
+    // worldY = frameOriginY + frameY * (displayH / MASK_H) = (EY - 240) + 100 * (400/128)
+    const frameOriginY = enemyY - displayH * 0.6
+    const targetWorldY = frameOriginY + 100 * (displayH / MASK_H)
+    const target = { x: enemyX, y: targetWorldY }
+    const origin = { x: 0, y: targetWorldY }
     sys.fire(origin, target, 'fireball')
 
     const flightMs = expectedFlightMs(dist(origin, target), FIREBALL_SPEED_CM)
@@ -518,53 +584,7 @@ describe('ProjectileSystem — projectileSpeedMultiplier', () => {
 // TASK-44 — spellAreaMultiplier (projectile radius for circle-vs-circle hits)
 // ---------------------------------------------------------------------------
 
-describe('ProjectileSystem — spellAreaMultiplier (circle-vs-circle hits)', () => {
-  it('baseline (no spell area upgrade) shot just outside the crit zone is GRAZE/HIT/MISS — not CRIT', () => {
-    // Aim 1.5 px outside the goblin scout crit radius — well past PROJECTILE_BASE_RADIUS_PX.
-    // At baseline the projectile disc cannot reach the crit ring, so we MUST NOT crit.
-    const sys = new ProjectileSystem()
-    const layout = ENEMY_GOBLIN_SCOUT.hitZoneLayout!
-    const enemy = new Enemy(195, 422, layout)
-    const cx = enemy.x + layout.critDx
-    const cy = enemy.y + layout.critDy
-    // Just past the projectile disc — guaranteed not in crit even with baseline radius.
-    const justOutside = layout.critRadius + PROJECTILE_BASE_RADIUS_PX + 1.0
-    const target = { x: cx + justOutside, y: cy }
-
-    sys.fire({ x: 0, y: cy }, target, 'fireball')
-    const flightMs = expectedFlightMs(dist({ x: 0, y: cy }, target), FIREBALL_SPEED_CM)
-    const hits = sys.update(flightMs, enemy)
-    expect(hits).toHaveLength(1)
-    expect(hits[0].result).not.toBe('CRIT')
-  })
-
-  it('spell_area_1 (1.20×) — near-miss outside baseline crit now intersects the disc → CRIT', () => {
-    // Construct a target where:
-    //   distToCrit > critRadius + baselineProjectileRadius (would not CRIT without upgrade)
-    //   distToCrit < critRadius + upgradedProjectileRadius  (CRITs with upgrade)
-    // Choose distToCrit = critRadius + (baseR + upgradedR) / 2.
-    const sys = new ProjectileSystem()
-    const layout = ENEMY_GOBLIN_SCOUT.hitZoneLayout!
-    const enemy = new Enemy(195, 422, layout)
-    const cx = enemy.x + layout.critDx
-    const cy = enemy.y + layout.critDy
-    const areaMul = 1.20
-    const baseR = PROJECTILE_BASE_RADIUS_PX
-    const upgradedR = PROJECTILE_BASE_RADIUS_PX * areaMul
-    const distToCrit = layout.critRadius + (baseR + upgradedR) / 2
-    const target = { x: cx + distToCrit, y: cy }
-
-    // Sanity-check the inequality scaffolding our test relies on
-    expect(distToCrit).toBeGreaterThan(layout.critRadius + baseR)
-    expect(distToCrit).toBeLessThan(layout.critRadius + upgradedR)
-
-    sys.fire({ x: 0, y: cy }, target, 'fireball', 0, { spellAreaMultiplier: areaMul })
-    const flightMs = expectedFlightMs(dist({ x: 0, y: cy }, target), FIREBALL_SPEED_CM)
-    const hits = sys.update(flightMs, enemy)
-    expect(hits).toHaveLength(1)
-    expect(hits[0].result).toBe('CRIT')
-  })
-
+describe('ProjectileSystem — spellAreaMultiplier (projectile radius baking)', () => {
   it('hit event carries the effective projectile radius (post-spell-area scaling)', () => {
     const sys = new ProjectileSystem()
     const enemy = makeEnemy()
@@ -606,69 +626,16 @@ describe('ProjectileSystem — spellAreaMultiplier (circle-vs-circle hits)', () 
 })
 
 // ---------------------------------------------------------------------------
-// TASK-44 — Enemy circle-vs-zone hit detection with projectile radius
+// ProjectileSystem — fire() edge cases (clamping, deep copy)
 // ---------------------------------------------------------------------------
 
-describe('Enemy.getHitResult — projectile radius (circle-vs-zone)', () => {
-  it('point just outside head circle with non-zero projectile radius is CRIT', () => {
-    const layout = ENEMY_GOBLIN_SCOUT.hitZoneLayout!
-    const enemy = new Enemy(195, 422, layout)
-    const cx = enemy.x + layout.critDx
-    const cy = enemy.y + layout.critDy
-    const r = PROJECTILE_BASE_RADIUS_PX * 1.5
-    // distToCrit is between critRadius and critRadius + r → CRIT only with non-zero radius
-    const dx = layout.critRadius + r * 0.5
-    expect(enemy.getHitResult({ x: cx + dx, y: cy }, 0, r)).toBe('CRIT')
-    expect(enemy.getHitResult({ x: cx + dx, y: cy }, 0, 0)).not.toBe('CRIT')
-  })
-
-  it('legacy six-part body — projectile radius inflates limb zones', () => {
-    // No hitZoneLayout → legacy mode
-    const enemy = new Enemy(195, 422)
-    // Just outside left arm circle (1 px beyond radius). Without radius → MISS,
-    // with radius ≥ 2 px → GRAZE.
-    const armCY = 422 - ENEMY_TORSO_HEIGHT_PX / 4
-    const leftArmCX = 195 - ENEMY_TORSO_WIDTH_PX / 2 - ENEMY_LIMB_RADIUS_PX
-    const justOutsideX = leftArmCX - ENEMY_LIMB_RADIUS_PX - 1
-    expect(enemy.getHitResult({ x: justOutsideX, y: armCY }, 0, 0)).toBe('MISS')
-    expect(enemy.getHitResult({ x: justOutsideX, y: armCY }, 0, 2)).toBe('GRAZE')
-  })
-
-  it('legacy six-part body — projectile radius inflates the torso rectangle', () => {
-    const enemy = new Enemy(195, 422)
-    // 1 px past the right edge of the torso, vertically centred → MISS at radius 0,
-    // HIT at radius ≥ 2 px (the torso rect grows by the projectile radius).
-    const justRightX = 195 + ENEMY_TORSO_WIDTH_PX / 2 + 1
-    expect(enemy.getHitResult({ x: justRightX, y: 422 }, 0, 0)).not.toBe('HIT')
-    expect(enemy.getHitResult({ x: justRightX, y: 422 }, 0, 2)).toBe('HIT')
-  })
-
-  it('default projectile radius is 0 — boundary cases stay strict', () => {
-    const enemy = new Enemy(195, 422)
-    // 1 px above the head circle → MISS when no radius is supplied
-    const headTop = 422 - ENEMY_TORSO_HEIGHT_PX / 2 - 2 * ENEMY_HEAD_RADIUS_PX - 1
-    expect(enemy.getHitResult({ x: 195, y: headTop })).toBe('MISS')
-  })
-
-  it('projectile radius does not promote complete misses past the body to CRIT', () => {
-    const layout = ENEMY_GOBLIN_SCOUT.hitZoneLayout!
-    const enemy = new Enemy(195, 422, layout)
-    // Far above the enemy → MISS even with a generous radius. The radius widens
-    // every zone uniformly, but a point that lands outside all zones cannot be
-    // promoted to CRIT by critZoneTolerance (tolerance only widens an existing hit).
-    const veryFarAbove = { x: 195, y: -500 }
-    expect(enemy.getHitResult(veryFarAbove, 0.30, 5)).toBe('MISS')
-  })
-
+describe('ProjectileSystem — fire() edge cases', () => {
   it('fire() clamps zero/negative speedMul so the projectile resolves instead of stalling forever', () => {
     const sys = new ProjectileSystem()
     const enemy = makeEnemy()
     sys.fire({ x: 0, y: 0 }, { x: EX, y: EY }, 'fireball', 0, {
       projectileSpeedMultiplier: 0,
     })
-    // A large step must resolve the projectile — without the clamp the
-    // multiplier=0 would make flightTime = Infinity and progress would never
-    // cross 1, leaving the projectile queued indefinitely.
     const hits = sys.update(60_000, enemy)
     expect(hits).toHaveLength(1)
     expect(sys.getProjectiles()).toHaveLength(0)
@@ -682,7 +649,6 @@ describe('Enemy.getHitResult — projectile radius (circle-vs-zone)', () => {
     })
     const hits = sys.update(60_000, enemy)
     expect(hits).toHaveLength(1)
-    // Clamped to 0 → no disc, behaves as a point projectile.
     expect(hits[0].projectileRadius).toBe(0)
   })
 
@@ -692,45 +658,53 @@ describe('Enemy.getHitResult — projectile radius (circle-vs-zone)', () => {
     const snapshot = sys.getProjectiles()
     snapshot[0].origin.x = 9999
     snapshot[0].target.y = -9999
-    // Re-read the system — internal projectile's nested objects must be unaffected.
     const fresh = sys.getProjectiles()
     expect(fresh[0].origin.x).toBe(10)
     expect(fresh[0].target.y).toBe(200)
   })
+})
 
-  it('CRIT promotion is critRadius*(1+tolerance) + projectileRadius — additive, no double-count', () => {
-    // Regression: a previous implementation multiplied (1+tolerance) against
-    // the SUM (critRadius + projectileRadius), letting tolerance also scale
-    // the projectile disc. The intended semantic is additive for the projectile
-    // contribution.
-    //
-    // We need a target whose BASE zone is already on the body (torso) so the
-    // 'none' guard does not block promotion. Legacy mode is ideal: the head
-    // circle is tangent to the torso top, so a vertical probe straight down
-    // from HEAD_CY into the torso stays inside the body for the whole sweep.
-    //
-    // Place targets along the vertical axis below HEAD_CY at distances chosen
-    // so the additive ring discriminates against the multiplicative ring:
-    //   additive ring D_add = HEAD_RADIUS*(1+tolerance) + r
-    //   multiplicative D_mul = (HEAD_RADIUS + r)*(1+tolerance) = D_add + r*tolerance
-    //   The gap r*tolerance ≈ 1.3 px at worst-case upgrade values.
-    const enemyLegacy = new Enemy(195, 422)
-    const tolerance = 0.30
-    const r = PROJECTILE_BASE_RADIUS_PX * 1.60
-    const HEAD_CY_LEGACY = 422 - ENEMY_TORSO_HEIGHT_PX / 2 - ENEMY_HEAD_RADIUS_PX
-    const additiveRing = ENEMY_HEAD_RADIUS_PX * (1 + tolerance) + r
-    const multiplicativeGap = ENEMY_HEAD_RADIUS_PX * tolerance + r * tolerance - (ENEMY_HEAD_RADIUS_PX * tolerance)
-    // = r * tolerance — the difference between the two formulas.
-    expect(multiplicativeGap).toBeGreaterThan(0.5) // sanity check the test is sensitive
+// ---------------------------------------------------------------------------
+// Mask-based enemy hit detection through ProjectileSystem pipeline
+// ---------------------------------------------------------------------------
 
-    // Just inside the additive ring (vertically below HEAD_CY) — must CRIT.
-    const justInside = { x: 195, y: HEAD_CY_LEGACY + additiveRing - 0.25 }
-    expect(enemyLegacy.getHitResult(justInside, tolerance, r)).toBe('CRIT')
+describe('ProjectileSystem — mask-based hit detection', () => {
+  it('projectile landing on mask CRIT zone returns CRIT', () => {
+    const sys = new ProjectileSystem()
+    const { enemy } = makeCritMaskEnemy()
+    // Target the top of the enemy (CRIT zone in mask)
+    const frameOriginY = enemy.y - 400 * 0.6
+    // Frame Y=16 is in the top quarter (CRIT). World Y = frameOriginY + 16 * (400/128) = frameOriginY + 50
+    const targetY = frameOriginY + 50
+    const origin = { x: 0, y: targetY }
+    const target = { x: EX, y: targetY }
+    sys.fire(origin, target, 'fireball')
+    const flightMs = expectedFlightMs(dist(origin, target), FIREBALL_SPEED_CM)
+    const hits = sys.update(flightMs, enemy)
+    expect(hits).toHaveLength(1)
+    expect(hits[0].result).toBe('CRIT')
+  })
 
-    // Just outside the additive ring but still inside what the buggy
-    // multiplicative ring would cover (~+ r*tolerance ≈ +1.3 px). If the bug
-    // returns, this assertion flips to CRIT.
-    const justOutside = { x: 195, y: HEAD_CY_LEGACY + additiveRing + 0.25 }
-    expect(enemyLegacy.getHitResult(justOutside, tolerance, r)).not.toBe('CRIT')
+  it('projectile landing outside mask returns MISS', () => {
+    const sys = new ProjectileSystem()
+    const { enemy } = makeMaskEnemy()
+    // Target far away from the enemy
+    const target = { x: 5000, y: 5000 }
+    const origin = { x: 0, y: 0 }
+    sys.fire(origin, target, 'fireball')
+    const flightMs = expectedFlightMs(dist(origin, target), FIREBALL_SPEED_CM)
+    const hits = sys.update(flightMs, enemy)
+    expect(hits).toHaveLength(1)
+    expect(hits[0].result).toBe('MISS')
+  })
+
+  it('enemy without mask always returns MISS', () => {
+    const sys = new ProjectileSystem()
+    const enemy = makeEnemy() // no mask detector
+    sys.fire({ x: 0, y: EY }, { x: EX, y: EY }, 'fireball')
+    const flightMs = expectedFlightMs(dist({ x: 0, y: EY }, { x: EX, y: EY }), FIREBALL_SPEED_CM)
+    const hits = sys.update(flightMs, enemy)
+    expect(hits).toHaveLength(1)
+    expect(hits[0].result).toBe('MISS')
   })
 })

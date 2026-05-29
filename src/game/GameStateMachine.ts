@@ -16,6 +16,8 @@ import { applyUpgradeNode, getAvailableNodes } from './upgrades'
 import type { EnemyBehaviorDef, EnemyDef } from '../types'
 
 import type { MaskHitDetector } from './systems/MaskHitDetector'
+import { AnimationController } from './systems/AnimationController'
+import { characterRegistry } from './CharacterRegistry'
 import { Enemy } from './entities/Enemy'
 import { Player } from './entities/Player'
 import { generateTouchPointLayout } from './entities/touchPoints'
@@ -99,7 +101,7 @@ export class GameStateMachine {
   private _enemyHitZoneLayout: HitZoneLayout = resolveHitZoneLayout(ENEMY_GOBLIN_SCOUT)
   // Active shape descriptor — updated on level load; drives procedural rendering
   private _enemyShape: ShapeDescriptor = resolveShape(ENEMY_GOBLIN_SCOUT)
-  private enemy = new Enemy(GAME_WIDTH / 2, ENEMY_DEFAULT_Y, this._enemyHitZoneLayout)
+  private enemy = new Enemy(GAME_WIDTH / 2, ENEMY_DEFAULT_Y)
   private currentLevel = 1
   private enemyHp = ENEMY_GOBLIN_SCOUT.maxHp
   private enemyMaxHp = ENEMY_GOBLIN_SCOUT.maxHp
@@ -419,16 +421,25 @@ export class GameStateMachine {
       this._applyHit(evt.result, evt.skillType, evt.position, evt.chainBonus, evt.projectileRadius, evt.side)
     }
 
-    // 6. Update enemy attack system (cooldowns, missile flight)
+    // 6. Advance enemy animation
+    this.enemy.updateAnimation(cappedDt)
+
+    // 7. Update enemy attack system (cooldowns, missile flight)
     //    Skip if the enemy is already dead (phase transitioned out of battle in step 5).
     if (this.phase === 'battle') {
       const isStunned = this.elapsedMs < this._enemyStunnedUntilMs
+      const missileCountBefore = this.enemyAttackSystem.getMissiles().length
       const missileHits = this.enemyAttackSystem.update(
         cappedDt,
         { x: this.enemy.x, y: this.enemy.y },
         PLAYER_CENTRE,
         isStunned,
       )
+      // Trigger attack animation when a new missile is spawned
+      const missileCountAfter = this.enemyAttackSystem.getMissiles().length
+      if (missileCountAfter > missileCountBefore) {
+        this.enemy.playAnimation('attack')
+      }
       for (const hit of missileHits) {
         this._applyPlayerHit(hit.damage)
         if (this.phase !== 'battle') break
@@ -674,10 +685,27 @@ export class GameStateMachine {
     this._enemyHitZoneLayout = resolveHitZoneLayout(enemyDef)
     this._enemyShape = resolveShape(enemyDef)
     this._enemyBehavior = resolveBehavior(enemyDef)
+
+    // Build AnimationController from CharacterRegistry if manifest is registered
+    let animController: AnimationController | undefined
+    const manifestId = enemyDef.manifestId
+    if (manifestId && characterRegistry.has(manifestId)) {
+      const animDefs = characterRegistry.getAnimationDefs(manifestId)
+      animController = new AnimationController(animDefs)
+    }
+
     // Pass maskDetector to Enemy only when the enemyDef has maskConfig
     const useMask = enemyDef.maskConfig !== undefined ? this._maskDetector : undefined
     const displayW = enemyDef.displayWidth ?? 128
-    this.enemy = new Enemy(this._enemyOriginX, this._enemyOriginY, this._enemyHitZoneLayout, useMask, displayW, displayW, this._enemySpriteKey)
+    this.enemy = new Enemy(
+      this._enemyOriginX,
+      this._enemyOriginY,
+      this._enemySpriteKey,
+      animController,
+      useMask,
+      displayW,
+      displayW,
+    )
     this.player.reset()
     this.lastPlayerHit = null
     this.enemyAttackSystem.setAttacks(enemyDef.attacks)

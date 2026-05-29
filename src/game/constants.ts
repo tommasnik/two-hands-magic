@@ -850,6 +850,8 @@ export const ENEMY_STONE_GIANT: EnemyDef = {
   maxHp: 140,
   /** critZoneScale: 0.55 — same as Stone Troll; very small head, hardest crit. Unit: dimensionless multiplier. */
   critZoneScale: 0.55,
+  /** manifestId: character manifest ID for CharacterRegistry lookup. */
+  manifestId: 'stone-giant',
   /** spriteKey: Phaser texture key for the Stone Giant animated sprite. */
   spriteKey: 'stone_giant',
   /** hitZoneMap: default three-zone layout (head/torso/legs). */
@@ -908,6 +910,8 @@ export const ENEMY_EMBER_WISP: EnemyDef = {
   maxHp: 40,
   /** critZoneScale: 0.6 — small but proportional crit zone to body. Unit: multiplier. */
   critZoneScale: 0.6,
+  /** manifestId: character manifest ID for CharacterRegistry lookup. */
+  manifestId: 'ember-wisp',
   /** spriteKey: Phaser texture key for the ember wisp sprite. */
   spriteKey: 'ember_wisp',
   /** hitZoneMap: default three-zone layout (head/torso/legs). */
@@ -999,6 +1003,8 @@ export const ENEMY_CRYSTAL_SPIDER: EnemyDef = {
   maxHp: 30,
   /** critZoneScale: 1.8 — enormous crit zone relative to its small body. Unit: multiplier. */
   critZoneScale: 1.8,
+  /** manifestId: character manifest ID for CharacterRegistry lookup. */
+  manifestId: 'crystal-spider',
   /** spriteKey: Phaser texture key for the crystal spider sprite. */
   spriteKey: 'crystal_spider',
   /** hitZoneMap: default three-zone layout (head/torso/legs). */
@@ -1089,6 +1095,8 @@ export const ENEMY_PLAGUE_RAT: EnemyDef = {
   maxHp: 25,
   /** critZoneScale: 0.5 — tiny crit zone on an already tiny body. Unit: multiplier. */
   critZoneScale: 0.5,
+  /** manifestId: character manifest ID for CharacterRegistry lookup. */
+  manifestId: 'plague-rat',
   /** spriteKey: Phaser texture key for the plague rat sprite. */
   spriteKey: 'plague_rat',
   /** hitZoneMap: default three-zone layout (head/torso/legs). */

@@ -1,84 +1,16 @@
 // ============================================================
 // Enemy entity — pure TypeScript, no Phaser dependency
-// Hit detection uses pixel coordinates matching logical canvas space.
+// Hit detection uses pixel-perfect masks via MaskHitDetector.
+// Legacy 6-part body and 3-circle hitZoneLayout detection removed (task-54).
 // ============================================================
 
-import type { HitResult, HitZoneName, HitZoneLayout } from '../../types'
+import type { HitResult, HitZoneName } from '../../types'
 import type { MaskHitDetector } from '../systems/MaskHitDetector'
-import {
-  ENEMY_HEAD_RADIUS_PX,
-  ENEMY_TORSO_WIDTH_PX,
-  ENEMY_TORSO_HEIGHT_PX,
-  ENEMY_LIMB_RADIUS_PX,
-} from '../constants'
+import type { AnimationController } from '../systems/AnimationController'
 
 /**
- * Computes squared Euclidean distance between two points.
- * Avoids a sqrt for circle containment tests.
- */
-function distSq(ax: number, ay: number, bx: number, by: number): number {
-  const dx = ax - bx
-  const dy = ay - by
-  return dx * dx + dy * dy
-}
-
-/**
- * Tests whether a point lies inside (or on the boundary of) a circle.
- * A small epsilon is added to handle floating-point boundary cases gracefully.
- */
-function inCircle(
-  px: number,
-  py: number,
-  cx: number,
-  cy: number,
-  r: number,
-): boolean {
-  const EPSILON = 1e-9
-  return distSq(px, py, cx, cy) <= r * r + EPSILON
-}
-
-/**
- * Tests whether a circle of radius `r` centred at (px, py) intersects an
- * axis-aligned rectangle defined by its centre (cx, cy) and half-extents (hw, hh).
- * Closest-point-on-rect formulation — exact (no over-coverage at corners).
- * Reduces to a point-in-rect check when r = 0.
- */
-function circleIntersectsRect(
-  px: number,
-  py: number,
-  cx: number,
-  cy: number,
-  hw: number,
-  hh: number,
-  r: number,
-): boolean {
-  const EPSILON = 1e-9
-  const closestX = Math.max(cx - hw, Math.min(px, cx + hw))
-  const closestY = Math.max(cy - hh, Math.min(py, cy + hh))
-  const dx = px - closestX
-  const dy = py - closestY
-  return dx * dx + dy * dy <= r * r + EPSILON
-}
-
-/**
- * Enemy entity.
- *
- * `x` and `y` define the centre of the torso in logical canvas pixels.
- *
- * Hit detection has two modes:
- *
- * 1. When `hitZoneLayout` is provided (all 15 named enemy types):
- *    Three-circle model — crit / mid / low zones read from the layout descriptor.
- *    Zone model:
- *      crit  = CRIT  — circle at (x + critDx, y + critDy), radius critRadius
- *      mid   = HIT   — circle at (x + midDx,  y + midDy),  radius midRadius
- *      low   = GRAZE — circle at (x + lowDx,  y + lowDy),  radius lowRadius
- *    Priority: crit → mid → low → none.
- *
- * 2. When `hitZoneLayout` is omitted (legacy / tests, generic Enemy):
- *    Classic six-part humanoid model using global body constants:
- *      head (circle), torso (rect), left/right arms (circles), left/right legs (circles).
- *    Zone priority: head → torso → leftArm → rightArm → leftLeg → rightLeg → none.
+ * Zone-to-result mapping for mask-based detection.
+ * Maps mask zone names (head, torso, leftLeg) and 'none' to HitResult.
  */
 const ZONE_TO_HIT_RESULT: Record<string, HitResult> = {
   head: 'CRIT',
@@ -90,18 +22,27 @@ const ZONE_TO_HIT_RESULT: Record<string, HitResult> = {
   none: 'MISS',
 }
 
+/**
+ * Enemy entity.
+ *
+ * `x` and `y` define the centre of the enemy sprite in logical canvas pixels.
+ *
+ * Hit detection is exclusively mask-based via MaskHitDetector:
+ * - When maskDetector is available and has data for the current frame,
+ *   world coordinates are converted to mask-local pixel coords and looked up.
+ * - When no mask is available, the hit is a miss ('none').
+ *
+ * Animation state is delegated to AnimationController (if provided).
+ */
 export class Enemy {
   /**
-   * Per-enemy hit zone layout from EnemyDef.
-   * When set, drives getHitZone() / getHitResult() via the three-circle model.
-   * When undefined, falls back to the legacy six-part humanoid geometry.
+   * Sprite key prefix for the character (e.g. 'stone_giant', 'plague_rat').
+   * Used as namespace in MaskHitDetector lookups.
    */
-  readonly hitZoneLayout: HitZoneLayout | undefined
+  readonly spriteKey: string
 
   /**
    * Optional pixel-perfect mask detector for sprite-based enemies.
-   * When set, _resolveZone delegates to the mask lookup before falling back
-   * to the standard hitZoneLayout / legacy geometry.
    */
   readonly maskDetector: MaskHitDetector | undefined
 
@@ -120,156 +61,98 @@ export class Enemy {
   readonly displayHeight: number
 
   /**
-   * Sprite key prefix for the character (e.g. 'stone_giant', 'plague_rat').
-   * Used as namespace in MaskHitDetector lookups to disambiguate masks
-   * from different characters. Default: '' (empty — legacy enemies without masks).
+   * Optional AnimationController driving frame-based animation.
+   * When provided, currentAnimKey and currentFrameIndex are delegated to it.
    */
-  readonly spriteKey: string
+  private _animController: AnimationController | undefined
 
-  /** Current animation key for mask lookup (e.g. 'idle', 'attack'). */
-  currentAnimKey = 'idle'
+  /** Fallback current animation key (used when no AnimationController is set). */
+  private _currentAnimKey = 'idle'
 
-  /** Current frame index within the active animation for mask lookup. */
-  currentFrameIndex = 0
+  /** Fallback current frame index (used when no AnimationController is set). */
+  private _currentFrameIndex = 0
 
   constructor(
     public x: number,
     public y: number,
-    hitZoneLayout?: HitZoneLayout,
+    spriteKey = '',
+    animController?: AnimationController,
     maskDetector?: MaskHitDetector,
     displayWidth = 128,
     displayHeight = 128,
-    spriteKey = '',
   ) {
-    this.hitZoneLayout = hitZoneLayout
+    this.spriteKey = spriteKey
+    this._animController = animController
     this.maskDetector = maskDetector
     this.displayWidth = displayWidth
     this.displayHeight = displayHeight
-    this.spriteKey = spriteKey
   }
+
+  // ------------------------------------------------------------------
+  // Animation delegation
+  // ------------------------------------------------------------------
+
+  /** Current animation key (e.g. 'idle', 'attack'). */
+  get currentAnimKey(): string {
+    return this._animController ? this._animController.currentAnimKey : this._currentAnimKey
+  }
+
+  /** Set the current animation key (only used when no AnimationController). */
+  set currentAnimKey(value: string) {
+    this._currentAnimKey = value
+  }
+
+  /** Current frame index within the active animation. */
+  get currentFrameIndex(): number {
+    return this._animController ? this._animController.currentFrameIndex : this._currentFrameIndex
+  }
+
+  /** Set the current frame index (only used when no AnimationController). */
+  set currentFrameIndex(value: number) {
+    this._currentFrameIndex = value
+  }
+
+  /** Whether an animation (oneshot) is currently playing. */
+  get isAnimPlaying(): boolean {
+    return this._animController ? this._animController.isPlaying : false
+  }
+
+  /** Play an animation via the AnimationController. No-op if no controller. */
+  playAnimation(key: string): void {
+    if (this._animController) {
+      this._animController.play(key)
+    }
+  }
+
+  /** Advance the animation timer. No-op if no controller. */
+  updateAnimation(dtMs: number): void {
+    if (this._animController) {
+      this._animController.update(dtMs)
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Hit detection — exclusively mask-based
+  // ------------------------------------------------------------------
 
   /**
    * Single source of hit geometry — returns the zone name for a given point.
    *
-   * If hitZoneLayout is set: uses the three-circle model (crit/mid/low).
-   * Otherwise: uses the legacy six-part humanoid model (head/torso/arms/legs).
+   * Uses MaskHitDetector exclusively. If no mask is available for the current
+   * frame, returns 'none' (miss).
    *
-   * `projectileRadius` (px) treats the incoming projectile as a disc rather than a
-   * point — each zone effectively grows by that radius (circle-vs-circle for
-   * circular zones, circle-vs-rect for the legacy torso). Defaults to 0, which
-   * collapses to the original point-based geometry.
+   * `critZoneTolerance` and `projectileRadius` are accepted for interface
+   * compatibility with ProjectileSystem but are not used in mask-based detection
+   * (mask pixels are binary — the point is either in a zone or not).
    */
   private _resolveZone(
     point: { x: number; y: number },
-    critZoneTolerance: number,
-    projectileRadius: number,
+    _critZoneTolerance: number,
+    _projectileRadius: number,
   ): HitZoneName {
-    const { x: ex, y: ey } = this
-    const { x: px, y: py } = point
-
-    // Pixel-perfect mask detection — if maskDetector is available and has data
-    // for the current frame, use it instead of geometric hit zones.
     if (this.maskDetector && this.maskDetector.hasMask(this.spriteKey, this.currentAnimKey, this.currentFrameIndex)) {
-      const maskZone = this._resolveZoneFromMask(px, py, ex, ey)
-      if (maskZone !== 'none') return maskZone
-      // If mask says 'none' (miss), fall through to geometric check as final fallback
-      // so projectileRadius inflation still works at sprite edges.
+      return this._resolveZoneFromMask(point.x, point.y, this.x, this.y)
     }
-
-    const baseZone = this.hitZoneLayout
-      ? this._resolveZoneFromLayout(px, py, ex, ey, this.hitZoneLayout, projectileRadius)
-      : this._resolveZoneLegacy(px, py, ex, ey, projectileRadius)
-
-    if (baseZone === 'head' || critZoneTolerance <= 0) return baseZone
-    // A point that misses every body zone stays a miss — critZoneTolerance must
-    // not turn a complete miss into a CRIT, only widen the acceptance band on
-    // shots that already landed on the enemy.
-    if (baseZone === 'none') return baseZone
-
-    // Near-miss CRIT promotion — a shot that landed just outside the crit radius
-    // is upgraded to a CRIT when distToCritCenter < critRadius × (1 + tolerance) + projectileRadius.
-    // The projectile disc is an ADDITIVE extension only; critZoneTolerance widens
-    // the crit ring itself (multiplicative on critRadius), not the disc — otherwise
-    // spell_area + crit_zone would double-count the disc against the tolerance.
-    if (this.hitZoneLayout) {
-      const cx = ex + this.hitZoneLayout.critDx
-      const cy = ey + this.hitZoneLayout.critDy
-      const expanded = this.hitZoneLayout.critRadius * (1 + critZoneTolerance) + projectileRadius
-      if (inCircle(px, py, cx, cy, expanded)) return 'head'
-    } else {
-      const headCY = ey - ENEMY_TORSO_HEIGHT_PX / 2 - ENEMY_HEAD_RADIUS_PX
-      const expanded = ENEMY_HEAD_RADIUS_PX * (1 + critZoneTolerance) + projectileRadius
-      if (inCircle(px, py, ex, headCY, expanded)) return 'head'
-    }
-    return baseZone
-  }
-
-  /**
-   * Three-circle hit zone model using the hitZoneLayout descriptor.
-   * Reads geometry entirely from the def — no global constants.
-   * Each zone radius is inflated by `projectileRadius` for circle-vs-circle detection.
-   */
-  private _resolveZoneFromLayout(
-    px: number, py: number,
-    ex: number, ey: number,
-    layout: HitZoneLayout,
-    projectileRadius: number,
-  ): HitZoneName {
-    // CRIT zone — head / weak point
-    const critCX = ex + layout.critDx
-    const critCY = ey + layout.critDy
-    if (inCircle(px, py, critCX, critCY, layout.critRadius + projectileRadius)) return 'head'
-
-    // HIT zone — body / torso
-    const midCX = ex + layout.midDx
-    const midCY = ey + layout.midDy
-    if (inCircle(px, py, midCX, midCY, layout.midRadius + projectileRadius)) return 'torso'
-
-    // GRAZE zone — limbs / extremities (outer ring beyond mid zone)
-    const lowCX = ex + layout.lowDx
-    const lowCY = ey + layout.lowDy
-    if (inCircle(px, py, lowCX, lowCY, layout.lowRadius + projectileRadius)) return 'leftLeg'
-
-    return 'none'
-  }
-
-  /**
-   * Legacy six-part humanoid hit zone model.
-   * Used when no hitZoneLayout is provided — preserves exact backward-compatible behaviour
-   * when projectileRadius = 0. Non-zero radius uses circle-vs-circle for limbs and
-   * circle-vs-rect for the torso.
-   * Zone layout (offsets from torso centre):
-   * - Head      : circle, radius = HEAD_RADIUS_PX, centre = (0, -TORSO_HEIGHT_PX/2 - HEAD_RADIUS_PX)
-   * - Torso     : rect, half-w = TORSO_WIDTH_PX/2, half-h = TORSO_HEIGHT_PX/2, centre = (0, 0)
-   * - Left arm  : circle, radius = LIMB_RADIUS_PX, centre = (-TORSO_WIDTH_PX/2 - LIMB_RADIUS_PX, -TORSO_HEIGHT_PX/4)
-   * - Right arm : circle, radius = LIMB_RADIUS_PX, centre = (+TORSO_WIDTH_PX/2 + LIMB_RADIUS_PX, -TORSO_HEIGHT_PX/4)
-   * - Left leg  : circle, radius = LIMB_RADIUS_PX, centre = (-TORSO_WIDTH_PX/4, +TORSO_HEIGHT_PX/2 + LIMB_RADIUS_PX)
-   * - Right leg : circle, radius = LIMB_RADIUS_PX, centre = (+TORSO_WIDTH_PX/4, +TORSO_HEIGHT_PX/2 + LIMB_RADIUS_PX)
-   */
-  private _resolveZoneLegacy(
-    px: number, py: number,
-    ex: number, ey: number,
-    projectileRadius: number,
-  ): HitZoneName {
-    const headCY = ey - ENEMY_TORSO_HEIGHT_PX / 2 - ENEMY_HEAD_RADIUS_PX
-    if (inCircle(px, py, ex, headCY, ENEMY_HEAD_RADIUS_PX + projectileRadius)) return 'head'
-
-    if (circleIntersectsRect(px, py, ex, ey, ENEMY_TORSO_WIDTH_PX / 2, ENEMY_TORSO_HEIGHT_PX / 2, projectileRadius)) return 'torso'
-
-    const armCY = ey - ENEMY_TORSO_HEIGHT_PX / 4
-    const leftArmCX = ex - ENEMY_TORSO_WIDTH_PX / 2 - ENEMY_LIMB_RADIUS_PX
-    if (inCircle(px, py, leftArmCX, armCY, ENEMY_LIMB_RADIUS_PX + projectileRadius)) return 'leftArm'
-
-    const rightArmCX = ex + ENEMY_TORSO_WIDTH_PX / 2 + ENEMY_LIMB_RADIUS_PX
-    if (inCircle(px, py, rightArmCX, armCY, ENEMY_LIMB_RADIUS_PX + projectileRadius)) return 'rightArm'
-
-    const legCY = ey + ENEMY_TORSO_HEIGHT_PX / 2 + ENEMY_LIMB_RADIUS_PX
-    const leftLegCX = ex - ENEMY_TORSO_WIDTH_PX / 4
-    if (inCircle(px, py, leftLegCX, legCY, ENEMY_LIMB_RADIUS_PX + projectileRadius)) return 'leftLeg'
-
-    const rightLegCX = ex + ENEMY_TORSO_WIDTH_PX / 4
-    if (inCircle(px, py, rightLegCX, legCY, ENEMY_LIMB_RADIUS_PX + projectileRadius)) return 'rightLeg'
-
     return 'none'
   }
 
@@ -290,9 +173,7 @@ export class Enemy {
     px: number, py: number,
     ex: number, ey: number,
   ): HitZoneName {
-    // maskDetector is guaranteed non-null by the caller (_resolveZone checks it)
     const MASK_SIZE = 128
-    // Sprite draw origin matches BattleScene: centred horizontally, offset 0.6 up vertically
     const frameOriginX = ex - this.displayWidth / 2
     const frameOriginY = ey - this.displayHeight * 0.6
 
@@ -304,10 +185,7 @@ export class Enemy {
 
   /**
    * Returns the zone name for a point, or 'none' for a miss.
-   * critZoneTolerance (0–1) widens the CRIT acceptance radius by that fraction
-   * so near-miss shots get promoted to CRIT. Defaults to 0.
-   * projectileRadius (px) treats the incoming projectile as a disc and inflates
-   * every zone radius by that amount. Defaults to 0 (point-vs-zone).
+   * critZoneTolerance and projectileRadius are accepted for interface compatibility.
    */
   getHitZone(
     point: { x: number; y: number },
@@ -319,8 +197,7 @@ export class Enemy {
 
   /**
    * Returns the HitResult for a point. Delegates zone resolution to _resolveZone().
-   * critZoneTolerance (0–1) widens the CRIT acceptance radius by that fraction.
-   * projectileRadius (px) treats the projectile as a disc — defaults to 0.
+   * critZoneTolerance and projectileRadius are accepted for interface compatibility.
    */
   getHitResult(
     point: { x: number; y: number },
