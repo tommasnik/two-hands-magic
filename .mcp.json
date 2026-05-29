@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "backlog": {
+      "type": "stdio",
+      "command": "backlog",
+      "args": [
+        "mcp",
+        "start",
+        "--cwd",
+        "/home/tom/code/two-hands-magic"
+      ],
+      "env": {}
+    },
+    "pixellab": {
+      "type": "http",
+      "url": "https://api.pixellab.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer 71057d20-24dd-4df9-aa3f-da2cc9c63c7c"
+      }
+    }
+  }
+}
