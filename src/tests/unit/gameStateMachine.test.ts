@@ -2512,9 +2512,9 @@ describe('GameStateMachine — MaskHitDetector integration', () => {
   it('setEnemyAnimState() updates animation state in getState()', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm.setEnemyAnimState('throw', 3)
+    gsm.setEnemyAnimState('attack', 3)
     const state = gsm.getState()
-    expect(state.enemyAnimKey).toBe('throw')
+    expect(state.enemyAnimKey).toBe('attack')
     expect(state.enemyFrameIndex).toBe(3)
   })
 

@@ -875,10 +875,10 @@ export const ENEMY_STONE_GIANT: EnemyDef = {
   },
   /** attacks: inherited from Stone Troll. */
   attacks: ENEMY_STONE_TROLL.attacks,
-  /** maskConfig: pixel-perfect PNG masks for idle (10 frames) and throw (7 frames). */
+  /** maskConfig: pixel-perfect PNG masks for idle (10 frames) and attack (7 frames). */
   maskConfig: {
     idle: { frameCount: 10, prefix: 'mask_idle_' },
-    throw: { frameCount: 7, prefix: 'mask_throw_' },
+    attack: { frameCount: 7, prefix: 'mask_attack_' },
   },
   /** displayWidth: must match STONE_GIANT_DISPLAY_WIDTH so mask coords align with rendering. */
   displayWidth: STONE_GIANT_DISPLAY_WIDTH,
@@ -887,14 +887,14 @@ export const ENEMY_STONE_GIANT: EnemyDef = {
 /** Stone Giant idle animation frame count. Unit: frames. Affects: idle loop length. */
 export const STONE_GIANT_IDLE_FRAME_COUNT = 10
 
-/** Stone Giant throw animation frame count. Unit: frames. Affects: throw animation length. */
-export const STONE_GIANT_THROW_FRAME_COUNT = 7
+/** Stone Giant attack animation frame count. Unit: frames. Affects: attack animation length. */
+export const STONE_GIANT_ATTACK_FRAME_COUNT = 7
 
 /** Stone Giant idle animation frame duration. Unit: ms. Affects: idle loop speed (1.5s full cycle). */
 export const STONE_GIANT_IDLE_FRAME_MS = 150
 
-/** Stone Giant throw animation frame duration. Unit: ms. Affects: throw animation speed (~700ms total). */
-export const STONE_GIANT_THROW_FRAME_MS = 100
+/** Stone Giant attack animation frame duration. Unit: ms. Affects: attack animation speed (~700ms total). */
+export const STONE_GIANT_ATTACK_FRAME_MS = 100
 
 // ============================================================
 // Extended enemy roster — 15 enemy types for future levels / sandbox use

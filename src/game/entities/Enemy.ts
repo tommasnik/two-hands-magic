@@ -119,7 +119,7 @@ export class Enemy {
    */
   readonly displayHeight: number
 
-  /** Current animation key for mask lookup (e.g. 'idle', 'throw'). */
+  /** Current animation key for mask lookup (e.g. 'idle', 'attack'). */
   currentAnimKey = 'idle'
 
   /** Current frame index within the active animation for mask lookup. */

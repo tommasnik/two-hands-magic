@@ -1,7 +1,7 @@
 # Two Hands Magic — Agent Instructions
 
 Phaser 3 + TypeScript + Vite mobile game. Portrait-only, touch-first.
-Reference implementation: see `laser-shot` site in the `demo-pages` monorepo (single-file canvas game with identical input mechanic).
+Reference implementation: `sites/laser-shot/index.html` (single-file canvas game with identical input mechanic).
 
 ---
 
@@ -331,7 +331,7 @@ Masky jsou PNG obrázky kde barva pixelu kóduje hit zónu:
 | Žlutá               | `R > 200 && G > 200`  | `torso`    | HIT         |
 | Zelená              | `G > 200 && R < 50`   | `leftLeg`  | GRAZE       |
 
-Masky se malují v **sprite-masks-editor** (`tools/sprite-masks-editor/`) — canvas tool pro ruční painting zón přes sprite framy.
+Masky se malují v **stone-giant-editor** (`sites/stone-giant-editor/`) — canvas tool pro ruční painting zón přes sprite framy.
 
 ### PixelLab → Hra pipeline
 
@@ -434,8 +434,10 @@ Implementační task by měl: přečíst manifesty, genericky načíst framy/mas
 
 ## Backlog Workflow
 
-Backlog lives at `backlog/` in the repo root.
+See root `CLAUDE.md` for full Backlog.md CLI reference.
+Backlog lives at `sites/two-hands-magic/backlog/`.
 
+Run backlog commands from `sites/two-hands-magic/`:
 ```bash
 backlog task list --plain
 backlog task 1 --plain

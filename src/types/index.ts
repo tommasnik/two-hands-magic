@@ -290,8 +290,8 @@ export interface EnemyDef {
 export interface MaskConfig {
   /** Idle animation mask config — looping idle cycle. */
   idle: { frameCount: number; prefix: string }
-  /** Throw animation mask config — one-shot attack animation. */
-  throw: { frameCount: number; prefix: string }
+  /** Attack animation mask config — one-shot attack animation. */
+  attack: { frameCount: number; prefix: string }
 }
 
 /**
@@ -674,7 +674,7 @@ export interface GameState {
   /** Sprite key (Phaser texture key) for the active enemy. */
   enemySpriteKey: string
   /**
-   * Current animation key for the active enemy (e.g. 'idle', 'throw').
+   * Current animation key for the active enemy (e.g. 'idle', 'attack').
    * Used by BattleScene to drive animated sprite rendering for sprite-based enemies.
    */
   enemyAnimKey: string

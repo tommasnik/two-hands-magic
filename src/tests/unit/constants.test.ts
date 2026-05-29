@@ -422,10 +422,10 @@ describe('enemy definitions', () => {
     expect(ENEMY_STONE_GIANT.critZoneScale).toBe(0.55)
   })
 
-  it('Stone Giant has maskConfig with idle and throw animations', () => {
+  it('Stone Giant has maskConfig with idle and attack animations', () => {
     expect(ENEMY_STONE_GIANT.maskConfig).toBeDefined()
     expect(ENEMY_STONE_GIANT.maskConfig!.idle.frameCount).toBe(10)
-    expect(ENEMY_STONE_GIANT.maskConfig!.throw.frameCount).toBe(7)
+    expect(ENEMY_STONE_GIANT.maskConfig!.attack.frameCount).toBe(7)
   })
 
   it('HP increases with each level 1-3 enemy (difficulty scaling)', () => {

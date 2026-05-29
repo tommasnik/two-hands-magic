@@ -31,9 +31,9 @@ import {
   UPGRADE_TREE_COLUMNS,
   LEVELS,
   STONE_GIANT_IDLE_FRAME_COUNT,
-  STONE_GIANT_THROW_FRAME_COUNT,
+  STONE_GIANT_ATTACK_FRAME_COUNT,
   STONE_GIANT_IDLE_FRAME_MS,
-  STONE_GIANT_THROW_FRAME_MS,
+  STONE_GIANT_ATTACK_FRAME_MS,
   STONE_GIANT_DISPLAY_WIDTH,
 } from '../game/constants'
 import { computeReticle } from '../game/systems/AimSystem'
@@ -106,7 +106,7 @@ export class BattleScene extends Phaser.Scene {
   private _showUpgradeAfterFightOverview = false
 
   // Stone Giant animation state
-  private _stoneGiantAnim: 'idle' | 'throw' = 'idle'
+  private _stoneGiantAnim: 'idle' | 'attack' = 'idle'
   private _stoneGiantFrame = 0
   private _stoneGiantAnimTimer = 0
 
@@ -366,9 +366,9 @@ export class BattleScene extends Phaser.Scene {
       extractMask(`stone_giant_mask_idle_${i}`, 'idle', i)
     }
 
-    // Extract throw masks
-    for (let i = 0; i < STONE_GIANT_THROW_FRAME_COUNT; i++) {
-      extractMask(`stone_giant_mask_throw_${i}`, 'throw', i)
+    // Extract attack masks
+    for (let i = 0; i < STONE_GIANT_ATTACK_FRAME_COUNT; i++) {
+      extractMask(`stone_giant_mask_attack_${i}`, 'attack', i)
     }
 
     if (loaded > 0) {
@@ -390,7 +390,7 @@ export class BattleScene extends Phaser.Scene {
   private _updateStoneGiantAnim(dtMs: number, state: GameState): void {
     // Check if a new enemy missile just spawned — trigger throw animation
     if (state.incomingMissiles.length > 0 && this._stoneGiantAnim === 'idle') {
-      this._stoneGiantAnim = 'throw'
+      this._stoneGiantAnim = 'attack'
       this._stoneGiantFrame = 0
       this._stoneGiantAnimTimer = 0
     }
@@ -403,12 +403,12 @@ export class BattleScene extends Phaser.Scene {
         this._stoneGiantFrame = (this._stoneGiantFrame + 1) % STONE_GIANT_IDLE_FRAME_COUNT
       }
     } else {
-      // throw animation
-      if (this._stoneGiantAnimTimer >= STONE_GIANT_THROW_FRAME_MS) {
-        this._stoneGiantAnimTimer -= STONE_GIANT_THROW_FRAME_MS
+      // attack animation
+      if (this._stoneGiantAnimTimer >= STONE_GIANT_ATTACK_FRAME_MS) {
+        this._stoneGiantAnimTimer -= STONE_GIANT_ATTACK_FRAME_MS
         this._stoneGiantFrame++
-        if (this._stoneGiantFrame >= STONE_GIANT_THROW_FRAME_COUNT) {
-          // Throw animation complete — return to idle
+        if (this._stoneGiantFrame >= STONE_GIANT_ATTACK_FRAME_COUNT) {
+          // Attack animation complete — return to idle
           this._stoneGiantAnim = 'idle'
           this._stoneGiantFrame = 0
           this._stoneGiantAnimTimer = 0
@@ -1633,7 +1633,7 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
 
   /**
    * Renders the Stone Giant using its current animation frame.
-   * Each frame is a separate Phaser texture (stone_giant_idle_N / stone_giant_throw_N).
+   * Each frame is a separate Phaser texture (stone_giant_idle_N / stone_giant_attack_N).
    * Falls back to procedural rendering if the frame texture is not available.
    */
   private _drawStoneGiantSprite(ctx: CanvasRenderingContext2D, state: GameState): void {

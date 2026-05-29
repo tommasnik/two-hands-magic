@@ -37,7 +37,7 @@ export class MaskHitDetector {
    * Register mask pixel data for a specific animation frame.
    * Must be called during asset loading (before gameplay begins).
    *
-   * @param animKey    - Animation name (e.g. 'idle', 'throw')
+   * @param animKey    - Animation name (e.g. 'idle', 'attack')
    * @param frameIndex - Zero-based frame index within the animation
    * @param data       - Raw RGBA pixel data (width * height * 4 bytes)
    * @param width      - Mask image width in pixels
@@ -51,7 +51,7 @@ export class MaskHitDetector {
   /**
    * Returns the hit zone name for a pixel coordinate on a specific animation frame.
    *
-   * @param animKey    - Current animation name (e.g. 'idle', 'throw')
+   * @param animKey    - Current animation name (e.g. 'idle', 'attack')
    * @param frameIndex - Current frame index within the animation
    * @param frameX     - X coordinate in mask pixel space (0–127 for 128px masks)
    * @param frameY     - Y coordinate in mask pixel space (0–127 for 128px masks)
