@@ -6,8 +6,8 @@
 import type { HitZoneName } from '../../types'
 
 /**
- * Key format for internal mask storage: "animKey:frameIndex"
- * e.g. "idle:3" or "throw:0"
+ * Key format for internal mask storage: "spriteKey:animKey:frameIndex"
+ * e.g. "stone_giant:idle:3" or "plague_rat:attack:0"
  */
 type MaskKey = string
 
@@ -34,31 +34,33 @@ export class MaskHitDetector {
   private _masks = new Map<MaskKey, MaskEntry>()
 
   /**
-   * Register mask pixel data for a specific animation frame.
+   * Register mask pixel data for a specific animation frame of a character.
    * Must be called during asset loading (before gameplay begins).
    *
+   * @param spriteKey  - Character sprite key prefix (e.g. 'stone_giant', 'plague_rat')
    * @param animKey    - Animation name (e.g. 'idle', 'attack')
    * @param frameIndex - Zero-based frame index within the animation
    * @param data       - Raw RGBA pixel data (width * height * 4 bytes)
    * @param width      - Mask image width in pixels
    * @param height     - Mask image height in pixels
    */
-  loadMaskData(animKey: string, frameIndex: number, data: Uint8Array, width: number, height: number): void {
-    const key: MaskKey = `${animKey}:${frameIndex}`
+  loadMaskData(spriteKey: string, animKey: string, frameIndex: number, data: Uint8Array, width: number, height: number): void {
+    const key: MaskKey = `${spriteKey}:${animKey}:${frameIndex}`
     this._masks.set(key, { data, width, height })
   }
 
   /**
    * Returns the hit zone name for a pixel coordinate on a specific animation frame.
    *
+   * @param spriteKey  - Character sprite key prefix (e.g. 'stone_giant', 'plague_rat')
    * @param animKey    - Current animation name (e.g. 'idle', 'attack')
    * @param frameIndex - Current frame index within the animation
    * @param frameX     - X coordinate in mask pixel space (0–127 for 128px masks)
    * @param frameY     - Y coordinate in mask pixel space (0–127 for 128px masks)
    * @returns Zone name: 'head' (crit), 'torso' (hit), 'leftLeg' (graze), or 'none' (miss)
    */
-  getZone(animKey: string, frameIndex: number, frameX: number, frameY: number): HitZoneName {
-    const key: MaskKey = `${animKey}:${frameIndex}`
+  getZone(spriteKey: string, animKey: string, frameIndex: number, frameX: number, frameY: number): HitZoneName {
+    const key: MaskKey = `${spriteKey}:${animKey}:${frameIndex}`
     const entry = this._masks.get(key)
     if (!entry) return 'none'
 
@@ -90,10 +92,10 @@ export class MaskHitDetector {
   }
 
   /**
-   * Returns true if mask data has been loaded for the given animation key and frame.
+   * Returns true if mask data has been loaded for the given character, animation key and frame.
    * Useful for checking if pixel-perfect detection is available.
    */
-  hasMask(animKey: string, frameIndex: number): boolean {
-    return this._masks.has(`${animKey}:${frameIndex}`)
+  hasMask(spriteKey: string, animKey: string, frameIndex: number): boolean {
+    return this._masks.has(`${spriteKey}:${animKey}:${frameIndex}`)
   }
 }

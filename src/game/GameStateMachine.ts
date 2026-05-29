@@ -677,7 +677,7 @@ export class GameStateMachine {
     // Pass maskDetector to Enemy only when the enemyDef has maskConfig
     const useMask = enemyDef.maskConfig !== undefined ? this._maskDetector : undefined
     const displayW = enemyDef.displayWidth ?? 128
-    this.enemy = new Enemy(this._enemyOriginX, this._enemyOriginY, this._enemyHitZoneLayout, useMask, displayW, displayW)
+    this.enemy = new Enemy(this._enemyOriginX, this._enemyOriginY, this._enemyHitZoneLayout, useMask, displayW, displayW, this._enemySpriteKey)
     this.player.reset()
     this.lastPlayerHit = null
     this.enemyAttackSystem.setAttacks(enemyDef.attacks)

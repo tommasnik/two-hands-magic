@@ -565,7 +565,7 @@ describe('Enemy — mask-based hit detection', () => {
         }
       }
     }
-    detector.loadMaskData('idle', 0, data, MASK_W, MASK_H)
+    detector.loadMaskData('test_enemy', 'idle', 0, data, MASK_W, MASK_H)
     return detector
   }
 
@@ -576,7 +576,7 @@ describe('Enemy — mask-based hit detection', () => {
     // So world coords = frame coords when enemy is at (64, 76.8)
     const enemyX = DISPLAY_W / 2 // 64
     const enemyY = DISPLAY_H * 0.6 // 76.8 — so frame origin is (0, 0)
-    const e = new Enemy(enemyX, enemyY, undefined, detector, DISPLAY_W, DISPLAY_H)
+    const e = new Enemy(enemyX, enemyY, undefined, detector, DISPLAY_W, DISPLAY_H, 'test_enemy')
     e.currentAnimKey = 'idle'
     e.currentFrameIndex = 0
 
@@ -588,7 +588,7 @@ describe('Enemy — mask-based hit detection', () => {
     const detector = createDetectorWithMask()
     const enemyX = DISPLAY_W / 2
     const enemyY = DISPLAY_H * 0.6
-    const e = new Enemy(enemyX, enemyY, undefined, detector, DISPLAY_W, DISPLAY_H)
+    const e = new Enemy(enemyX, enemyY, undefined, detector, DISPLAY_W, DISPLAY_H, 'test_enemy')
     e.currentAnimKey = 'idle'
     e.currentFrameIndex = 0
 
@@ -600,7 +600,7 @@ describe('Enemy — mask-based hit detection', () => {
     const detector = createDetectorWithMask()
     const enemyX = DISPLAY_W / 2
     const enemyY = DISPLAY_H * 0.6
-    const e = new Enemy(enemyX, enemyY, undefined, detector, DISPLAY_W, DISPLAY_H)
+    const e = new Enemy(enemyX, enemyY, undefined, detector, DISPLAY_W, DISPLAY_H, 'test_enemy')
     e.currentAnimKey = 'idle'
     e.currentFrameIndex = 0
 
@@ -618,7 +618,7 @@ describe('Enemy — mask-based hit detection', () => {
       midDx: 0, midDy: 0, midRadius: 40,
       lowDx: 0, lowDy: 20, lowRadius: 60,
     }
-    const e = new Enemy(enemyX, enemyY, layout, detector, DISPLAY_W, DISPLAY_H)
+    const e = new Enemy(enemyX, enemyY, layout, detector, DISPLAY_W, DISPLAY_H, 'test_enemy')
     e.currentAnimKey = 'idle'
     e.currentFrameIndex = 0
 

@@ -119,6 +119,13 @@ export class Enemy {
    */
   readonly displayHeight: number
 
+  /**
+   * Sprite key prefix for the character (e.g. 'stone_giant', 'plague_rat').
+   * Used as namespace in MaskHitDetector lookups to disambiguate masks
+   * from different characters. Default: '' (empty — legacy enemies without masks).
+   */
+  readonly spriteKey: string
+
   /** Current animation key for mask lookup (e.g. 'idle', 'attack'). */
   currentAnimKey = 'idle'
 
@@ -132,11 +139,13 @@ export class Enemy {
     maskDetector?: MaskHitDetector,
     displayWidth = 128,
     displayHeight = 128,
+    spriteKey = '',
   ) {
     this.hitZoneLayout = hitZoneLayout
     this.maskDetector = maskDetector
     this.displayWidth = displayWidth
     this.displayHeight = displayHeight
+    this.spriteKey = spriteKey
   }
 
   /**
@@ -160,7 +169,7 @@ export class Enemy {
 
     // Pixel-perfect mask detection — if maskDetector is available and has data
     // for the current frame, use it instead of geometric hit zones.
-    if (this.maskDetector && this.maskDetector.hasMask(this.currentAnimKey, this.currentFrameIndex)) {
+    if (this.maskDetector && this.maskDetector.hasMask(this.spriteKey, this.currentAnimKey, this.currentFrameIndex)) {
       const maskZone = this._resolveZoneFromMask(px, py, ex, ey)
       if (maskZone !== 'none') return maskZone
       // If mask says 'none' (miss), fall through to geometric check as final fallback
@@ -290,7 +299,7 @@ export class Enemy {
     const frameX = (px - frameOriginX) * (MASK_SIZE / this.displayWidth)
     const frameY = (py - frameOriginY) * (MASK_SIZE / this.displayHeight)
 
-    return this.maskDetector!.getZone(this.currentAnimKey, this.currentFrameIndex, frameX, frameY)
+    return this.maskDetector!.getZone(this.spriteKey, this.currentAnimKey, this.currentFrameIndex, frameX, frameY)
   }
 
   /**

@@ -328,15 +328,16 @@ export class BattleScene extends Phaser.Scene {
   // -----------------------------------------------------------------------
 
   /**
-   * Extracts pixel data from all Stone Giant mask textures and registers
+   * Extracts pixel data from all character mask textures and registers
    * them with a MaskHitDetector instance, then passes it to GameStateMachine.
    * Pre-loads all mask data at scene start — no per-frame texture reads.
+   * Iterates over all registered characters generically via CharacterRegistry.
    */
   private _initMaskDetector(): void {
     const detector = new MaskHitDetector()
     let loaded = 0
 
-    const extractMask = (textureKey: string, animKey: string, frameIndex: number): void => {
+    const extractMask = (textureKey: string, spriteKey: string, animKey: string, frameIndex: number): void => {
       try {
         if (!this.textures.exists(textureKey)) return
         const frame = this.textures.getFrame(textureKey)
@@ -353,19 +354,20 @@ export class BattleScene extends Phaser.Scene {
         if (!ctx2) return
         ctx2.drawImage(img, 0, 0)
         const imageData = ctx2.getImageData(0, 0, w, h)
-        detector.loadMaskData(animKey, frameIndex, new Uint8Array(imageData.data.buffer), w, h)
+        detector.loadMaskData(spriteKey, animKey, frameIndex, new Uint8Array(imageData.data.buffer), w, h)
         loaded++
       } catch {
         // Texture extraction failed (e.g. headless test environment) — skip silently
       }
     }
 
-    // Extract masks for all animations from the stone-giant manifest
-    const sgManifest = characterRegistry.get('stone-giant')
-    for (const [animKey, anim] of Object.entries(sgManifest.animations)) {
-      if (!anim.hasMasks) continue
-      for (let i = 0; i < anim.frameCount; i++) {
-        extractMask(`${sgManifest.spriteKey}_mask_${animKey}_${i}`, animKey, i)
+    // Extract masks for all registered characters that have mask data
+    for (const manifest of characterRegistry.getAll()) {
+      for (const [animKey, anim] of Object.entries(manifest.animations)) {
+        if (!anim.hasMasks) continue
+        for (let i = 0; i < anim.frameCount; i++) {
+          extractMask(`${manifest.spriteKey}_mask_${animKey}_${i}`, manifest.spriteKey, animKey, i)
+        }
       }
     }
 

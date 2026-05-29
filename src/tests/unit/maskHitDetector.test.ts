@@ -4,10 +4,15 @@ import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 // ============================================================
 // MaskHitDetector unit tests
 // Uses manually constructed Uint8Array mask data (128x128 RGBA).
+// All methods now require spriteKey as the first argument for
+// multi-character namespacing.
 // ============================================================
 
 const W = 128
 const H = 128
+
+/** Default spriteKey used in most tests. */
+const SK = 'stone_giant'
 
 /**
  * Creates a 128x128 RGBA Uint8Array with a specified zone fill pattern.
@@ -58,42 +63,48 @@ describe('MaskHitDetector', () => {
 
   describe('hasMask', () => {
     it('returns false for unloaded masks', () => {
-      expect(detector.hasMask('idle', 0)).toBe(false)
+      expect(detector.hasMask(SK, 'idle', 0)).toBe(false)
     })
 
     it('returns true after loading mask data', () => {
       const data = new Uint8Array(W * H * 4)
-      detector.loadMaskData('idle', 0, data, W, H)
-      expect(detector.hasMask('idle', 0)).toBe(true)
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
+      expect(detector.hasMask(SK, 'idle', 0)).toBe(true)
     })
 
     it('returns false for different frame index', () => {
       const data = new Uint8Array(W * H * 4)
-      detector.loadMaskData('idle', 0, data, W, H)
-      expect(detector.hasMask('idle', 1)).toBe(false)
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
+      expect(detector.hasMask(SK, 'idle', 1)).toBe(false)
+    })
+
+    it('returns false for different spriteKey', () => {
+      const data = new Uint8Array(W * H * 4)
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
+      expect(detector.hasMask('plague_rat', 'idle', 0)).toBe(false)
     })
   })
 
   describe('getZone — transparent pixels', () => {
     it('returns none for completely transparent mask', () => {
       const data = new Uint8Array(W * H * 4) // all zeros = fully transparent
-      detector.loadMaskData('idle', 0, data, W, H)
-      expect(detector.getZone('idle', 0, 64, 64)).toBe('none')
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
+      expect(detector.getZone(SK, 'idle', 0, 64, 64)).toBe('none')
     })
 
     it('returns none for out-of-bounds coordinates', () => {
       const data = createTestMask({ x: 20, y: 20, w: 88, h: 88 })
-      detector.loadMaskData('idle', 0, data, W, H)
-      expect(detector.getZone('idle', 0, -1, 64)).toBe('none')
-      expect(detector.getZone('idle', 0, 128, 64)).toBe('none')
-      expect(detector.getZone('idle', 0, 64, -1)).toBe('none')
-      expect(detector.getZone('idle', 0, 64, 128)).toBe('none')
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
+      expect(detector.getZone(SK, 'idle', 0, -1, 64)).toBe('none')
+      expect(detector.getZone(SK, 'idle', 0, 128, 64)).toBe('none')
+      expect(detector.getZone(SK, 'idle', 0, 64, -1)).toBe('none')
+      expect(detector.getZone(SK, 'idle', 0, 64, 128)).toBe('none')
     })
 
     it('returns none for unregistered animation key', () => {
       const data = createTestMask({ x: 20, y: 20, w: 88, h: 88 })
-      detector.loadMaskData('idle', 0, data, W, H)
-      expect(detector.getZone('throw', 0, 64, 64)).toBe('none')
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
+      expect(detector.getZone(SK, 'throw', 0, 64, 64)).toBe('none')
     })
   })
 
@@ -106,27 +117,27 @@ describe('MaskHitDetector', () => {
 
     beforeEach(() => {
       const data = createTestMask(bbox)
-      detector.loadMaskData('idle', 0, data, W, H)
+      detector.loadMaskData(SK, 'idle', 0, data, W, H)
     })
 
     it('returns head (crit) for pixel in top third of bounding box', () => {
-      expect(detector.getZone('idle', 0, 64, 25)).toBe('head')
+      expect(detector.getZone(SK, 'idle', 0, 64, 25)).toBe('head')
     })
 
     it('returns torso (hit) for pixel in middle third of bounding box', () => {
-      expect(detector.getZone('idle', 0, 64, 55)).toBe('torso')
+      expect(detector.getZone(SK, 'idle', 0, 64, 55)).toBe('torso')
     })
 
     it('returns leftLeg (graze) for pixel in bottom third of bounding box', () => {
-      expect(detector.getZone('idle', 0, 64, 90)).toBe('leftLeg')
+      expect(detector.getZone(SK, 'idle', 0, 64, 90)).toBe('leftLeg')
     })
 
     it('returns none for pixel outside bounding box (transparent)', () => {
-      expect(detector.getZone('idle', 0, 10, 10)).toBe('none')
+      expect(detector.getZone(SK, 'idle', 0, 10, 10)).toBe('none')
     })
 
     it('returns none for pixel outside bounding box on the right', () => {
-      expect(detector.getZone('idle', 0, 110, 64)).toBe('none')
+      expect(detector.getZone(SK, 'idle', 0, 110, 64)).toBe('none')
     })
   })
 
@@ -134,29 +145,29 @@ describe('MaskHitDetector', () => {
     it('R=201 G=49 → head (crit)', () => {
       const data = new Uint8Array(W * H * 4)
       data[0] = 201; data[1] = 49; data[2] = 0; data[3] = 255
-      detector.loadMaskData('test', 0, data, W, H)
-      expect(detector.getZone('test', 0, 0, 0)).toBe('head')
+      detector.loadMaskData(SK, 'test', 0, data, W, H)
+      expect(detector.getZone(SK, 'test', 0, 0, 0)).toBe('head')
     })
 
     it('R=201 G=201 → torso (hit)', () => {
       const data = new Uint8Array(W * H * 4)
       data[0] = 201; data[1] = 201; data[2] = 0; data[3] = 255
-      detector.loadMaskData('test', 0, data, W, H)
-      expect(detector.getZone('test', 0, 0, 0)).toBe('torso')
+      detector.loadMaskData(SK, 'test', 0, data, W, H)
+      expect(detector.getZone(SK, 'test', 0, 0, 0)).toBe('torso')
     })
 
     it('R=49 G=201 → leftLeg (graze)', () => {
       const data = new Uint8Array(W * H * 4)
       data[0] = 49; data[1] = 201; data[2] = 0; data[3] = 255
-      detector.loadMaskData('test', 0, data, W, H)
-      expect(detector.getZone('test', 0, 0, 0)).toBe('leftLeg')
+      detector.loadMaskData(SK, 'test', 0, data, W, H)
+      expect(detector.getZone(SK, 'test', 0, 0, 0)).toBe('leftLeg')
     })
 
     it('R=100 G=100 → none (ambiguous color, no zone match)', () => {
       const data = new Uint8Array(W * H * 4)
       data[0] = 100; data[1] = 100; data[2] = 100; data[3] = 255
-      detector.loadMaskData('test', 0, data, W, H)
-      expect(detector.getZone('test', 0, 0, 0)).toBe('none')
+      detector.loadMaskData(SK, 'test', 0, data, W, H)
+      expect(detector.getZone(SK, 'test', 0, 0, 0)).toBe('none')
     })
   })
 
@@ -165,30 +176,55 @@ describe('MaskHitDetector', () => {
       // Idle frame 0: full crit (red)
       const idleData = new Uint8Array(W * H * 4)
       idleData[0] = 255; idleData[1] = 0; idleData[2] = 0; idleData[3] = 255
-      detector.loadMaskData('idle', 0, idleData, W, H)
+      detector.loadMaskData(SK, 'idle', 0, idleData, W, H)
 
       // Throw frame 0: full hit (yellow)
       const throwData = new Uint8Array(W * H * 4)
       throwData[0] = 255; throwData[1] = 255; throwData[2] = 0; throwData[3] = 255
-      detector.loadMaskData('throw', 0, throwData, W, H)
+      detector.loadMaskData(SK, 'throw', 0, throwData, W, H)
 
-      expect(detector.getZone('idle', 0, 0, 0)).toBe('head')
-      expect(detector.getZone('throw', 0, 0, 0)).toBe('torso')
+      expect(detector.getZone(SK, 'idle', 0, 0, 0)).toBe('head')
+      expect(detector.getZone(SK, 'throw', 0, 0, 0)).toBe('torso')
     })
 
     it('returns correct zone for different frame indices', () => {
       // Frame 0: crit
       const frame0 = new Uint8Array(W * H * 4)
       frame0[0] = 255; frame0[1] = 0; frame0[2] = 0; frame0[3] = 255
-      detector.loadMaskData('idle', 0, frame0, W, H)
+      detector.loadMaskData(SK, 'idle', 0, frame0, W, H)
 
       // Frame 5: graze
       const frame5 = new Uint8Array(W * H * 4)
       frame5[0] = 0; frame5[1] = 255; frame5[2] = 0; frame5[3] = 255
-      detector.loadMaskData('idle', 5, frame5, W, H)
+      detector.loadMaskData(SK, 'idle', 5, frame5, W, H)
 
-      expect(detector.getZone('idle', 0, 0, 0)).toBe('head')
-      expect(detector.getZone('idle', 5, 0, 0)).toBe('leftLeg')
+      expect(detector.getZone(SK, 'idle', 0, 0, 0)).toBe('head')
+      expect(detector.getZone(SK, 'idle', 5, 0, 0)).toBe('leftLeg')
+    })
+  })
+
+  describe('spriteKey namespacing — multiple characters', () => {
+    it('same animKey+frameIndex under different spriteKeys are independent', () => {
+      // stone_giant idle frame 0: crit (red)
+      const sgData = new Uint8Array(W * H * 4)
+      sgData[0] = 255; sgData[1] = 0; sgData[2] = 0; sgData[3] = 255
+      detector.loadMaskData('stone_giant', 'idle', 0, sgData, W, H)
+
+      // plague_rat idle frame 0: graze (green)
+      const prData = new Uint8Array(W * H * 4)
+      prData[0] = 0; prData[1] = 255; prData[2] = 0; prData[3] = 255
+      detector.loadMaskData('plague_rat', 'idle', 0, prData, W, H)
+
+      expect(detector.getZone('stone_giant', 'idle', 0, 0, 0)).toBe('head')
+      expect(detector.getZone('plague_rat', 'idle', 0, 0, 0)).toBe('leftLeg')
+    })
+
+    it('hasMask is scoped to spriteKey', () => {
+      const data = new Uint8Array(W * H * 4)
+      detector.loadMaskData('stone_giant', 'idle', 0, data, W, H)
+
+      expect(detector.hasMask('stone_giant', 'idle', 0)).toBe(true)
+      expect(detector.hasMask('plague_rat', 'idle', 0)).toBe(false)
     })
   })
 })
