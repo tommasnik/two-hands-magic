@@ -225,6 +225,38 @@
   #save-indicator.saving { background: #a50; }
   #save-indicator.error { background: #a00; }
 
+  /* Overlay toggle */
+  .overlay-toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 12px; color: #ccc; }
+  .overlay-toggle input { cursor: pointer; }
+
+  /* Playback controls */
+  .playback-group { display: flex; align-items: center; gap: 6px; }
+  .play-btn {
+    padding: 6px 14px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #16213e;
+    color: #e0e0e0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .play-btn:hover { background: #1a3a6e; }
+  .play-btn.playing { background: #a50; border-color: #a50; }
+  #speedSlider { width: 80px; }
+  #speedValue { font-size: 12px; color: #ccc; min-width: 35px; }
+
+  /* Frame button extras */
+  .frame-btn .done-badge {
+    color: #0af;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 4px;
+  }
+  .frame-btn.clipboard-source {
+    outline: 2px dashed #f0a;
+    outline-offset: -2px;
+  }
+
   /* Empty state */
   #empty-state {
     display: flex;
@@ -268,6 +300,17 @@
       <span id="brushSizeValue">8</span>
     </div>
 
+    <label class="overlay-toggle" title="Toggle mask overlay (O)">
+      <input type="checkbox" id="overlayToggle" checked> Overlay
+    </label>
+
+    <div class="playback-group">
+      <button class="play-btn" id="playBtn" title="Play/Stop animation (Space)">Play</button>
+      <label style="font-size:12px;color:#aaa">Speed:</label>
+      <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1">
+      <span id="speedValue">1x</span>
+    </div>
+
     <button class="action-btn" id="copyPrevBtn" title="Copy mask from previous frame (Shift+C)">Copy from Prev</button>
     <button class="action-btn" id="trimBtn" title="Trim mask to sprite bounds (Shift+T)">Trim to Sprite</button>
     <button class="action-btn reset" id="resetBtn" title="Reset mask to auto-generated zones">Reset to Auto</button>
@@ -283,7 +326,12 @@
     <kbd>1</kbd> Crit &nbsp; <kbd>2</kbd> Hit &nbsp; <kbd>3</kbd> Graze &nbsp; <kbd>0</kbd> Erase &nbsp;
     <kbd>Ctrl+Z</kbd> Undo &nbsp;
     <kbd>Shift+C</kbd> Copy prev &nbsp;
-    <kbd>Shift+T</kbd> Trim &nbsp; | &nbsp;
+    <kbd>Shift+T</kbd> Trim &nbsp;
+    <kbd>O</kbd> Overlay &nbsp;
+    <kbd>Space</kbd> Play/Stop &nbsp;
+    <kbd>Shift+Click</kbd> Copy frame &nbsp;
+    <kbd>Shift+V</kbd> Paste &nbsp;
+    <kbd>D</kbd> Done &nbsp; | &nbsp;
     Left click = paint &nbsp; Right click = erase &nbsp; | &nbsp;
     Auto-saves after 1s
   </div>
@@ -324,6 +372,21 @@ const spriteImages = {};
 const dirtyFrames = new Set();
 let saveTimer = null;
 
+// Feature 1: Overlay
+let overlayVisible = true;
+
+// Feature 2: Playback
+let isPlaying = false;
+let playbackSpeed = 1;
+let playbackTimer = null;
+
+// Feature 3: Clipboard
+let clipboard = null;
+let clipboardSourceName = null;
+
+// Feature 4: Done tracking
+let masksEditedSet = new Set();
+
 // DOM
 const charSelect = document.getElementById('charSelect');
 const animsSection = document.getElementById('anims-section');
@@ -345,6 +408,10 @@ const cursorCtx = cursorCanvas.getContext('2d');
 
 const brushSlider = document.getElementById('brushSizeSlider');
 const brushValue = document.getElementById('brushSizeValue');
+const overlayCheckbox = document.getElementById('overlayToggle');
+const playBtn = document.getElementById('playBtn');
+const speedSlider = document.getElementById('speedSlider');
+const speedValueEl = document.getElementById('speedValue');
 
 // ============================================================
 // API
@@ -358,6 +425,15 @@ async function apiSaveMask(charId, filename, pngBlob) {
   const res = await fetch(`/api/characters/${charId}/masks/${filename}`, {
     method: 'POST',
     body: pngBlob,
+  });
+  return res.json();
+}
+
+async function apiSaveManifest(charId, manifest) {
+  const res = await fetch(`/api/characters/${charId}/manifest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(manifest),
   });
   return res.json();
 }
@@ -384,6 +460,8 @@ charSelect.addEventListener('change', () => {
   currentFrameIdx = -1;
   frames = [];
   clearStores();
+  clipboard = null;
+  clipboardSourceName = null;
   buildAnimButtons();
   hideEditor();
 });
@@ -408,6 +486,7 @@ function buildAnimButtons() {
 }
 
 async function selectAnim(animKey) {
+  stopPlayback();
   // Save any dirty masks from previous animation before switching
   await flushDirty();
 
@@ -415,6 +494,9 @@ async function selectAnim(animKey) {
   const animDef = currentChar.animations[animKey];
   currentFrameIdx = -1;
   clearStores();
+
+  // Load done tracking
+  masksEditedSet = new Set(animDef.masksEdited || []);
 
   // Update anim button UI
   document.querySelectorAll('.anim-btn').forEach(btn => {
@@ -471,22 +553,30 @@ function buildFrameButtons() {
   frames.forEach((frame, idx) => {
     const btn = document.createElement('button');
     btn.className = 'frame-btn';
-    const hasMask = !!maskDataStore[frame.name];
-    btn.innerHTML = `${frame.name} <span class="mask-status ${hasMask ? 'has-mask' : 'no-mask'}">${hasMask ? 'mask' : ''}</span>`;
     btn.dataset.index = idx;
-    btn.addEventListener('click', () => selectFrame(idx));
+    btn.addEventListener('click', (e) => {
+      if (e.shiftKey) {
+        copyMaskToClipboard(idx);
+      } else {
+        selectFrame(idx);
+      }
+    });
     frameButtons.appendChild(btn);
   });
+  updateFrameButtonsUI();
 }
 
 function updateFrameButtonsUI() {
   document.querySelectorAll('.frame-btn').forEach(btn => {
     const idx = parseInt(btn.dataset.index);
+    const frame = frames[idx];
     btn.classList.toggle('active', idx === currentFrameIdx);
-    const hasMask = !!maskDataStore[frames[idx].name];
-    const statusEl = btn.querySelector('.mask-status');
-    statusEl.className = `mask-status ${hasMask ? 'has-mask' : 'no-mask'}`;
-    statusEl.textContent = hasMask ? 'mask' : '';
+    btn.classList.toggle('clipboard-source', clipboardSourceName === frame.name);
+
+    const hasMask = !!maskDataStore[frame.name];
+    const isDone = masksEditedSet.has(frame.name);
+    const doneBadge = isDone ? '<span class="done-badge">&#10003;</span>' : '';
+    btn.innerHTML = `${frame.name}${doneBadge} <span class="mask-status ${hasMask ? 'has-mask' : 'no-mask'}">${hasMask ? 'mask' : ''}</span>`;
   });
 }
 
@@ -540,6 +630,7 @@ function showEditor() {
 }
 
 function hideEditor() {
+  stopPlayback();
   toolbar.style.display = 'none';
   canvasWrapper.style.display = 'none';
   infoBar.style.display = 'none';
@@ -686,7 +777,7 @@ function paintAt(x, y, zone) {
 
 maskCanvas.addEventListener('mousedown', (e) => {
   e.preventDefault();
-  if (currentFrameIdx < 0) return;
+  if (currentFrameIdx < 0 || isPlaying) return;
   const pos = getCanvasPos(e);
   pushUndo(frames[currentFrameIdx].name);
   paintZone = e.button === 2 ? 'erase' : currentZone;
@@ -760,6 +851,10 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
   if (e.shiftKey && e.key === 'C') copyMaskFromPrev();
   if (e.shiftKey && e.key === 'T') trimMaskToSprite();
+  if (e.shiftKey && e.key === 'V') pasteClipboard();
+  if ((e.key === 'o' || e.key === 'O') && !e.shiftKey && !e.ctrlKey) toggleOverlay();
+  if (e.key === ' ') { e.preventDefault(); togglePlayback(); }
+  if ((e.key === 'd' || e.key === 'D') && !e.shiftKey && !e.ctrlKey) toggleDone();
 });
 
 // ============================================================
@@ -802,6 +897,8 @@ function trimMaskToSprite() {
   }
   markDirty(frameName);
   renderMask();
+  // Auto-mark as done after trim
+  setDone(frameName, true);
 }
 
 document.getElementById('trimBtn').addEventListener('click', trimMaskToSprite);
@@ -887,6 +984,129 @@ window.addEventListener('beforeunload', (e) => {
     e.returnValue = '';
   }
 });
+
+// ============================================================
+// Feature 1: Overlay toggle
+// ============================================================
+function toggleOverlay() {
+  overlayVisible = !overlayVisible;
+  overlayCheckbox.checked = overlayVisible;
+  applyOverlay();
+}
+
+function applyOverlay() {
+  maskCanvas.style.opacity = overlayVisible ? '0.5' : '0';
+}
+
+overlayCheckbox.addEventListener('change', () => {
+  overlayVisible = overlayCheckbox.checked;
+  applyOverlay();
+});
+
+// ============================================================
+// Feature 2: Animation playback
+// ============================================================
+function togglePlayback() {
+  if (!currentAnim || frames.length === 0) return;
+  if (isPlaying) {
+    stopPlayback();
+  } else {
+    startPlayback();
+  }
+}
+
+function startPlayback() {
+  if (isPlaying) return;
+  isPlaying = true;
+  playBtn.textContent = 'Stop';
+  playBtn.classList.add('playing');
+  canvasWrapper.style.cursor = 'default';
+  scheduleNextFrame();
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  if (playbackTimer) { clearTimeout(playbackTimer); playbackTimer = null; }
+  playBtn.textContent = 'Play';
+  playBtn.classList.remove('playing');
+  canvasWrapper.style.cursor = 'crosshair';
+}
+
+function scheduleNextFrame() {
+  if (!isPlaying || !currentAnim) return;
+  const animDef = currentChar.animations[currentAnim];
+  const delay = animDef.frameDurationMs / playbackSpeed;
+  playbackTimer = setTimeout(() => {
+    const nextIdx = (currentFrameIdx + 1) % frames.length;
+    currentFrameIdx = nextIdx;
+    render();
+    scheduleNextFrame();
+  }, delay);
+}
+
+playBtn.addEventListener('click', togglePlayback);
+
+speedSlider.addEventListener('input', () => {
+  playbackSpeed = parseFloat(speedSlider.value);
+  speedValueEl.textContent = playbackSpeed + 'x';
+  if (isPlaying) {
+    clearTimeout(playbackTimer);
+    scheduleNextFrame();
+  }
+});
+
+// ============================================================
+// Feature 3: Copy from any frame (clipboard)
+// ============================================================
+function copyMaskToClipboard(frameIdx) {
+  const frame = frames[frameIdx];
+  const maskData = getMaskData(frame.name);
+  clipboard = new ImageData(new Uint8ClampedArray(maskData.data), canvasSize, canvasSize);
+  clipboardSourceName = frame.name;
+  updateFrameButtonsUI();
+  showSaveIndicator('Copied: ' + frame.name, '');
+}
+
+function pasteClipboard() {
+  if (!clipboard || currentFrameIdx < 0 || isPlaying) return;
+  const frameName = frames[currentFrameIdx].name;
+  pushUndo(frameName);
+  maskDataStore[frameName] = new ImageData(new Uint8ClampedArray(clipboard.data), canvasSize, canvasSize);
+  markDirty(frameName);
+  renderMask();
+  updateFrameButtonsUI();
+  showSaveIndicator('Pasted to: ' + frameName, '');
+}
+
+// ============================================================
+// Feature 4: Done tracking
+// ============================================================
+function toggleDone() {
+  if (currentFrameIdx < 0 || !currentAnim) return;
+  const frameName = frames[currentFrameIdx].name;
+  setDone(frameName, !masksEditedSet.has(frameName));
+}
+
+function setDone(frameName, done) {
+  if (done) {
+    masksEditedSet.add(frameName);
+  } else {
+    masksEditedSet.delete(frameName);
+  }
+  updateFrameButtonsUI();
+  persistMasksEdited();
+}
+
+async function persistMasksEdited() {
+  if (!currentChar || !currentAnim) return;
+  currentChar.animations[currentAnim].masksEdited = [...masksEditedSet].sort();
+  try {
+    await apiSaveManifest(currentChar.id, currentChar);
+  } catch (err) {
+    console.error('Failed to save manifest:', err);
+    showSaveIndicator('Manifest save failed!', 'error');
+  }
+}
 
 // ============================================================
 // Init

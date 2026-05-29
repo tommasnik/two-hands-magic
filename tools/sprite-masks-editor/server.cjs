@@ -58,6 +58,18 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, characters);
   }
 
+  // API: update manifest.json
+  const manifestMatch = p.match(/^\/api\/characters\/([^/]+)\/manifest$/);
+  if (manifestMatch && req.method === 'POST') {
+    const [, charId] = manifestMatch;
+    const manifestPath = path.join(ASSETS_DIR, charId, 'manifest.json');
+    if (!fs.existsSync(manifestPath)) return send404(res);
+    const body = await readBody(req);
+    const data = JSON.parse(body.toString('utf8'));
+    fs.writeFileSync(manifestPath, JSON.stringify(data, null, 2) + '\n');
+    return sendJson(res, { ok: true });
+  }
+
   // API: save mask PNG
   const saveMatch = p.match(/^\/api\/characters\/([^/]+)\/masks\/([^/]+)$/);
   if (saveMatch && req.method === 'POST') {
