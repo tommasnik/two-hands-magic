@@ -10,6 +10,7 @@ import {
   FIREBALL_SPEED_CM,
   PIXELS_PER_CM,
   PROJECTILE_BASE_RADIUS_PX,
+  ICE_CRYSTAL_SPEED_CM,
 } from '../constants'
 
 /** white_shot travels at base projectile speed — fast to match its quick DPS role. */
@@ -96,6 +97,10 @@ function speedForSkill(skillType: SkillType): number {
       return PROJECTILE_SPEED_CM
     case 'white_shot':
       return WHITE_SHOT_SPEED_CM
+    case 'ice_crystal':
+      return ICE_CRYSTAL_SPEED_CM
+    case 'lightning_blast':
+      return PROJECTILE_SPEED_CM
   }
 }
 

@@ -21,7 +21,6 @@ import {
   PLAYER_HIT_FLASH_DURATION_MS,
   PLAYER_HIT_FLOAT_COLOR,
   LASER_ORIGIN_Y,
-  PROJECTILE_BASE_RADIUS_PX,
   UPGRADE_NODES,
   UPGRADE_PATH_TITLES,
   UPGRADE_TREE_COLUMNS,
@@ -35,20 +34,13 @@ import { createDefaultDeliveryRegistry } from './rendering/DeliveryVisualRegistr
 import { computeReticle } from '../game/systems/AimSystem'
 import { getUpgradeNodeStatus, getXpProgress } from '../game/upgrades'
 import type { GameState, HitResult, HitZoneName, ActiveSlotState, UpgradeNodeId, GlobalUpgradeState, SkillFightStats } from '../types'
+import { SkillRenderer } from './rendering/SkillRenderer'
 
 interface Spark {
   x: number; y: number
   vx: number; vy: number
   life: number; age: number
   color: string
-}
-
-interface FireParticle {
-  x: number; y: number
-  vx: number; vy: number
-  life: number; age: number
-  /** Size in px at birth. */
-  size: number
 }
 
 interface FloatText {
@@ -66,8 +58,8 @@ export class BattleScene extends Phaser.Scene {
 
   // Visual-only state (not part of game logic)
   private sparks: Spark[] = []
-  private fireParticles: FireParticle[] = []
   private floatTexts: FloatText[] = []
+  private _skillRenderer = new SkillRenderer()
   private lastHitTimestamp: number | null = null
 
   // DOM HUD elements
@@ -247,36 +239,8 @@ export class BattleScene extends Phaser.Scene {
       if (s.age > s.life) this.sparks.splice(i, 1)
     }
 
-    // Advance fire particles (fireball trail)
-    for (let i = this.fireParticles.length - 1; i >= 0; i--) {
-      const fp = this.fireParticles[i]
-      fp.age += dtS
-      fp.x += fp.vx * dtS
-      fp.y += fp.vy * dtS
-      fp.vy -= 30 * dtS // slight upward drift (heat rising)
-      if (fp.age > fp.life) this.fireParticles.splice(i, 1)
-    }
-
-    // Emit fire particles behind each fireball projectile
-    for (const proj of state.activeProjectiles) {
-      if (!proj.alive || proj.skillType !== 'fireball') continue
-      const px = proj.origin.x + (proj.target.x - proj.origin.x) * proj.progress
-      const py = proj.origin.y + (proj.target.y - proj.origin.y) * proj.progress
-      // Emit 2 particles per frame (60fps budget)
-      for (let k = 0; k < 2; k++) {
-        const a = Math.random() * Math.PI * 2
-        const spd = 20 + Math.random() * 40
-        this.fireParticles.push({
-          x: px + (Math.random() - 0.5) * 4,
-          y: py + (Math.random() - 0.5) * 4,
-          vx: Math.cos(a) * spd,
-          vy: Math.sin(a) * spd,
-          life: 0.15 + Math.random() * 0.15,
-          age: 0,
-          size: 3 + Math.random() * 3,
-        })
-      }
-    }
+    // Advance skill particles and emit fireball trail
+    this._skillRenderer.update(dtS, state.activeProjectiles)
 
     // Advance float texts
     for (let i = this.floatTexts.length - 1; i >= 0; i--) {
@@ -808,15 +772,18 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     this._drawEnemySprite(ctx, state, now)
 
     // Fire particles (drawn before projectiles so balls render on top)
-    this._drawFireParticles(ctx)
+    this._skillRenderer.drawFireParticles(ctx)
 
     // Projectiles
     for (const proj of state.activeProjectiles) {
       if (!proj.alive) continue
       const px = proj.origin.x + (proj.target.x - proj.origin.x) * proj.progress
       const py = proj.origin.y + (proj.target.y - proj.origin.y) * proj.progress
-      this._drawProjectile(ctx, px, py, proj)
+      this._skillRenderer.drawProjectile(ctx, px, py, proj, this._dynamicLayout)
     }
+
+    // Frozen overlay — ice crystal spike burst over the enemy
+    this._skillRenderer.drawFrozenOverlay(ctx, state)
 
     // Incoming enemy attack deliveries (orbs + overlays). The scene simply hands
     // the snapshot to the render layer, which delegates each delivery to its
@@ -1005,74 +972,9 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     ctx.restore()
   }
 
-  private _drawProjectile(ctx: CanvasRenderingContext2D, px: number, py: number, proj: import('../types').Projectile): void {
-    const dx = proj.target.x - proj.origin.x
-    const dy = proj.target.y - proj.origin.y
-    const dist = Math.hypot(dx, dy)
-    const nx = dist > 0 ? dx / dist : 0
-    const ny = dist > 0 ? dy / dist : -1
-
-    // Visual scale tracks the gameplay disc — spell_area upgrades grow the
-    // effective hit radius (proj.projectileRadius) and we want the rendered
-    // orb to match, so players see the upgrade they paid for.
-    const radiusScale = proj.projectileRadius / PROJECTILE_BASE_RADIUS_PX
-
-    if (proj.skillType === 'white_shot') {
-      // White Shot — small bright white orb with subtle glow
-      ctx.save()
-      ctx.shadowBlur = 16; ctx.shadowColor = '#ffffff'
-      ctx.fillStyle = '#ffffff'
-      ctx.beginPath(); ctx.arc(px, py, 4 * radiusScale, 0, Math.PI * 2); ctx.fill()
-      // Trail
-      ctx.strokeStyle = 'rgba(200,220,255,0.6)'; ctx.lineWidth = 3; ctx.lineCap = 'round'
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - nx * 14, py - ny * 14); ctx.stroke()
-      // Bright core
-      ctx.shadowBlur = 8; ctx.fillStyle = '#ffffff'
-      ctx.beginPath(); ctx.arc(px, py, 2 * radiusScale, 0, Math.PI * 2); ctx.fill()
-      ctx.restore()
-      return
-    }
-
-    if (proj.skillType === 'fireball') {
-      // Fireball — larger glowing orange ball
-      ctx.save()
-      ctx.shadowBlur = 32; ctx.shadowColor = '#ff6a00'
-      ctx.fillStyle = '#ff6a00'
-      ctx.beginPath(); ctx.arc(px, py, 9 * radiusScale, 0, Math.PI * 2); ctx.fill()
-      // Inner hot core
-      ctx.shadowBlur = 18; ctx.fillStyle = '#ffe066'
-      ctx.beginPath(); ctx.arc(px, py, 5 * radiusScale, 0, Math.PI * 2); ctx.fill()
-      // White hot center
-      ctx.shadowBlur = 8; ctx.fillStyle = '#ffffff'
-      ctx.beginPath(); ctx.arc(px, py, 2.5 * radiusScale, 0, Math.PI * 2); ctx.fill()
-      ctx.restore()
-      return
-    }
-
-    // Default rendering for slow_shot / fast_shot
-    // Find the color of the slot that fired this projectile (by origin proximity)
-    const slot = this._dynamicLayout.find(s => {
-      const ddx = s.x - proj.origin.x, ddy = s.y - proj.origin.y
-      return ddx * ddx + ddy * ddy < 100 // within 10px of a touch point
-    })
-    const color = slot ? this._slotColor(slot) : '#ffffff'
-
-    ctx.save()
-    ctx.shadowBlur = 24; ctx.shadowColor = color
-    ctx.fillStyle = color
-    ctx.beginPath(); ctx.arc(px, py, 6 * radiusScale, 0, Math.PI * 2); ctx.fill()
-    // Trail
-    ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.lineCap = 'round'
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - nx * 22, py - ny * 22); ctx.stroke()
-    // Bright core
-    ctx.shadowBlur = 10; ctx.fillStyle = '#fff'
-    ctx.beginPath(); ctx.arc(px, py, 2.5 * radiusScale, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
-  }
-
   /**
    * Returns a display color for a dynamic skill slot.
-   * white_shot = white, fireball = orange, slow_shot = green/blue, fast_shot = orange/red.
+   * Used by slot ring rendering and laser drawing.
    */
   private _slotColor(slot: { side: 'left' | 'right'; skillType: string }): string {
     if (slot.skillType === 'white_shot') return '#ffffff'
@@ -1104,28 +1006,6 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
       // Center dot
       ctx.globalAlpha = 1; ctx.shadowBlur = 12; ctx.fillStyle = '#fff'
       ctx.beginPath(); ctx.arc(slot.x, slot.y, 3.2, 0, Math.PI * 2); ctx.fill()
-      ctx.restore()
-    }
-  }
-
-  /**
-   * Renders the fireball trail particles.
-   * Color interpolates from white-hot center (#ffe066) to orange-red outer (#cc2200).
-   */
-  private _drawFireParticles(ctx: CanvasRenderingContext2D): void {
-    for (const fp of this.fireParticles) {
-      const t = fp.age / fp.life                        // 0 = birth, 1 = death
-      const alpha = Math.max(0, 1 - t)
-      const radius = fp.size * (1 - t * 0.6)           // shrinks as it ages
-      // Interpolate color: young = bright yellow, old = dark orange
-      const r = Math.round(255)
-      const g = Math.round(230 * (1 - t) + 40 * t)
-      const b = Math.round(0)
-      ctx.save()
-      ctx.globalAlpha = alpha * 0.85
-      ctx.shadowBlur = 8; ctx.shadowColor = `rgb(${r},${g},${b})`
-      ctx.fillStyle = `rgb(${r},${g},${b})`
-      ctx.beginPath(); ctx.arc(fp.x, fp.y, radius, 0, Math.PI * 2); ctx.fill()
       ctx.restore()
     }
   }
