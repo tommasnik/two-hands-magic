@@ -223,6 +223,8 @@ Testy ve `src/tests/game-design/` musí pokrývat:
 
 ## Sprite & Character Asset System
 
+> ⚠️ **Pokud jdeš pracovat s PixelLab MCP nebo generovat/zadávat generování sprites, načti si nejdřív `PixelLab.md`** — obsahuje destilované instrukce (volba metody, side-scroller view, proces, jak psát prompty).
+
 Generický systém pro organizaci, pojmenování a načítání character spritů, animací a hit-zone masek.
 
 ### Adresářová struktura
@@ -333,44 +335,9 @@ Masky jsou PNG obrázky kde barva pixelu kóduje hit zónu:
 
 Masky se malují v **sprite-masks-editoru** (`tools/sprite-masks-editor/`, spusť `npm run masks-editor`) — canvas tool pro ruční painting zón přes sprite framy.
 
-### PixelLab MCP — povinný kontext
+### Generování v PixelLabu
 
-Před jakoukoliv prací s PixelLab MCP tools si **vždy** načti aktuální dokumentaci:
-```
-WebFetch https://api.pixellab.ai/mcp/docs
-```
-Obsahuje kompletní reference všech tools, workflow patterns, parametry a tipy. Docs se aktualizují s každou verzí API — nikdy nespoléhej na zapamatované parametry.
-
-### Pravidla generování animací v PixelLabu
-
-#### 1. Pre-check sprite před animací
-Po vytvoření characteru/objektu a **PŘED** generováním jakékoliv animace:
-- Stáhni a vizuálně zkontroluj base sprite (`get_character`/`get_object`)
-- Ověř jak postava **skutečně** vypadá — póza, zbraně, detaily, barvy, proporce
-- Uprav `action_description` idle i attack animací podle **reálného** vzhledu spritu, ne podle idealizovaného popisu v tasku
-- Pokud sprite nemá zbraň, kterou task zmiňuje, uprav attack animaci odpovídajícím způsobem
-
-#### 2. Idle loop kontinuita
-- Idle animace MUSÍ tvořit plynulý loop — první a poslední frame vizuálně identické v póze a pozici
-- Žádný viditelný "skok" při opakování
-- V `action_description` **vždy** explicitně uvést: "The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
-
-#### 3. Rich prompt konzistence
-- Každý `action_description` musí být **self-contained** — obsahovat kompletní vizuální popis (materiály, barvy, proporce, zbraně, vybavení, textury)
-- Ne jen popis pohybu — PixelLab generuje framy nezávisle, prompt musí nést VŠECHNY vizuální informace
-- Prompt musí být konzistentní s `description` z character creation — stejné barvy, materiály, detaily
-- Čím víc detailů (textury, poškození, svítící prvky, materiálové vlastnosti), tím konzistentnější výsledek
-
-#### 4. Konzistence zbraní v attack
-- Pokud postava drží zbraň (meč, sekeru, dýku, luk...), attack animace MUSÍ útočit **touto** zbraní
-- Žádný generic punch/slam pokud má sprite konkrétní zbraň
-- Ověřit vizuálně po pre-checku spritu — zbraň na spritu je autoritativní, ne popis v tasku
-
-#### 5. Výběr kandidátů — VŽDY uživatel
-- Pokud PixelLab vygeneruje více kandidátů (review status), agent je NIKDY nevybírá sám
-- Agent zobrazí kandidáty uživateli (get_object s include_preview) a popíše je
-- Uživatel rozhodne, který kandidát(y) se vyberou (`select_object_frames`)
-- Platí pro characters i objects — jakýkoliv review s více kandidáty
+> Volba metody (character vs. object), side-scroller `view`, proces generování, pravidla pro prompty a výběr kandidátů → viz **`PixelLab.md`**. Níže je jen game-side část pipeline (stažení, manifest, masky, integrace).
 
 ### PixelLab → Hra pipeline
 
@@ -420,16 +387,12 @@ Kompletní postup pro stažení a kategorizaci všeho z PixelLabu:
 
 #### Postup při vytváření jednoho nového character spritu
 
-1. **Vytvoř character v PixelLab** → zapiš `projectId` a `characterId`
-2. **Pre-check sprite** — stáhni a vizuálně zkontroluj base sprite (`get_character`). Ověř skutečný vzhled (póza, zbraně, barvy, proporce). Uprav `action_description` animací podle toho, co vidíš — ne podle idealizovaného popisu.
-3. **Vytvoř animace v PixelLab** (idle, attack) → zapiš `animationId` pro každou
-   - Idle: prompt MUSÍ obsahovat seamless loop instrukci + kompletní vizuální popis
-   - Attack: MUSÍ útočit zbraní viditelnou na spritu (ne generic)
-4. **Stáhni framy** — curl z CDN (viz URL vzor výše), přejmenuj na `{animKey}_{NN}.png`
-5. **Vytvoř manifest.json** podle šablony výše
-6. **Generuj masky** — `python3 scripts/generate_masks.py src/assets/characters/{id}`
-7. **(Volitelné) Zpřesni masky** v sprite-masks-editoru (`tools/sprite-masks-editor/`) — red/yellow/green zóny
-8. **Přidej do constants.ts a loaderu**
+1. **Vygeneruj sprite + animace v PixelLab** dle **`PixelLab.md`** (metoda, `view`, prompty, pre-check, schválení base spritu, idle + attack) → zapiš `projectId`, `characterId` a `animationId` pro každou animaci
+2. **Stáhni framy** — curl z CDN (viz URL vzor výše), přejmenuj na `{animKey}_{NN}.png`
+3. **Vytvoř manifest.json** podle šablony výše
+4. **Generuj masky** — `python3 scripts/generate_masks.py src/assets/characters/{id}`
+5. **(Volitelné) Zpřesni masky** v sprite-masks-editoru (`tools/sprite-masks-editor/`) — red/yellow/green zóny
+6. **Přidej do constants.ts a loaderu**
 
 ### Inventář assetů
 
