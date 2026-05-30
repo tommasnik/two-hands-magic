@@ -12,14 +12,34 @@ import type { SkillType, HitResult } from '../../types'
 
 /**
  * A status effect that can be applied to an enemy.
- * The kinds listed here are planned; only 'frozen' is driven by game logic today.
- * TASK-64 will replace the no-op StatusApplier stub with the real StatusEffectSystem.
+ * Adding a new status = new StatusEffect definition + InteractionRule in the relevant
+ * skill module. Zero changes to GameStateMachine or StatusEffectSystem.
  */
 export interface StatusEffect {
-  /** Which status to apply. */
-  kind: 'frozen' | 'burning' | 'shocked'
+  /** Which status to apply. Extensible string — 'frozen' | 'burning' | 'shocked' | … */
+  kind: string
   /** How long the status lasts. Unit: ms. */
   remainingMs: number
+  /**
+   * Multiplier on incoming damage while this status is active.
+   * 1.0 = no change (default). Used by resolveHit() per-effect.
+   */
+  incomingDamageMultiplier?: number
+  /**
+   * Multiplier on movement speed while this status is active.
+   * 1.0 = no change (default). Not yet consumed by BehaviorSystem — reserved.
+   */
+  moveSpeedMultiplier?: number
+  /**
+   * True when the status should freeze enemy behaviour (halt attack + movement).
+   * Consumed by GameStateMachine to gate the EnemyBehaviorRunner tick.
+   */
+  frozen?: boolean
+  /**
+   * Visual key hint for the renderer (e.g. 'frozen_overlay').
+   * Pure data — not consumed by any game system; renderer reads it.
+   */
+  visualKey?: string
 }
 
 /**
@@ -56,14 +76,20 @@ export interface InteractionRule {
 // ============================================================
 
 /**
- * Minimal enemy state slice exposed to onHit callbacks.
- * Extended in TASK-64 when StatusEffectState is added to EnemyState.
+ * Minimal enemy state slice exposed to onHit callbacks and resolveHit().
+ * Contains all status effects active on the enemy at hit time.
  */
 export interface EnemyStateSlice {
   /** Current enemy HP. Unit: HP. */
   hp: number
   /** Maximum enemy HP. Unit: HP. */
   maxHp: number
+  /**
+   * Status effects currently active on this enemy.
+   * Read by resolveHit() to check interaction triggers.
+   * Populated by StatusEffectSystem.
+   */
+  activeStatusEffects: StatusEffect[]
 }
 
 // ============================================================

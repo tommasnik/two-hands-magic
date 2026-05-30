@@ -212,27 +212,27 @@ describe('SkillModule — ice_crystal', () => {
     expect(typeof SkillRegistry.get('ice_crystal').onHit).toBe('function')
   })
 
-  it('onHit CRIT calls applyStatus({ kind: frozen, remainingMs: ICE_CRYSTAL_FREEZE_CRIT_MS })', () => {
+  it('onHit CRIT calls applyStatus with frozen kind and ICE_CRYSTAL_FREEZE_CRIT_MS duration', () => {
     const onHit = SkillRegistry.get('ice_crystal').onHit!
-    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20 }
+    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20, activeStatusEffects: [] }
     const appliedEffects: StatusEffect[] = []
     onHit(enemy, 'CRIT', (e) => appliedEffects.push(e))
     expect(appliedEffects).toHaveLength(1)
-    expect(appliedEffects[0]).toEqual({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_CRIT_MS })
+    expect(appliedEffects[0]).toMatchObject({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_CRIT_MS })
   })
 
-  it('onHit HIT calls applyStatus({ kind: frozen, remainingMs: ICE_CRYSTAL_FREEZE_HIT_MS })', () => {
+  it('onHit HIT calls applyStatus with frozen kind and ICE_CRYSTAL_FREEZE_HIT_MS duration', () => {
     const onHit = SkillRegistry.get('ice_crystal').onHit!
-    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20 }
+    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20, activeStatusEffects: [] }
     const appliedEffects: StatusEffect[] = []
     onHit(enemy, 'HIT', (e) => appliedEffects.push(e))
     expect(appliedEffects).toHaveLength(1)
-    expect(appliedEffects[0]).toEqual({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_HIT_MS })
+    expect(appliedEffects[0]).toMatchObject({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_HIT_MS })
   })
 
   it('onHit GRAZE does NOT call applyStatus (no freeze on graze)', () => {
     const onHit = SkillRegistry.get('ice_crystal').onHit!
-    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20 }
+    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20, activeStatusEffects: [] }
     const appliedEffects: StatusEffect[] = []
     onHit(enemy, 'GRAZE', (e) => appliedEffects.push(e))
     expect(appliedEffects).toHaveLength(0)
@@ -240,7 +240,7 @@ describe('SkillModule — ice_crystal', () => {
 
   it('onHit MISS does NOT call applyStatus', () => {
     const onHit = SkillRegistry.get('ice_crystal').onHit!
-    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20 }
+    const enemy: EnemyStateSlice = { hp: 10, maxHp: 20, activeStatusEffects: [] }
     const appliedEffects: StatusEffect[] = []
     onHit(enemy, 'MISS', (e) => appliedEffects.push(e))
     expect(appliedEffects).toHaveLength(0)
@@ -248,7 +248,7 @@ describe('SkillModule — ice_crystal', () => {
 
   it('onHit does NOT call applyStatus when enemy hp is 0 (no corpse-freeze)', () => {
     const onHit = SkillRegistry.get('ice_crystal').onHit!
-    const enemy: EnemyStateSlice = { hp: 0, maxHp: 20 }
+    const enemy: EnemyStateSlice = { hp: 0, maxHp: 20, activeStatusEffects: [] }
     const appliedEffects: StatusEffect[] = []
     onHit(enemy, 'CRIT', (e) => appliedEffects.push(e))
     expect(appliedEffects).toHaveLength(0)

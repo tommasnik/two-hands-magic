@@ -24,9 +24,9 @@ import { SkillRegistry } from '../registry'
 function onHit(enemy: EnemyStateSlice, hit: HitResult, applyStatus: StatusApplier): void {
   if (enemy.hp <= 0) return
   if (hit === 'CRIT') {
-    applyStatus({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_CRIT_MS })
+    applyStatus({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_CRIT_MS, frozen: true, visualKey: 'frozen_overlay' })
   } else if (hit === 'HIT') {
-    applyStatus({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_HIT_MS })
+    applyStatus({ kind: 'frozen', remainingMs: ICE_CRYSTAL_FREEZE_HIT_MS, frozen: true, visualKey: 'frozen_overlay' })
   }
   // GRAZE and MISS: no freeze
 }

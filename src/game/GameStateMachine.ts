@@ -37,7 +37,10 @@ import {
 } from './constants'
 import type { SkillSlotConfig } from './constants'
 import { SkillRegistry } from './skills/registry'
-import type { StatusApplier } from './skills/types'
+import type { StatusApplier, EnemyStateSlice } from './skills/types'
+import { StatusEffectSystem } from './systems/StatusEffectSystem'
+import { resolveHit } from './systems/DamageSystem'
+import type { HitResolution } from './systems/DamageSystem'
 
 // Ensure all skill modules are registered before GameStateMachine is used.
 import './skills/index'
@@ -131,9 +134,12 @@ export class GameStateMachine {
   // Absolute elapsedMs until which the enemy is stunned (cannot attack).
   // 0 = not stunned. Reset on every level load.
   private _enemyStunnedUntilMs = 0
-  // Absolute elapsedMs until which the enemy is frozen by ice_crystal.
-  // 0 = not frozen. Reset on every level load.
-  private _enemyFrozenUntilMs = 0
+  // StatusEffectSystem manages all active status effects (frozen, burning, …).
+  // Replaces the former inline _enemyFrozenUntilMs + _wasFrozenLastTick fields.
+  private _statusEffectSystem = new StatusEffectSystem()
+  // Active status effects for the current enemy — reset on every level load.
+  // Owned here (not by Enemy entity) so getState() can expose them as serialisable data.
+  private _enemyStatusEffects: import('./skills/types').StatusEffect[] = []
   // Tracks whether the enemy was frozen on the previous tick — drives holdFrame
   // (freeze start) and animation restore (freeze end) transitions.
   private _wasFrozenLastTick = false
@@ -443,12 +449,15 @@ export class GameStateMachine {
     // 6. Advance enemy animation
     this.enemy.updateAnimation(cappedDt)
 
+    // 6.5 Tick StatusEffectSystem — advance timers, remove expired effects.
+    this._statusEffectSystem.tick(cappedDt, this._enemyStateSlice())
+
     // 7. Tick the behaviour-graph runner (if the enemy has a graph).
     //    The runner owns the state machine; the orchestrator owns animation
     //    playback. Stun/freeze freezes the whole graph (tick = no-op) — already-flying
     //    deliveries still advance in step 8. Skip if the enemy died in step 5.
     if (this.phase === 'battle' && this._behaviorRunner) {
-      const isFrozen = this.elapsedMs < this._enemyFrozenUntilMs
+      const isFrozen = this._statusEffectSystem.isActive(this._enemyStateSlice(), 'frozen')
       const isStunned = isFrozen || this.elapsedMs < this._enemyStunnedUntilMs
 
       // Freeze start: hold the animation on the current frame.
@@ -658,7 +667,7 @@ export class GameStateMachine {
       enemySpriteKey: this._enemySpriteKey,
       enemyManifestId: this._enemyManifestId,
       enemyDisplayWidth: this.enemy.displayWidth,
-      enemyFrozenUntilMs: this._enemyFrozenUntilMs,
+      enemyFrozenUntilMs: this._computeEnemyFrozenUntilMs(),
       lightningDischargeUntilMs: this._lightningDischargeUntilMs,
       lightningDischargeResult: this._lightningDischargeResult,
       lightningDischargeTarget: this._lightningDischargeTarget ? { ...this._lightningDischargeTarget } : null,
@@ -790,7 +799,7 @@ export class GameStateMachine {
     this._initBehaviorRunner(enemyDef.behaviorGraph)
     this._deliverySystem.reset()
     this._enemyStunnedUntilMs = 0
-    this._enemyFrozenUntilMs = 0
+    this._enemyStatusEffects = []
     this._wasFrozenLastTick = false
     this._lightningDischargeUntilMs = 0
     this._lightningDischargeResult = null
@@ -859,6 +868,30 @@ export class GameStateMachine {
   }
 
   /**
+   * Build a minimal EnemyStateSlice from current GSM state.
+   * The slice is the live view of the enemy's mutable status — it references
+   * _enemyStatusEffects directly so StatusEffectSystem mutates the same array.
+   */
+  private _enemyStateSlice(): EnemyStateSlice {
+    return {
+      hp: this.enemyHp,
+      maxHp: this.enemyMaxHp,
+      activeStatusEffects: this._enemyStatusEffects,
+    }
+  }
+
+  /**
+   * Derive the legacy `enemyFrozenUntilMs` timestamp from the active status effects.
+   * Returns elapsedMs + remainingMs for the 'frozen' effect, or 0 if not frozen.
+   * This keeps the GameState interface backward-compatible for renderers and tests.
+   */
+  private _computeEnemyFrozenUntilMs(): number {
+    const frozen = this._enemyStatusEffects.find(e => e.kind === 'frozen')
+    if (!frozen || frozen.remainingMs <= 0) return 0
+    return this.elapsedMs + frozen.remainingMs
+  }
+
+  /**
    * Applies a HitResult to the score, deals damage to the enemy HP,
    * and records lastHit (including damage dealt and hit zone).
    * Transitions phase to 'fight_overview' when HP reaches 0.
@@ -893,10 +926,22 @@ export class GameStateMachine {
         break
     }
 
-    const damage = calculateDamage(result, skillType, this._rng, {
+    // Resolve interaction rules (OCP — no switch/case on skillType).
+    // resolveHit() reads skill.interactions + enemy.activeStatusEffects to
+    // produce a damage multiplier override and optional visual key.
+    const enemySlice = this._enemyStateSlice()
+    let interactionMultiplier = 1.0
+    if (result !== 'MISS' && SkillRegistry.has(skillType)) {
+      const skill = SkillRegistry.get(skillType)
+      const baseResolution: HitResolution = { result, damageMultiplier: 1.0, visualKey: null }
+      const resolved = resolveHit(skill, enemySlice, baseResolution)
+      interactionMultiplier = resolved.damageMultiplier
+    }
+
+    const damage = Math.round(calculateDamage(result, skillType, this._rng, {
       stats: computePlayerStats(this._globalUpgrades),
       chainBonus,
-    })
+    }) * interactionMultiplier)
     this.enemyHp = Math.max(0, this.enemyHp - damage)
 
     // Update per-skill fight stats.
@@ -923,22 +968,14 @@ export class GameStateMachine {
 
     // Skill-specific post-hit effects — dispatched via SkillModule.onHit().
     // No skill-specific branching here: each skill module declares its own onHit().
-    // In TASK-63: the StatusApplier bridges known effects inline; TASK-64 replaces
-    // this with a real StatusEffectSystem.apply() call.
+    // StatusApplier wires directly to StatusEffectSystem.apply() — no inline handling.
     if (this.enemyHp > 0 && SkillRegistry.has(skillType)) {
       const skill = SkillRegistry.get(skillType)
       if (skill.onHit) {
-        // TASK-63 StatusApplier bridge — applies only 'frozen' inline.
-        // Other kinds are intentionally ignored until StatusEffectSystem is available.
         const applyStatus: StatusApplier = (effect) => {
-          switch (effect.kind) {
-            case 'frozen':
-              this._enemyFrozenUntilMs = this.elapsedMs + effect.remainingMs
-              break
-            // 'burning' and 'shocked' are no-ops until TASK-64.
-          }
+          this._statusEffectSystem.apply(enemySlice, effect)
         }
-        skill.onHit({ hp: this.enemyHp, maxHp: this.enemyMaxHp }, result, applyStatus)
+        skill.onHit(enemySlice, result, applyStatus)
       }
     }
 

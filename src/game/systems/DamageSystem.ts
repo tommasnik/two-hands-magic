@@ -5,6 +5,7 @@
 
 import type { HitResult, SkillType } from '../../types'
 import type { PlayerStats } from './PlayerProgression'
+import type { EnemyStateSlice, SkillModule } from '../skills/types'
 import { SkillRegistry } from '../skills/registry'
 import {
   CRIT_DAMAGE_MULTIPLIER,
@@ -14,6 +15,70 @@ import {
 // Ensure all skill modules are registered before DamageSystem is used.
 // This import triggers the side-effect registrations in each skill module file.
 import '../skills/index'
+
+// ============================================================
+// HitResolution — result of resolveHit()
+// ============================================================
+
+/**
+ * The resolved outcome of a skill hit after applying interaction rules.
+ * Carries the (possibly modified) damage multiplier and visual key so
+ * the caller can apply both without re-reading interaction data.
+ */
+export interface HitResolution {
+  /** Resulting hit category (unchanged — interaction rules do not change the category). */
+  result: HitResult
+  /**
+   * Final damage multiplier to apply on top of the base roll.
+   * 1.0 = no modification. May be > 1.0 when an interaction rule triggers.
+   */
+  damageMultiplier: number
+  /**
+   * Visual key override for this hit (e.g. 'lightning_frozen_discharge').
+   * Null = use the skill's default visual.
+   */
+  visualKey: string | null
+}
+
+// ============================================================
+// resolveHit — OCP interaction lookup, no switch/case on SkillType
+// ============================================================
+
+/**
+ * Resolve a skill hit against the enemy's current status effects.
+ *
+ * Checks the skill's `interactions` array for a rule whose `whenEnemyHas`
+ * matches one of the enemy's active status effects. Returns a HitResolution
+ * with the combined damage multiplier and optional visual key override.
+ *
+ * Design (OCP):
+ *   - No switch/case on skill type.
+ *   - No condition on SkillType anywhere in this function.
+ *   - Adding a new skill interaction = add an InteractionRule to the skill module.
+ *
+ * @param skill          - SkillModule for the hitting skill
+ * @param enemy          - current enemy state slice (reads activeStatusEffects)
+ * @param baseResolution - starting HitResolution (result + default multiplier)
+ * @returns Modified HitResolution (or baseResolution unchanged if no rule matches)
+ */
+export function resolveHit(
+  skill: SkillModule,
+  enemy: EnemyStateSlice,
+  baseResolution: HitResolution,
+): HitResolution {
+  if (!skill.interactions || skill.interactions.length === 0) return baseResolution
+
+  const rule = skill.interactions.find(
+    r => enemy.activeStatusEffects.some(e => e.kind === r.whenEnemyHas && e.remainingMs > 0),
+  )
+  if (!rule) return baseResolution
+
+  return {
+    ...baseResolution,
+    damageMultiplier: baseResolution.damageMultiplier * (rule.damageMultiplier ?? 1.0),
+    visualKey: rule.visualKey ?? baseResolution.visualKey,
+  }
+}
 
 function rollBaseDamage(skillType: SkillType, rng: () => number): number {
   const skill = SkillRegistry.get(skillType)
