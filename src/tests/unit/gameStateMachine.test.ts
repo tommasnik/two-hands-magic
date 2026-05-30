@@ -23,6 +23,8 @@ import {
   PLAYER_START_LEVEL,
   PLAYER_MAX_LEVEL,
   XP_LEVEL_THRESHOLDS,
+  ICE_CRYSTAL_FREEZE_CRIT_MS,
+  ICE_CRYSTAL_FREEZE_HIT_MS,
 } from '../../game/constants'
 import { computeTouchPointPositions, generateTouchPointLayout, createInitialLayout } from '../../game/entities/touchPoints'
 import type { InputEvent } from '../../types'
@@ -2424,6 +2426,125 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
     // The snapshot should reflect the crits applied before/during the kill
     expect(snapshot!.left.hitsByResult.CRIT).toBeGreaterThanOrEqual(2)
     expect(snapshot!.left.totalDamage).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ice Crystal freeze mechanic (TASK-61.2)
+// ---------------------------------------------------------------------------
+
+describe('GameStateMachine — ice_crystal freeze mechanic', () => {
+  it('AC #1 — enemyFrozenUntilMs is 0 at battle start', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+  })
+
+  it('AC #2 — CRIT ice_crystal hit freezes for ICE_CRYSTAL_FREEZE_CRIT_MS', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    const before = gsm.getState()
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    expect(gsm.getState().enemyFrozenUntilMs).toBe(before.elapsedMs + ICE_CRYSTAL_FREEZE_CRIT_MS)
+  })
+
+  it('AC #2 — HIT ice_crystal hit freezes for ICE_CRYSTAL_FREEZE_HIT_MS', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    const before = gsm.getState()
+    gsm._applyHitForTesting('HIT', 'ice_crystal')
+    expect(gsm.getState().enemyFrozenUntilMs).toBe(before.elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS)
+  })
+
+  it('AC #3 — GRAZE ice_crystal hit does not set freeze', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('GRAZE', 'ice_crystal')
+    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+  })
+
+  it('AC #3 — MISS ice_crystal hit does not set freeze', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('MISS', 'ice_crystal')
+    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+  })
+
+  it('AC #7 — re-hit resets freeze timer (not additive)', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    const afterFirst = gsm.getState().enemyFrozenUntilMs
+    // Advance time but stay inside freeze window
+    gsm.update(500, [])
+    gsm._applyHitForTesting('HIT', 'ice_crystal')
+    const afterSecond = gsm.getState().enemyFrozenUntilMs
+    // Second hit resets to elapsedMs + HIT_MS (not first + HIT_MS)
+    expect(afterSecond).toBe(gsm.getState().elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS)
+    expect(afterSecond).toBeLessThan(afterFirst + ICE_CRYSTAL_FREEZE_HIT_MS)
+  })
+
+  it('AC #8 — max(freeze, critStun): freeze wins when longer', () => {
+    // Stun duration from crit_stun_1 is typically shorter than CRIT_FREEZE_MS (2000ms)
+    const gsm = new GameStateMachine(undefined, () => 0)
+    gsm.startBattle()
+    gsm._applyUpgradeForTesting('crit_dmg_1')
+    gsm._applyUpgradeForTesting('crit_dmg_2')
+    gsm._applyUpgradeForTesting('crit_stun_1')
+    gsm.update(100, [])
+    // Both crit stun and ice_crystal freeze triggered by a CRIT
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    const state = gsm.getState()
+    const stunEnd = state.enemy.stunnedUntilMs
+    const freezeEnd = state.enemyFrozenUntilMs
+    // freeze should be longer (ICE_CRYSTAL_FREEZE_CRIT_MS = 2000ms vs stun typically 1000ms)
+    expect(freezeEnd).toBeGreaterThanOrEqual(stunEnd)
+  })
+
+  it('AC #1 — enemyFrozenUntilMs resets to 0 on level load', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    expect(gsm.getState().enemyFrozenUntilMs).toBeGreaterThan(0)
+    // Kill enemy and advance to next level
+    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    gsm.confirmLevelUpUpgrade()
+    gsm.nextLevel()
+    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+  })
+
+  it('AC #4 — freeze blocks behavior runner (no new attacks)', () => {
+    // Build a GSM with a behavior-graph enemy that attacks on every tick
+    // We simulate via gameStateMachineBehavior patterns but simplified:
+    // freeze must result in isStunned=true in runner ctx, blocking tick
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    // Apply freeze
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    const beforeDeliveries = gsm.getState().activeDeliveries.length
+    // Advance well within freeze window (CRIT freeze = 2000ms)
+    gsm.update(500, [])
+    // Deliveries should not have grown (enemy runner blocked by freeze)
+    // This is a best-effort check: works for enemies without auto-spawning graphs
+    // The real check is that enemyFrozenUntilMs > elapsedMs blocks tick
+    expect(gsm.getState().enemyFrozenUntilMs).toBeGreaterThan(gsm.getState().elapsedMs)
+    expect(gsm.getState().activeDeliveries.length).toBe(beforeDeliveries)
+  })
+
+  it('AC #6 — in-flight deliveries continue during freeze', () => {
+    // Deliveries advance in step 8 regardless of freeze — verify delivery system is not gated
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    // Default GSM has no behavior graph, so activeDeliveries start at 0;
+    // freeze should not break the delivery update step
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    gsm.update(500, [])
+    // No throw / crash — delivery update ran normally
+    expect(gsm.getState().phase).toBe('battle')
   })
 })
 

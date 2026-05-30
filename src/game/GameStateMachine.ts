@@ -32,6 +32,7 @@ import {
   PLAYER_START_LEVEL, PLAYER_MAX_LEVEL, XP_LEVEL_THRESHOLDS,
   DEFAULT_GLOBAL_UPGRADE_STATE,
   ENEMY_POOL,
+  ICE_CRYSTAL_FREEZE_CRIT_MS, ICE_CRYSTAL_FREEZE_HIT_MS,
 } from './constants'
 import type { SkillSlotConfig } from './constants'
 
@@ -124,6 +125,12 @@ export class GameStateMachine {
   // Absolute elapsedMs until which the enemy is stunned (cannot attack).
   // 0 = not stunned. Reset on every level load.
   private _enemyStunnedUntilMs = 0
+  // Absolute elapsedMs until which the enemy is frozen by ice_crystal.
+  // 0 = not frozen. Reset on every level load.
+  private _enemyFrozenUntilMs = 0
+  // Tracks whether the enemy was frozen on the previous tick — drives holdFrame
+  // (freeze start) and animation restore (freeze end) transitions.
+  private _wasFrozenLastTick = false
   // Optional pixel-perfect mask detector for sprite-based enemies.
   // Injected from BattleScene after mask data is loaded from textures.
   private _maskDetector?: MaskHitDetector
@@ -408,10 +415,22 @@ export class GameStateMachine {
 
     // 7. Tick the behaviour-graph runner (if the enemy has a graph).
     //    The runner owns the state machine; the orchestrator owns animation
-    //    playback. Stun freezes the whole graph (tick = no-op) — already-flying
+    //    playback. Stun/freeze freezes the whole graph (tick = no-op) — already-flying
     //    deliveries still advance in step 8. Skip if the enemy died in step 5.
     if (this.phase === 'battle' && this._behaviorRunner) {
-      const isStunned = this.elapsedMs < this._enemyStunnedUntilMs
+      const isFrozen = this.elapsedMs < this._enemyFrozenUntilMs
+      const isStunned = isFrozen || this.elapsedMs < this._enemyStunnedUntilMs
+
+      // Freeze start: hold the animation on the current frame.
+      if (isFrozen && !this._wasFrozenLastTick) {
+        this.enemy.holdFrame(this.enemy.currentAnimKey, this.enemy.currentFrameIndex)
+      }
+      // Freeze end: reset anim sync so runner immediately restores natural animation.
+      if (!isFrozen && this._wasFrozenLastTick) {
+        this._lastAnimNodeId = null
+      }
+      this._wasFrozenLastTick = isFrozen
+
       const ctx = {
         frameIndex: this.enemy.currentFrameIndex,
         // A one-shot node's animation is complete once the controller is no
@@ -590,6 +609,7 @@ export class GameStateMachine {
       enemySpriteKey: this._enemySpriteKey,
       enemyManifestId: this._enemyManifestId,
       enemyDisplayWidth: this.enemy.displayWidth,
+      enemyFrozenUntilMs: this._enemyFrozenUntilMs,
       enemyAnimKey: this.enemy.currentAnimKey,
       enemyFrameIndex: this.enemy.currentFrameIndex,
       currentLevel: this.currentLevel,
@@ -721,6 +741,8 @@ export class GameStateMachine {
     this._initBehaviorRunner(enemyDef.behaviorGraph)
     this._deliverySystem.reset()
     this._enemyStunnedUntilMs = 0
+    this._enemyFrozenUntilMs = 0
+    this._wasFrozenLastTick = false
     this._lastCastBySlot = {}
   }
 
@@ -845,6 +867,17 @@ export class GameStateMachine {
       this._rng() < this._globalUpgrades.critStunChance
     ) {
       this._enemyStunnedUntilMs = this.elapsedMs + this._globalUpgrades.critStunDurationMs
+    }
+
+    // Ice Crystal freeze — CRIT → 2s, HIT → 1s, GRAZE → no freeze.
+    // Only when the enemy survived the hit (no corpse-freeze).
+    // Re-hit resets the timer (not additive).
+    if (skillType === 'ice_crystal' && this.enemyHp > 0) {
+      if (result === 'CRIT') {
+        this._enemyFrozenUntilMs = this.elapsedMs + ICE_CRYSTAL_FREEZE_CRIT_MS
+      } else if (result === 'HIT') {
+        this._enemyFrozenUntilMs = this.elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS
+      }
     }
 
     if (this.enemyHp <= 0) {

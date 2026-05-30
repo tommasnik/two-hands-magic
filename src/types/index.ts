@@ -686,4 +686,9 @@ export interface GameState {
    * Used by BattleScene for rendering size; overrides manifest.displayWidth when set.
    */
   enemyDisplayWidth?: number
+  /**
+   * Absolute elapsedMs until which the enemy is frozen by ice_crystal.
+   * 0 = not frozen. Set by ice_crystal CRIT/HIT hits in GameStateMachine.
+   */
+  enemyFrozenUntilMs: number
 }
