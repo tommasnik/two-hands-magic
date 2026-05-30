@@ -34,7 +34,7 @@ import { createDefaultDeliveryRegistry } from './rendering/DeliveryVisualRegistr
 import { computeReticle } from '../game/systems/AimSystem'
 import { getUpgradeNodeStatus, getXpProgress } from '../game/upgrades'
 import type { GameState, HitResult, HitZoneName, ActiveSlotState, UpgradeNodeId, GlobalUpgradeState, SkillFightStats } from '../types'
-import { SkillRenderer } from './rendering/SkillRenderer'
+import { SkillRenderer, getSkillColor } from './rendering/SkillRenderer'
 
 interface Spark {
   x: number; y: number
@@ -972,16 +972,8 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     ctx.restore()
   }
 
-  /**
-   * Returns a display color for a dynamic skill slot.
-   * Used by slot ring rendering and laser drawing.
-   */
   private _slotColor(slot: { side: 'left' | 'right'; skillType: string }): string {
-    if (slot.skillType === 'white_shot') return '#ffffff'
-    if (slot.skillType === 'fireball')   return '#ff6a00'
-    if (slot.skillType === 'slow_shot')  return slot.side === 'left' ? '#5cff3a' : '#3a8cff'
-    if (slot.skillType === 'fast_shot')  return slot.side === 'left' ? '#ff9410' : '#ff2a3c'
-    return '#b833ff' // fallback / unknown
+    return getSkillColor(slot.skillType, slot.side)
   }
 
   private _drawActiveSlots(ctx: CanvasRenderingContext2D, slots: ActiveSlotState[], now: number): void {

@@ -10,6 +10,22 @@ interface FireParticle {
 }
 
 /**
+ * Single source of truth for skill display colors.
+ * Used by slot rings, lasers, projectile trails, and fight overview.
+ */
+export function getSkillColor(skillType: string, side: 'left' | 'right'): string {
+  switch (skillType) {
+    case 'white_shot':    return '#ffffff'
+    case 'fireball':      return '#ff6a00'
+    case 'slow_shot':     return side === 'left' ? '#5cff3a' : '#3a8cff'
+    case 'fast_shot':     return side === 'left' ? '#ff9410' : '#ff2a3c'
+    case 'ice_crystal':   return '#88ccff'
+    case 'lightning_blast': return '#ffe066'
+    default:              return '#b833ff'
+  }
+}
+
+/**
  * Renders all skill-specific projectile visuals and overlays (frozen, discharge, …).
  * Owns fire particle state for fireball trail animation.
  * Phaser-free — uses Canvas 2D API only.
@@ -18,7 +34,6 @@ export class SkillRenderer {
   private fireParticles: FireParticle[] = []
 
   update(dtS: number, activeProjectiles: Projectile[]): void {
-    // Advance existing particles
     for (let i = this.fireParticles.length - 1; i >= 0; i--) {
       const fp = this.fireParticles[i]
       fp.age += dtS
@@ -28,7 +43,6 @@ export class SkillRenderer {
       if (fp.age > fp.life) this.fireParticles.splice(i, 1)
     }
 
-    // Emit fire particles behind each fireball
     for (const proj of activeProjectiles) {
       if (!proj.alive || proj.skillType !== 'fireball') continue
       const px = proj.origin.x + (proj.target.x - proj.origin.x) * proj.progress
@@ -105,35 +119,49 @@ export class SkillRenderer {
     }
 
     if (proj.skillType === 'ice_crystal') {
-      // Diamond (rotated square) shard flying in direction of travel
+      // Crystal shard: elongated hexagonal shape (like a cut gem/prism) flying tip-first
       const angle = Math.atan2(dy, dx)
-      const half = 8 * radiusScale
+      const len = 14 * radiusScale  // length along travel axis
+      const wid = 5 * radiusScale   // half-width perpendicular
+
+      // Ice trail (drawn first, behind the shard)
+      ctx.save()
+      ctx.strokeStyle = 'rgba(136,204,255,0.35)'
+      ctx.lineWidth = wid * 1.6
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(px, py)
+      ctx.lineTo(px - nx * len * 2.2, py - ny * len * 2.2)
+      ctx.stroke()
+      ctx.restore()
+
+      // Shard body: pointy hexagonal prism shape, tip toward target
       ctx.save()
       ctx.translate(px, py)
       ctx.rotate(angle)
-      ctx.shadowBlur = 18; ctx.shadowColor = '#aaddff'
-      ctx.fillStyle = '#aaddff'
+      ctx.shadowBlur = 20; ctx.shadowColor = '#88ccff'
+      // Body fill
+      ctx.fillStyle = '#5bb8ff'
+      ctx.globalAlpha = 0.9
       ctx.beginPath()
-      ctx.moveTo(0, -half)
-      ctx.lineTo(half * 0.6, 0)
-      ctx.lineTo(0, half)
-      ctx.lineTo(-half * 0.6, 0)
+      ctx.moveTo(len, 0)           // front tip
+      ctx.lineTo(len * 0.3, -wid) // right front shoulder
+      ctx.lineTo(-len * 0.6, -wid * 0.7) // right rear
+      ctx.lineTo(-len, 0)          // rear tip
+      ctx.lineTo(-len * 0.6, wid * 0.7)  // left rear
+      ctx.lineTo(len * 0.3, wid)  // left front shoulder
       ctx.closePath()
       ctx.fill()
-      // Bright core glint
-      ctx.shadowBlur = 6; ctx.fillStyle = '#ffffff'
+      // Bright facet highlight (top face of crystal)
+      ctx.fillStyle = '#ccecff'
+      ctx.shadowBlur = 0
       ctx.beginPath()
-      ctx.moveTo(0, -half * 0.4)
-      ctx.lineTo(half * 0.25, 0)
-      ctx.lineTo(0, half * 0.4)
-      ctx.lineTo(-half * 0.25, 0)
+      ctx.moveTo(len, 0)
+      ctx.lineTo(len * 0.3, -wid)
+      ctx.lineTo(-len * 0.6, -wid * 0.7)
+      ctx.lineTo(-len * 0.15, 0)
       ctx.closePath()
       ctx.fill()
-      // Ice trail
-      ctx.rotate(-angle)
-      ctx.translate(-px, -py)
-      ctx.strokeStyle = 'rgba(170,221,255,0.4)'; ctx.lineWidth = 2; ctx.lineCap = 'round'
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - nx * 16, py - ny * 16); ctx.stroke()
       ctx.restore()
       return
     }
@@ -143,7 +171,7 @@ export class SkillRenderer {
       const ddx = s.x - proj.origin.x, ddy = s.y - proj.origin.y
       return ddx * ddx + ddy * ddy < 100
     })
-    const color = slot ? _slotColor(slot) : '#ffffff'
+    const color = slot ? getSkillColor(slot.skillType, slot.side) : '#ffffff'
 
     ctx.save()
     ctx.shadowBlur = 24; ctx.shadowColor = color
@@ -157,48 +185,109 @@ export class SkillRenderer {
   }
 
   /**
-   * Draws the ice crystal frozen overlay over the enemy while freeze is active.
-   * 6-spike burst centered on the enemy, #88CCFF fill / #FFFFFF stroke, 50% alpha.
+   * Draws an ice crystal cluster over the enemy while freeze is active.
+   * Crystal columns grow upward from the enemy's base — like a gem cluster.
    */
   drawFrozenOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (state.enemyFrozenUntilMs <= state.elapsedMs) return
 
     const cx = state.enemy.x
     const cy = state.enemy.y
-    const displayW = state.enemyDisplayWidth ?? 128
-    const outerR = displayW * 0.48
-    const innerR = outerR * 0.22
-    const spikes = 6
+    const displayW = state.enemyDisplayWidth ?? 200
+    const s = displayW / 200  // scale factor
+
+    // Crystal columns: [offsetX, offsetY-from-center, halfWidth, height, tiltAngle]
+    // Positioned at the lower half of the enemy, growing upward
+    const columns: Array<[number, number, number, number, number]> = [
+      [  0,    displayW * 0.12,  13 * s,  90 * s,   0     ],  // center — tallest
+      [ -displayW * 0.18, displayW * 0.18,  9 * s,  65 * s,  -0.18 ],  // left-inner
+      [  displayW * 0.18, displayW * 0.18,  9 * s,  65 * s,   0.18 ],  // right-inner
+      [ -displayW * 0.35, displayW * 0.24,  6 * s,  42 * s,  -0.38 ],  // left-outer
+      [  displayW * 0.35, displayW * 0.24,  6 * s,  42 * s,   0.38 ],  // right-outer
+    ]
 
     ctx.save()
-    ctx.globalAlpha = 0.5
-    ctx.fillStyle = '#88CCFF'
-    ctx.strokeStyle = '#FFFFFF'
-    ctx.lineWidth = 1.5
-    ctx.shadowBlur = 12
-    ctx.shadowColor = '#aaddff'
+    ctx.globalAlpha = 0.55
+    ctx.shadowBlur = 16
+    ctx.shadowColor = '#88ccff'
 
-    ctx.beginPath()
-    for (let i = 0; i < spikes * 2; i++) {
-      const r = i % 2 === 0 ? outerR : innerR
-      const angle = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2
-      const x = cx + Math.cos(angle) * r
-      const y = cy + Math.sin(angle) * r
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
+    for (const [ox, oy, hw, h, tilt] of columns) {
+      const bx = cx + ox   // base x
+      const by = cy + oy   // base y (lower part of enemy)
+      _drawCrystalColumn(ctx, bx, by, hw, h, tilt)
     }
-    ctx.closePath()
-    ctx.fill()
-    ctx.stroke()
     ctx.restore()
   }
 }
 
-function _slotColor(slot: { side: 'left' | 'right'; skillType: string }): string {
-  if (slot.skillType === 'white_shot') return '#ffffff'
-  if (slot.skillType === 'fireball')   return '#ff6a00'
-  if (slot.skillType === 'slow_shot')  return slot.side === 'left' ? '#5cff3a' : '#3a8cff'
-  if (slot.skillType === 'fast_shot')  return slot.side === 'left' ? '#ff9410' : '#ff2a3c'
-  if (slot.skillType === 'ice_crystal') return '#aaddff'
-  return '#b833ff'
+/**
+ * Draws a single crystal column with base at (bx, by), pointing upward with optional tilt.
+ * Shape: hexagonal prism with a faceted pointed tip (like the blue crystal in the reference).
+ */
+function _drawCrystalColumn(
+  ctx: CanvasRenderingContext2D,
+  bx: number, by: number,
+  halfW: number, height: number,
+  tilt: number,
+): void {
+  ctx.save()
+  ctx.translate(bx, by)
+  ctx.rotate(tilt)
+
+  const tipY = -height
+  const shoulderY = tipY + height * 0.28  // where tip meets the body
+  const bodyTopY = tipY + height * 0.28
+  const sw = halfW * 0.75   // body half-width at shoulder
+
+  // Main body fill (deep blue)
+  ctx.fillStyle = '#3388cc'
+  ctx.beginPath()
+  ctx.moveTo(0, tipY)            // apex
+  ctx.lineTo(sw, shoulderY)      // right shoulder
+  ctx.lineTo(halfW, bodyTopY + height * 0.08)
+  ctx.lineTo(halfW, 0)           // right base
+  ctx.lineTo(-halfW, 0)          // left base
+  ctx.lineTo(-halfW, bodyTopY + height * 0.08)
+  ctx.lineTo(-sw, shoulderY)     // left shoulder
+  ctx.closePath()
+  ctx.fill()
+
+  // Left facet — lighter blue
+  ctx.fillStyle = '#66aadd'
+  ctx.beginPath()
+  ctx.moveTo(0, tipY)
+  ctx.lineTo(-sw, shoulderY)
+  ctx.lineTo(-halfW, bodyTopY + height * 0.08)
+  ctx.lineTo(-halfW, 0)
+  ctx.lineTo(0, 0)
+  ctx.closePath()
+  ctx.fill()
+
+  // Right facet highlight — bright (reflection)
+  ctx.fillStyle = '#aaddff'
+  ctx.globalAlpha = 0.7
+  ctx.beginPath()
+  ctx.moveTo(0, tipY)
+  ctx.lineTo(sw, shoulderY)
+  ctx.lineTo(halfW * 0.5, bodyTopY + height * 0.25)
+  ctx.lineTo(halfW * 0.1, bodyTopY + height * 0.25)
+  ctx.closePath()
+  ctx.fill()
+
+  // Outline
+  ctx.globalAlpha = 0.8
+  ctx.strokeStyle = '#cceeff'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(0, tipY)
+  ctx.lineTo(sw, shoulderY)
+  ctx.lineTo(halfW, bodyTopY + height * 0.08)
+  ctx.lineTo(halfW, 0)
+  ctx.lineTo(-halfW, 0)
+  ctx.lineTo(-halfW, bodyTopY + height * 0.08)
+  ctx.lineTo(-sw, shoulderY)
+  ctx.closePath()
+  ctx.stroke()
+
+  ctx.restore()
 }
