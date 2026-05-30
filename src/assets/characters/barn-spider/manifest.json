@@ -1,0 +1,38 @@
+{
+  "id": "barn-spider",
+  "spriteKey": "barn_spider",
+  "displayWidth": 200,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "6abf2876-3841-4bda-88ad-a6a34e69e492",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "04ed61f7-d639-45f8-876f-54dc7de9fb6f",
+        "animationGroupId": "d4495fc0-f616-4eb0-b6c7-698b3d943938",
+        "direction": "unknown",
+        "description": "Top-down ambush-predator idle — legs twitch and reposition, body settles, fangs flex. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "70feac44-93ee-41af-8cda-d930319c63c0",
+        "animationGroupId": "aa16e17e-f535-4021-89b0-a4601b586370",
+        "direction": "unknown",
+        "description": "Top-down venomous bite — surges forward, front legs spread, chelicerae fangs stab down, recoils to crouch."
+      }
+    }
+  },
+  "_notes": "1-direction object (top-down, no rotation) used as a character enemy. Masks auto-generated (green GRAZE) by scripts/generate_masks.py."
+}

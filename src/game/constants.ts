@@ -769,6 +769,17 @@ export const ENEMY_INSECT_SWARM: EnemyDef = {
   displayWidth: 128,
 }
 
+/** Barn Spider — dog-sized ambush spider. Low HP beast enemy; precision over endurance. */
+export const ENEMY_BARN_SPIDER: EnemyDef = {
+  name: 'Barn Spider',
+  maxHp: 16,
+  manifestId: 'barn-spider',
+  spriteKey: 'barn_spider',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 200,
+}
+
 // ============================================================
 // Enemy pool — sequential rotation through all sprite-based characters
 // ============================================================
