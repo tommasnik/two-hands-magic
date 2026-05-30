@@ -77,13 +77,13 @@ function runActions(machine: GameStateMachine, actions: Action[]): void {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Game Design: Two-Skill Config (TASK-35)', () => {
-  it('DEFAULT_SKILL_CONFIG has exactly 2 skills — 1 per side (AC#1, AC#2, AC#5)', () => {
-    expect(DEFAULT_SKILL_CONFIG).toHaveLength(2)
+describe('Game Design: Two-Skill Config (TASK-35 → updated for 4-slot in TASK-61.4)', () => {
+  it('DEFAULT_SKILL_CONFIG has 4 skills — 2 per side (AC#1, AC#2, AC#5)', () => {
+    expect(DEFAULT_SKILL_CONFIG).toHaveLength(4)
     const leftSlots  = DEFAULT_SKILL_CONFIG.filter(s => s.side === 'left')
     const rightSlots = DEFAULT_SKILL_CONFIG.filter(s => s.side === 'right')
-    expect(leftSlots.length).toBeGreaterThanOrEqual(1)
-    expect(rightSlots.length).toBeGreaterThanOrEqual(1)
+    expect(leftSlots.length).toBe(2)
+    expect(rightSlots.length).toBe(2)
   })
 
   it('power user fires left skill at head → registers a hit (left slot, AC#3, AC#6)', () => {
@@ -160,27 +160,24 @@ describe('Game Design: Two-Skill Config (TASK-35)', () => {
     expect(hitsAfterSecond).toBeGreaterThanOrEqual(2)
   })
 
-  it('AC#7 — 1-skill UI is identical to current state (backward compat: position = midpoint of arc)', () => {
-    // With DEFAULT_SKILL_CONFIG, left_0 is at the midpoint angle (50°)
-    // which is the same position as the old 'violet' touch point.
+  it('AC#7 — 4-slot layout: getTouchPointPositions returns 4 points at correct positions', () => {
     const machine = new GameStateMachine()
     const layout = machine.getTouchPointPositions()
 
-    // Should have exactly 2 slots
-    expect(layout).toHaveLength(2)
+    // Should have exactly 4 slots (2+2)
+    expect(layout).toHaveLength(4)
 
-    // left_0 should be at the midpoint of the left arc
+    // left_0 and left_1 at correct positions
     const left0 = layout.find(p => p.id === 'left_0')!
     expect(left0.x).toBeCloseTo(LEFT_0_X, 0)
     expect(left0.y).toBeCloseTo(LEFT_0_Y, 0)
 
-    // right_0 should be at the midpoint of the right arc
     const right0 = layout.find(p => p.id === 'right_0')!
     expect(right0.x).toBeCloseTo(RIGHT_0_X, 0)
     expect(right0.y).toBeCloseTo(RIGHT_0_Y, 0)
 
-    // touchPointsPerSide reflects the layout (1 per side)
+    // touchPointsPerSide reflects the layout (2 per side)
     const state = machine.getState()
-    expect(state.touchPointsPerSide).toEqual({ left: 1, right: 1 })
+    expect(state.touchPointsPerSide).toEqual({ left: 2, right: 2 })
   })
 })

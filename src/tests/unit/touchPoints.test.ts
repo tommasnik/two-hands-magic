@@ -95,35 +95,51 @@ describe('AC#6 — skill type assignment per side (1-point config)', () => {
     expect(skillTypeForSide('right')).toBe('fireball')
   })
 
-  it('createInitialLayout returns 2 points (1 per side)', () => {
+  it('createInitialLayout returns 4 points (2 per side, task-61.4)', () => {
     const layout = createInitialLayout(W, H, PX)
-    expect(layout).toHaveLength(2)
+    expect(layout).toHaveLength(4)
+    expect(layout.filter(p => p.side === 'left')).toHaveLength(2)
+    expect(layout.filter(p => p.side === 'right')).toHaveLength(2)
   })
 
-  it('createInitialLayout left point has skillType white_shot (task-38)', () => {
+  it('createInitialLayout left_0 has skillType white_shot (task-61.4)', () => {
     const layout = createInitialLayout(W, H, PX)
-    const left = layout.find(p => p.side === 'left')
-    expect(left).toBeDefined()
-    expect(left!.skillType).toBe('white_shot')
+    const left0 = layout.find(p => p.id === 'left_0')
+    expect(left0).toBeDefined()
+    expect(left0!.skillType).toBe('white_shot')
   })
 
-  it('createInitialLayout right point has skillType fireball (task-38)', () => {
+  it('createInitialLayout left_1 has skillType ice_crystal (task-61.4)', () => {
     const layout = createInitialLayout(W, H, PX)
-    const right = layout.find(p => p.side === 'right')
-    expect(right).toBeDefined()
-    expect(right!.skillType).toBe('fireball')
+    const left1 = layout.find(p => p.id === 'left_1')
+    expect(left1).toBeDefined()
+    expect(left1!.skillType).toBe('ice_crystal')
   })
 
-  it('createInitialLayout left point has rotationPeriodMs = WHITE_SHOT_ROTATION_PERIOD_MS (task-38)', () => {
+  it('createInitialLayout right_0 has skillType fireball (task-61.4)', () => {
     const layout = createInitialLayout(W, H, PX)
-    const left = layout.find(p => p.side === 'left')!
-    expect(left.rotationPeriodMs).toBe(WHITE_SHOT_ROTATION_PERIOD_MS)
+    const right0 = layout.find(p => p.id === 'right_0')
+    expect(right0).toBeDefined()
+    expect(right0!.skillType).toBe('fireball')
   })
 
-  it('createInitialLayout right point has rotationPeriodMs = FIREBALL_ROTATION_PERIOD_MS (task-38)', () => {
+  it('createInitialLayout right_1 has skillType lightning_blast (task-61.4)', () => {
     const layout = createInitialLayout(W, H, PX)
-    const right = layout.find(p => p.side === 'right')!
-    expect(right.rotationPeriodMs).toBe(FIREBALL_ROTATION_PERIOD_MS)
+    const right1 = layout.find(p => p.id === 'right_1')
+    expect(right1).toBeDefined()
+    expect(right1!.skillType).toBe('lightning_blast')
+  })
+
+  it('createInitialLayout left_0 has rotationPeriodMs = WHITE_SHOT_ROTATION_PERIOD_MS', () => {
+    const layout = createInitialLayout(W, H, PX)
+    const left0 = layout.find(p => p.id === 'left_0')!
+    expect(left0.rotationPeriodMs).toBe(WHITE_SHOT_ROTATION_PERIOD_MS)
+  })
+
+  it('createInitialLayout right_0 has rotationPeriodMs = FIREBALL_ROTATION_PERIOD_MS', () => {
+    const layout = createInitialLayout(W, H, PX)
+    const right0 = layout.find(p => p.id === 'right_0')!
+    expect(right0.rotationPeriodMs).toBe(FIREBALL_ROTATION_PERIOD_MS)
   })
 
   it('InputManager routes left-side touch to white_shot (task-38)', () => {

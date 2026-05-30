@@ -783,10 +783,10 @@ describe('GameStateMachine — enemy HP and level fields in GameState', () => {
     expect(['loading', 'battle', 'game_over', 'level_complete', 'victory', 'fight_overview']).toContain(state.phase)
   })
 
-  it('getState() returns touchPointsPerSide with left=1 and right=1 initially', () => {
+  it('getState() returns touchPointsPerSide with left=2 and right=2 initially (task-61.4)', () => {
     const gsm = new GameStateMachine()
     const state = gsm.getState()
-    expect(state.touchPointsPerSide).toEqual({ left: 1, right: 1 })
+    expect(state.touchPointsPerSide).toEqual({ left: 2, right: 2 })
   })
 })
 
@@ -1435,20 +1435,20 @@ describe('advanceTime helper logic — large dt must be chunked', () => {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions() (TASK-33 + TASK-35)', () => {
-  it('getTouchPointPositions() returns 2 positions by default (1 left + 1 right in DEFAULT_SKILL_CONFIG)', () => {
+  it('getTouchPointPositions() returns 4 positions by default (2 left + 2 right in DEFAULT_SKILL_CONFIG, task-61.4)', () => {
     const gsm = new GameStateMachine()
     const positions = gsm.getTouchPointPositions()
-    expect(positions).toHaveLength(2)
+    expect(positions).toHaveLength(4)
   })
 
-  it('getTouchPointPositions() returns left_0 at the left arc midpoint (same as old violet position)', () => {
+  it('getTouchPointPositions() returns left_0 at the left arc min angle (2-slot layout, task-61.4)', () => {
     const gsm = new GameStateMachine()
     const positions = gsm.getTouchPointPositions()
     const left0 = positions.find(p => p.id === 'left_0')
     expect(left0).toBeDefined()
-    // left_0 with 1 slot is at midpoint angle = violet position
-    expect(left0!.x).toBeCloseTo(VIOLET_X, 0)
-    expect(left0!.y).toBeCloseTo(VIOLET_Y, 0)
+    // left_0 with 2 slots is at min angle, not midpoint
+    expect(left0!.x).toBeCloseTo(LEFT_0_X, 0)
+    expect(left0!.y).toBeCloseTo(LEFT_0_Y, 0)
   })
 
   it('getTouchPointPositions() returns right_0 on the right side', () => {
@@ -1613,25 +1613,27 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     expect(state.touchPointsPerSide.right).toBeGreaterThanOrEqual(1)
   })
 
-  it('AC#4 — 1-skill layout places button at arc midpoint (backward compatible position)', () => {
+  it('AC#4 — 2+2 layout places left_0 at arc min angle (task-61.4)', () => {
     const gsm = new GameStateMachine()
     const layout = gsm.getTouchPointPositions()
-    // left_0 with 1 slot should be at the arc midpoint — same position as old violet
+    // left_0 with 2 slots is at min angle (22°), matches createInitialLayout position
     const left0 = layout.find(p => p.id === 'left_0')!
     expect(left0.x).toBeCloseTo(LEFT_0_X, 0)
     expect(left0.y).toBeCloseTo(LEFT_0_Y, 0)
   })
 
-  it('AC#7 — 1-skill default config is backward compatible (touchPointsPerSide = {left:1, right:1})', () => {
+  it('AC#7 — 2+2 default config (touchPointsPerSide = {left:2, right:2}, task-61.4)', () => {
     const gsm = new GameStateMachine()
-    expect(gsm.getState().touchPointsPerSide).toEqual({ left: 1, right: 1 })
+    expect(gsm.getState().touchPointsPerSide).toEqual({ left: 2, right: 2 })
   })
 
-  it('AC#5 — SkillSlotConfig is importable and usable from constants.ts (task-38: white_shot+fireball)', () => {
-    // Verify DEFAULT_SKILL_CONFIG shape — task-38 changes defaults to white_shot + fireball
-    expect(DEFAULT_SKILL_CONFIG).toHaveLength(2)
-    expect(DEFAULT_SKILL_CONFIG[0]).toMatchObject({ skillType: 'white_shot', side: 'left',  slotIndex: 0 })
-    expect(DEFAULT_SKILL_CONFIG[1]).toMatchObject({ skillType: 'fireball',   side: 'right', slotIndex: 0 })
+  it('AC#5 — SkillSlotConfig is importable and usable from constants.ts (task-61.4: 4 slots)', () => {
+    // Verify DEFAULT_SKILL_CONFIG shape — task-61.4 updates to 2+2 layout
+    expect(DEFAULT_SKILL_CONFIG).toHaveLength(4)
+    expect(DEFAULT_SKILL_CONFIG[0]).toMatchObject({ skillType: 'white_shot',      side: 'left',  slotIndex: 0 })
+    expect(DEFAULT_SKILL_CONFIG[1]).toMatchObject({ skillType: 'ice_crystal',     side: 'left',  slotIndex: 1 })
+    expect(DEFAULT_SKILL_CONFIG[2]).toMatchObject({ skillType: 'fireball',        side: 'right', slotIndex: 0 })
+    expect(DEFAULT_SKILL_CONFIG[3]).toMatchObject({ skillType: 'lightning_blast', side: 'right', slotIndex: 1 })
   })
 
   it('AC#6 — GameStateMachine routes FireCommand.skillType based on active slot (task-38: white_shot+fireball)', () => {
@@ -2618,8 +2620,11 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
       { skillType: 'fast_shot', side: 'right', slotIndex: 0 },
     ])
     gsm.startBattle()
-    gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
-    gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
+    const pos = gsm.getTouchPointPositions()
+    const lb = pos.find(p => p.id === 'left_0')!
+    const lbX = Math.round(lb.x), lbY = Math.round(lb.y)
+    gsm.update(16, [makeDown(0, lbX, lbY)])
+    gsm.update(16, [makeUp(0, lbX, lbY)])
     expect(gsm.getState().lightningDischargeTarget).not.toBeNull()
   })
 

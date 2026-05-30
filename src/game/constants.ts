@@ -288,13 +288,14 @@ export interface SkillSlotConfig {
 }
 
 /**
- * Default skill slot configuration: 1 slow_shot on the left, 1 fast_shot on the right.
- * This is the initial 1+1 layout — backward-compatible with the single-touch-point UI.
+ * Default skill slot configuration: 2+2 layout (white_shot + ice_crystal left, fireball + lightning_blast right).
  * Unit: SkillSlotConfig[]. Affects: touch point layout and skill routing in GameStateMachine.
  */
 export const DEFAULT_SKILL_CONFIG: readonly SkillSlotConfig[] = [
-  { skillType: LEFT_SIDE_SKILL,  side: 'left',  slotIndex: 0 },
-  { skillType: RIGHT_SIDE_SKILL, side: 'right', slotIndex: 0 },
+  { skillType: 'white_shot',      side: 'left',  slotIndex: 0 },
+  { skillType: 'ice_crystal',     side: 'left',  slotIndex: 1 },
+  { skillType: 'fireball',        side: 'right', slotIndex: 0 },
+  { skillType: 'lightning_blast', side: 'right', slotIndex: 1 },
 ]
 
 /**

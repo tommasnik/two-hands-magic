@@ -12,12 +12,16 @@ import {
   TOUCHPOINT_EDGE_Y_CM,
   TOUCHPOINT_ARC_ANGLE_MIN,
   TOUCHPOINT_ARC_ANGLE_MAX,
-  LEFT_SIDE_SKILL,
-  RIGHT_SIDE_SKILL,
   SLOW_SKILL_ROTATION_PERIOD_MS,
   FAST_SKILL_ROTATION_PERIOD_MS,
   WHITE_SHOT_ROTATION_PERIOD_MS,
   FIREBALL_ROTATION_PERIOD_MS,
+  ICE_CRYSTAL_ROTATION_PERIOD_MS,
+  LIGHTNING_BLAST_ROTATION_PERIOD_MS,
+  DEFAULT_SKILL_CONFIG,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  PIXELS_PER_CM,
 } from '../constants'
 
 /**
@@ -173,10 +177,12 @@ export function generateTouchPointLayout(
 
   function rotationPeriodForSkill(skillType: SkillType): number {
     switch (skillType) {
-      case 'slow_shot':  return SLOW_SKILL_ROTATION_PERIOD_MS
-      case 'fast_shot':  return FAST_SKILL_ROTATION_PERIOD_MS
-      case 'white_shot': return WHITE_SHOT_ROTATION_PERIOD_MS
-      case 'fireball':   return FIREBALL_ROTATION_PERIOD_MS
+      case 'slow_shot':       return SLOW_SKILL_ROTATION_PERIOD_MS
+      case 'fast_shot':       return FAST_SKILL_ROTATION_PERIOD_MS
+      case 'white_shot':      return WHITE_SHOT_ROTATION_PERIOD_MS
+      case 'fireball':        return FIREBALL_ROTATION_PERIOD_MS
+      case 'ice_crystal':     return ICE_CRYSTAL_ROTATION_PERIOD_MS
+      case 'lightning_blast': return LIGHTNING_BLAST_ROTATION_PERIOD_MS
     }
   }
 
@@ -212,11 +218,19 @@ export function generateTouchPointLayout(
 }
 
 /**
- * Creates the default initial layout: 1 slow_shot on the left, 1 fast_shot on the right.
- * This is the starting configuration for level 1.
+ * Creates the default initial layout from DEFAULT_SKILL_CONFIG.
+ * W/H/pxCm default to GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM for convenience in tests.
  */
-export function createInitialLayout(W: number, H: number, pxCm: number): ActiveTouchPointPos[] {
-  const activeLeft: ActiveSkillAssignment[] = [{ skillType: LEFT_SIDE_SKILL, side: 'left', slotIndex: 0 }]
-  const activeRight: ActiveSkillAssignment[] = [{ skillType: RIGHT_SIDE_SKILL, side: 'right', slotIndex: 0 }]
+export function createInitialLayout(
+  W: number = GAME_WIDTH,
+  H: number = GAME_HEIGHT,
+  pxCm: number = PIXELS_PER_CM,
+): ActiveTouchPointPos[] {
+  const activeLeft: ActiveSkillAssignment[] = DEFAULT_SKILL_CONFIG
+    .filter(s => s.side === 'left')
+    .map(s => ({ skillType: s.skillType, side: 'left' as const, slotIndex: s.slotIndex }))
+  const activeRight: ActiveSkillAssignment[] = DEFAULT_SKILL_CONFIG
+    .filter(s => s.side === 'right')
+    .map(s => ({ skillType: s.skillType, side: 'right' as const, slotIndex: s.slotIndex }))
   return generateTouchPointLayout(activeLeft, activeRight, W, H, pxCm)
 }
