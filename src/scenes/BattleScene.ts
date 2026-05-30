@@ -26,6 +26,8 @@ import {
   UPGRADE_PATH_TITLES,
   UPGRADE_TREE_COLUMNS,
   ENEMY_POOL,
+  HIT_ZONE_OVERLAY_ENABLED,
+  HIT_ZONE_OVERLAY_OPACITY,
 } from '../game/constants'
 import { characterRegistry } from '../game/CharacterRegistry'
 import { computeReticle } from '../game/systems/AimSystem'
@@ -922,19 +924,23 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     ctx.drawImage(img, dx, dy, drawW, drawH)
     ctx.restore()
 
-    // Mask overlay — same position/size as sprite, 20% opacity (debug aid)
-    const maskKey = `${spriteKey}_mask_${animKey}_${frameIndex}`
-    try {
-      if (this.textures.exists(maskKey)) {
-        const maskFrame = this.textures.getFrame(maskKey)
-        if (maskFrame?.source.image) {
-          ctx.save()
-          ctx.globalAlpha = 0.2
-          ctx.drawImage(maskFrame.source.image as HTMLImageElement, dx, dy, drawW, drawH)
-          ctx.restore()
+    // Mask overlay — same position/size as sprite (debug aid).
+    // Gated behind config: when disabled, the overlay is not drawn at all.
+    // Hit detection is unaffected — masks still load for the MaskHitDetector.
+    if (HIT_ZONE_OVERLAY_ENABLED) {
+      const maskKey = `${spriteKey}_mask_${animKey}_${frameIndex}`
+      try {
+        if (this.textures.exists(maskKey)) {
+          const maskFrame = this.textures.getFrame(maskKey)
+          if (maskFrame?.source.image) {
+            ctx.save()
+            ctx.globalAlpha = HIT_ZONE_OVERLAY_OPACITY
+            ctx.drawImage(maskFrame.source.image as HTMLImageElement, dx, dy, drawW, drawH)
+            ctx.restore()
+          }
         }
-      }
-    } catch { /* mask texture unavailable — skip silently */ }
+      } catch { /* mask texture unavailable — skip silently */ }
+    }
   }
 
   private _drawLaser(ctx: CanvasRenderingContext2D, tx: number, ty: number, dir: [number, number], color: string): void {

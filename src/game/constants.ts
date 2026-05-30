@@ -863,3 +863,21 @@ export const UPGRADE_TREE_COLUMNS: readonly import('../types').UpgradePath[] = [
   'proj_speed',
   'spell_area',
 ]
+
+// ============================================================
+// Debug overlays
+// ============================================================
+
+/**
+ * Whether to render the hit-zone mask overlay on top of enemy sprites.
+ * Debug aid only — the colored zones show where CRIT/HIT/GRAZE land.
+ * When false, the overlay is not drawn at all (hit detection is unaffected —
+ * masks still load for the MaskHitDetector). Affects: rendering only.
+ */
+export const HIT_ZONE_OVERLAY_ENABLED = false
+
+/**
+ * Opacity of the hit-zone mask overlay when enabled. Unit: 0–1 alpha.
+ * Affects: visibility of the debug overlay over the sprite.
+ */
+export const HIT_ZONE_OVERLAY_OPACITY = 0.2
