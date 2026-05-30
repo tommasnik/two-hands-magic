@@ -691,4 +691,13 @@ export interface GameState {
    * 0 = not frozen. Set by ice_crystal CRIT/HIT hits in GameStateMachine.
    */
   enemyFrozenUntilMs: number
+  /**
+   * Absolute elapsedMs until which the lightning discharge visual is active.
+   * 0 = no active discharge. Set on lightning_blast release in GameStateMachine.
+   */
+  lightningDischargeUntilMs: number
+  /** Hit result of the last lightning_blast release. Null = never fired / reset on level load. */
+  lightningDischargeResult: HitResult | null
+  /** Screen-space target point of the active lightning discharge. Null if none. */
+  lightningDischargeTarget: { x: number; y: number } | null
 }

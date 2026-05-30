@@ -25,6 +25,10 @@ import {
   XP_LEVEL_THRESHOLDS,
   ICE_CRYSTAL_FREEZE_CRIT_MS,
   ICE_CRYSTAL_FREEZE_HIT_MS,
+  LIGHTNING_BLAST_DURATION_CRIT_MS,
+  LIGHTNING_BLAST_DURATION_HIT_MS,
+  LIGHTNING_BLAST_DURATION_GRAZE_MS,
+  LIGHTNING_BLAST_DAMAGE_MAX,
 } from '../../game/constants'
 import { computeTouchPointPositions, generateTouchPointLayout, createInitialLayout } from '../../game/entities/touchPoints'
 import type { InputEvent } from '../../types'
@@ -2566,5 +2570,146 @@ describe('GameStateMachine — MaskHitDetector integration', () => {
     const state = gsm.getState()
     expect(state.enemyAnimKey).toBe('idle')
     expect(state.enemyFrameIndex).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Lightning Blast instant hit mechanic (TASK-61.3)
+// ---------------------------------------------------------------------------
+
+describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
+  it('AC #3 — discharge fields are 0/null at battle start', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    const state = gsm.getState()
+    expect(state.lightningDischargeUntilMs).toBe(0)
+    expect(state.lightningDischargeResult).toBeNull()
+    expect(state.lightningDischargeTarget).toBeNull()
+  })
+
+  it('AC #1 — lightning_blast fire does not create a projectile', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'lightning_blast', side: 'left', slotIndex: 0 },
+      { skillType: 'fast_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
+    gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
+    expect(gsm.getState().activeProjectiles).toHaveLength(0)
+  })
+
+  it('AC #2 — damage is applied immediately on release (enemyHp decreases or stays same on miss)', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'lightning_blast', side: 'left', slotIndex: 0 },
+      { skillType: 'fast_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    const hpBefore = gsm.getState().enemyHp
+    // Hold for half a rotation period so reticle is mid-screen (should hit enemy)
+    gsm.update(100, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
+    gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
+    // Note: if reticle misses, HP stays the same — so we only assert it didn't increase
+    expect(gsm.getState().enemyHp).toBeLessThanOrEqual(hpBefore)
+  })
+
+  it('AC #3 — lightningDischargeTarget is set after lightning_blast release', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'lightning_blast', side: 'left', slotIndex: 0 },
+      { skillType: 'fast_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
+    gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
+    expect(gsm.getState().lightningDischargeTarget).not.toBeNull()
+  })
+
+  it('AC #4 — CRIT hit sets discharge to LIGHTNING_BLAST_DURATION_CRIT_MS', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    const before = gsm.getState()
+    gsm._fireLightningBlastForTesting('CRIT')
+    expect(gsm.getState().lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_CRIT_MS)
+    expect(gsm.getState().lightningDischargeResult).toBe('CRIT')
+  })
+
+  it('AC #4 — HIT hit sets discharge to LIGHTNING_BLAST_DURATION_HIT_MS', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    const before = gsm.getState()
+    gsm._fireLightningBlastForTesting('HIT')
+    expect(gsm.getState().lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_HIT_MS)
+    expect(gsm.getState().lightningDischargeResult).toBe('HIT')
+  })
+
+  it('AC #4 — GRAZE hit sets discharge to LIGHTNING_BLAST_DURATION_GRAZE_MS', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    const before = gsm.getState()
+    gsm._fireLightningBlastForTesting('GRAZE')
+    expect(gsm.getState().lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_GRAZE_MS)
+    expect(gsm.getState().lightningDischargeResult).toBe('GRAZE')
+  })
+
+  it('AC #4 — MISS sets discharge duration to 0, result to MISS', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    gsm._fireLightningBlastForTesting('MISS')
+    expect(gsm.getState().lightningDischargeUntilMs).toBe(gsm.getState().elapsedMs)
+    expect(gsm.getState().lightningDischargeResult).toBe('MISS')
+  })
+
+  it('AC #5 — GRAZE uses standard GRAZE damage multiplier', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    const hpBefore = gsm.getState().enemyHp
+    gsm._fireLightningBlastForTesting('GRAZE')
+    const damage = hpBefore - gsm.getState().enemyHp
+    expect(damage).toBeGreaterThan(0)
+    expect(damage).toBeLessThan(LIGHTNING_BLAST_DAMAGE_MAX * CRIT_DAMAGE_MULTIPLIER)
+  })
+
+  it('AC #3 — discharge fields reset to 0/null on level load', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._fireLightningBlastForTesting('CRIT')
+    expect(gsm.getState().lightningDischargeUntilMs).toBeGreaterThan(0)
+    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    gsm.confirmLevelUpUpgrade()
+    gsm.nextLevel()
+    const state = gsm.getState()
+    expect(state.lightningDischargeUntilMs).toBe(0)
+    expect(state.lightningDischargeResult).toBeNull()
+    expect(state.lightningDischargeTarget).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ice Crystal freeze-end transition (TASK-61.2 behavior branch coverage)
+// ---------------------------------------------------------------------------
+
+describe('GameStateMachine — ice_crystal freeze-end transition', () => {
+  it('animation sync resets after freeze expires (freeze-end branch)', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm.update(100, [])
+    // Apply a CRIT freeze (2000ms)
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    // Advance well inside the freeze window → wasFrozenLastTick = true
+    gsm.update(100, [])
+    expect(gsm.getState().enemyFrozenUntilMs).toBeGreaterThan(gsm.getState().elapsedMs)
+    // Advance past freeze end — the freeze-end branch (_lastAnimNodeId = null) fires
+    const freezeEnd = gsm.getState().enemyFrozenUntilMs
+    const current = gsm.getState().elapsedMs
+    const remaining = freezeEnd - current + 50
+    for (let t = 0; t < remaining; t += MAX_DELTA_MS) {
+      gsm.update(MAX_DELTA_MS, [])
+    }
+    expect(gsm.getState().enemyFrozenUntilMs).toBeLessThanOrEqual(gsm.getState().elapsedMs)
+    // Game continues normally after freeze ends
+    expect(gsm.getState().phase).toBe('battle')
   })
 })

@@ -33,6 +33,7 @@ import {
   DEFAULT_GLOBAL_UPGRADE_STATE,
   ENEMY_POOL,
   ICE_CRYSTAL_FREEZE_CRIT_MS, ICE_CRYSTAL_FREEZE_HIT_MS,
+  LIGHTNING_BLAST_DURATION_CRIT_MS, LIGHTNING_BLAST_DURATION_HIT_MS, LIGHTNING_BLAST_DURATION_GRAZE_MS,
 } from './constants'
 import type { SkillSlotConfig } from './constants'
 
@@ -131,6 +132,10 @@ export class GameStateMachine {
   // Tracks whether the enemy was frozen on the previous tick — drives holdFrame
   // (freeze start) and animation restore (freeze end) transitions.
   private _wasFrozenLastTick = false
+  // Lightning discharge state — set on lightning_blast release, consumed by the render layer.
+  private _lightningDischargeUntilMs = 0
+  private _lightningDischargeResult: HitResult | null = null
+  private _lightningDischargeTarget: { x: number; y: number } | null = null
   // Optional pixel-perfect mask detector for sprite-based enemies.
   // Injected from BattleScene after mask data is loaded from textures.
   private _maskDetector?: MaskHitDetector
@@ -372,17 +377,37 @@ export class GameStateMachine {
           const chainBonus = this._computeChainBonus(slot.id)
           this._lastCastBySlot[slot.id] = this.elapsedMs
 
-          this.projectileSystem.fire(
-            { x: slot.x, y: slot.y },
-            { x: reticle.x, y: reticle.y },
-            cmd.skillType,
-            chainBonus,
-            {
-              projectileSpeedMultiplier: this._globalUpgrades.projectileSpeedMultiplier,
-              spellAreaMultiplier: this._globalUpgrades.spellAreaMultiplier,
-            },
-            slot.side,
-          )
+          // Use the slot's configured skillType (not cmd.skillType which is hardcoded
+          // to LEFT_SIDE_SKILL / RIGHT_SIDE_SKILL by InputManager.skillTypeForSide).
+          const skillType = slot.skillType
+          if (skillType === 'lightning_blast') {
+            const hitResult = this.enemy.getHitResult(
+              { x: reticle.x, y: reticle.y },
+              this._globalUpgrades.critZoneTolerance,
+            )
+            this._applyHit(hitResult, 'lightning_blast', { x: reticle.x, y: reticle.y }, chainBonus, 0, slot.side)
+            const durations: Record<HitResult, number> = {
+              CRIT: LIGHTNING_BLAST_DURATION_CRIT_MS,
+              HIT: LIGHTNING_BLAST_DURATION_HIT_MS,
+              GRAZE: LIGHTNING_BLAST_DURATION_GRAZE_MS,
+              MISS: 0,
+            }
+            this._lightningDischargeUntilMs = this.elapsedMs + durations[hitResult]
+            this._lightningDischargeResult = hitResult
+            this._lightningDischargeTarget = { x: reticle.x, y: reticle.y }
+          } else {
+            this.projectileSystem.fire(
+              { x: slot.x, y: slot.y },
+              { x: reticle.x, y: reticle.y },
+              skillType,
+              chainBonus,
+              {
+                projectileSpeedMultiplier: this._globalUpgrades.projectileSpeedMultiplier,
+                spellAreaMultiplier: this._globalUpgrades.spellAreaMultiplier,
+              },
+              slot.side,
+            )
+          }
         }
       }
     }
@@ -524,6 +549,25 @@ export class GameStateMachine {
   }
 
   /**
+   * Simulate a lightning_blast hit with a given result, setting discharge state
+   * exactly as the real fire path would. Used to test discharge duration mapping
+   * without requiring input-system routing.
+   * @internal For unit tests only — do not use in production code.
+   */
+  _fireLightningBlastForTesting(result: HitResult): void {
+    this._applyHit(result, 'lightning_blast', null, 0, 0, 'left')
+    const durations: Record<HitResult, number> = {
+      CRIT: LIGHTNING_BLAST_DURATION_CRIT_MS,
+      HIT: LIGHTNING_BLAST_DURATION_HIT_MS,
+      GRAZE: LIGHTNING_BLAST_DURATION_GRAZE_MS,
+      MISS: 0,
+    }
+    this._lightningDischargeUntilMs = this.elapsedMs + durations[result]
+    this._lightningDischargeResult = result
+    this._lightningDischargeTarget = { x: GAME_WIDTH / 2, y: 0 }
+  }
+
+  /**
    * Apply an upgrade node to the global upgrade state immediately, bypassing
    * the pendingLevelUp gate. Used by unit and game-design tests to set up
    * specific upgrade states without driving the XP/level pipeline.
@@ -610,6 +654,9 @@ export class GameStateMachine {
       enemyManifestId: this._enemyManifestId,
       enemyDisplayWidth: this.enemy.displayWidth,
       enemyFrozenUntilMs: this._enemyFrozenUntilMs,
+      lightningDischargeUntilMs: this._lightningDischargeUntilMs,
+      lightningDischargeResult: this._lightningDischargeResult,
+      lightningDischargeTarget: this._lightningDischargeTarget ? { ...this._lightningDischargeTarget } : null,
       enemyAnimKey: this.enemy.currentAnimKey,
       enemyFrameIndex: this.enemy.currentFrameIndex,
       currentLevel: this.currentLevel,
@@ -743,6 +790,9 @@ export class GameStateMachine {
     this._enemyStunnedUntilMs = 0
     this._enemyFrozenUntilMs = 0
     this._wasFrozenLastTick = false
+    this._lightningDischargeUntilMs = 0
+    this._lightningDischargeResult = null
+    this._lightningDischargeTarget = null
     this._lastCastBySlot = {}
   }
 
