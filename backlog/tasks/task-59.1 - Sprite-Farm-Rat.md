@@ -1,9 +1,10 @@
 ---
 id: TASK-59.1
 title: 'Sprite: Farm Rat'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 08:01'
+updated_date: '2026-05-30 09:36'
 labels:
   - sprites
   - pixellab

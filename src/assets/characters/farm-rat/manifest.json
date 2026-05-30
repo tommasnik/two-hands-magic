@@ -1,0 +1,34 @@
+{
+  "id": "farm-rat",
+  "spriteKey": "farm_rat",
+  "displayWidth": 120,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "2c088d82-7ca7-4e12-80e3-2b0e97e5cd00",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 200,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "614e5b43-634e-47cc-801d-38ad01de7b07",
+        "direction": "south",
+        "description": "Alert scavenging rat, twitching ears, tail and whiskers; skittish vermin idle"
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 130,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "e71a8ae8-521d-4527-8328-9488a3b4f9d7",
+        "direction": "south",
+        "description": "Quick darting bite lunge — crouch, spring, jaws snap on yellow incisors, recoil"
+      }
+    }
+  }
+}

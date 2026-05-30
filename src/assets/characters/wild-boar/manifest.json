@@ -1,0 +1,34 @@
+{
+  "id": "wild-boar",
+  "spriteKey": "wild_boar",
+  "displayWidth": 230,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "14190368-ef4e-4a2b-a16a-e0222d20b6d3",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 180,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "bdffbd0c-da35-45cf-bfd4-2a1666716639",
+        "direction": "south",
+        "description": "Snorting, pawing wild boar idle — head swings, bristled ridge quivers, hoof scrapes dirt, ready to charge. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 120,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "b07c8f40-a851-4b3b-b6f1-72b7b439ce4b",
+        "direction": "south",
+        "description": "Goring tusk charge — lowers head, drives forward at the viewer, slams curved tusks upward, recoils to a low huffing stance."
+      }
+    }
+  }
+}

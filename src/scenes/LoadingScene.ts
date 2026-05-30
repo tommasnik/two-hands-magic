@@ -15,6 +15,8 @@ import goblinScoutManifest from '../assets/characters/goblin-scout/manifest.json
 import orcWarriorManifest from '../assets/characters/orc-warrior/manifest.json'
 import insectSwarmManifest from '../assets/characters/insect-swarm/manifest.json'
 import barnSpiderManifest from '../assets/characters/barn-spider/manifest.json'
+import wolfManifest from '../assets/characters/wolf/manifest.json'
+import wildBoarManifest from '../assets/characters/wild-boar/manifest.json'
 
 /** All character manifests to register and load. */
 const ALL_MANIFESTS: CharacterManifest[] = [
@@ -30,6 +32,8 @@ const ALL_MANIFESTS: CharacterManifest[] = [
   orcWarriorManifest as CharacterManifest,
   insectSwarmManifest as CharacterManifest,
   barnSpiderManifest as CharacterManifest,
+  wolfManifest as CharacterManifest,
+  wildBoarManifest as CharacterManifest,
 ]
 
 export class LoadingScene extends Phaser.Scene {

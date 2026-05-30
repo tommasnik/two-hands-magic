@@ -1,9 +1,10 @@
 ---
 id: TASK-59.5
 title: 'Sprite: Wild Boar'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 08:01'
+updated_date: '2026-05-30 11:20'
 labels:
   - sprites
   - pixellab
@@ -45,3 +46,9 @@ priority: medium
 - Download frames → `src/assets/characters/wild-boar/frames/`
 - Create manifest.json + generate masks
 <!-- SECTION:DESCRIPTION:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Wild Boar sprite hotov. PixelLab character 14190368-ef4e-4a2b-a16a-e0222d20b6d3 (quadruped/bear, view=side, standard mode, 64x64 — v3 nepodporuje quadruped). Base sprite na 2. pokus (uživatel chtěl 64x64 + špinavější/divočejší). idle(9f) + attack(9f, charge & gore) south. Frames + manifest + auto-masks (green GRAZE) v src/assets/characters/wild-boar/. ENEMY_WILD_BOAR (40 HP, displayWidth 230) v constants.ts + registrace v LoadingScene. Build + 719 testů zelené.
+<!-- SECTION:NOTES:END -->

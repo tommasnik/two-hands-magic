@@ -780,6 +780,28 @@ export const ENEMY_BARN_SPIDER: EnemyDef = {
   displayWidth: 200,
 }
 
+/** Wolf — lean gray predator. Moderate HP beast; a step up from the early vermin enemies. */
+export const ENEMY_WOLF: EnemyDef = {
+  name: 'Wolf',
+  maxHp: 30,
+  manifestId: 'wolf',
+  spriteKey: 'wolf',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 210,
+}
+
+/** Wild Boar — stocky, mud-caked charging beast. Tankier than the wolf; a heavy mid-tier beast. */
+export const ENEMY_WILD_BOAR: EnemyDef = {
+  name: 'Wild Boar',
+  maxHp: 40,
+  manifestId: 'wild-boar',
+  spriteKey: 'wild_boar',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 230,
+}
+
 // ============================================================
 // Enemy pool — sequential rotation through all sprite-based characters
 // ============================================================

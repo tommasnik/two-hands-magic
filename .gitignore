@@ -3,3 +3,4 @@ dist
 test-results
 coverage
 .playwright-mcp
+.claude/scheduled_tasks.lock

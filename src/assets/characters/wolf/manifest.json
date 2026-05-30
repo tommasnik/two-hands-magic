@@ -1,0 +1,34 @@
+{
+  "id": "wolf",
+  "spriteKey": "wolf",
+  "displayWidth": 210,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "31af5273-7c8b-427f-9a69-dc145369cce4",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "2cca1160-db58-43d1-bc77-94f2bd2724b2",
+        "direction": "south",
+        "description": "Alert four-legged wolf idle — shaggy gray fur, ears twitch, bushy tail sways, breathing; seamless loop"
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "39a8b6e6-9e40-461c-b3b1-2f1df412fe70",
+        "direction": "south",
+        "description": "Pouncing bite lunge — coil low, spring off hind legs, jaws bare fangs and snap, recoil to crouch"
+      }
+    }
+  }
+}

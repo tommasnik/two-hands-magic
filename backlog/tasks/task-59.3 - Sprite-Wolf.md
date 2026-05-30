@@ -1,9 +1,10 @@
 ---
 id: TASK-59.3
 title: 'Sprite: Wolf'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 08:01'
+updated_date: '2026-05-30 11:16'
 labels:
   - sprites
   - pixellab
