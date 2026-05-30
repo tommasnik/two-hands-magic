@@ -4,10 +4,10 @@
 // These tests register real character manifests on the shared CharacterRegistry
 // singleton so the machine builds an AnimationController per enemy (the
 // manifest branch of _loadLevel that the plain gameStateMachine.test.ts — which
-// registers nothing — cannot reach). They then inject behaviour graphs via
-// _initBehaviorGraphForTesting (ENEMY_POOL entries carry no graph yet; graph
-// configuration lands in TASK-60.6) to exercise the runner → delivery → player
-// hit wiring, stun freezing, and animation driving.
+// registers nothing — cannot reach). They inject behaviour graphs via
+// _initBehaviorGraphForTesting (TASK-60.6 wired graphs into ENEMY_POOL, but the
+// stub manifests registered here use fewer frames than the real release-frame
+// indices, so no delivery is spawned from the real graph in these tests).
 // ============================================================
 
 import { describe, it, expect, beforeAll } from 'vitest'
@@ -146,11 +146,15 @@ function advanceToNextEnemy(gsm: GameStateMachine): void {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — behaviour runner spawns deliveries (AC#1)', () => {
-  it('a graph with no runner (default ENEMY_POOL) never spawns deliveries', () => {
-    const gsm = startWithDetector() // no graph injected
+  it('clearing the runner via _initBehaviorGraphForTesting(undefined) stops all attacks', () => {
+    const gsm = startWithDetector(orbGraph(10, 500)) // start with a fast graph
+    advance(gsm, 200) // let it attack at least once
+    // Now clear the runner — the enemy should no longer spawn deliveries.
+    gsm._initBehaviorGraphForTesting(undefined)
+    const hpAfterClear = gsm.getState().player.hp
     advance(gsm, 4000)
     expect(gsm.getState().activeDeliveries).toEqual([])
-    expect(gsm.getState().player.hp).toBe(gsm.getState().player.maxHp)
+    expect(gsm.getState().player.hp).toBe(hpAfterClear) // no further damage
   })
 
   it('emits an orb on the attack release frame and exposes it via activeDeliveries', () => {

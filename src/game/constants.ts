@@ -1,6 +1,24 @@
 import type { SkillType, HitResult, EnemyDef, TouchPointDef, HitZoneEntry, GlobalUpgradeState, UpgradeNodeDef, UpgradeNodeId } from '../types'
 export type { TouchPointDef, MovementPattern, EnemyBehaviorDef } from '../types'
 
+// Re-export all attack constants so consumers can still import from 'constants'.
+export * from './enemyAttackConstants'
+
+// Behavior graphs for ENEMY_POOL — defined in enemyGraphs.ts to avoid circular deps.
+import {
+  stoneGiantGraph,
+  plagueRatGraph,
+  iceGiantGraph,
+  crystalSpiderGraph,
+  emberWispGraph,
+  ironGolemGraph,
+  ancientTreantGraph,
+  goblinScoutGraph,
+  orcWarriorGraph,
+  mirrorKnightGraph,
+  insectSwarmGraph,
+} from './enemyGraphs'
+
 // ============================================================
 // Game canvas dimensions
 // ============================================================
@@ -680,6 +698,7 @@ export const ENEMY_STONE_GIANT: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 400,
+  behaviorGraph: stoneGiantGraph,
 }
 
 /**
@@ -694,6 +713,7 @@ export const ENEMY_ICE_GIANT: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 248,
+  behaviorGraph: iceGiantGraph,
 }
 
 /** Ember Wisp — tiny, barely visible. Difficulty from precision, not prediction. */
@@ -704,6 +724,7 @@ export const ENEMY_EMBER_WISP: EnemyDef = {
   spriteKey: 'ember_wisp',
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
+  behaviorGraph: emberWispGraph,
 }
 
 /** Crystal Spider — disproportionately large crit field; low HP forces crit-focused play. */
@@ -715,6 +736,7 @@ export const ENEMY_CRYSTAL_SPIDER: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 224,
+  behaviorGraph: crystalSpiderGraph,
 }
 
 /** Plague Rat — extremely small. Accuracy is the true obstacle. Holds position (no lateral movement). */
@@ -726,6 +748,7 @@ export const ENEMY_PLAGUE_RAT: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 180,
+  behaviorGraph: plagueRatGraph,
 }
 
 /** Iron Golem — massive dark iron construct. Very high HP, punishes misses. */
@@ -737,6 +760,7 @@ export const ENEMY_IRON_GOLEM: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 240,
+  behaviorGraph: ironGolemGraph,
 }
 
 /** Ancient Treant — highest HP enemy. Endurance fight against a massive tree. */
@@ -747,6 +771,7 @@ export const ENEMY_ANCIENT_TREANT: EnemyDef = {
   spriteKey: 'ancient_treant',
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
+  behaviorGraph: ancientTreantGraph,
 }
 
 /** Goblin Scout — small, lightly armoured skirmisher. Low HP, easy warm-up enemy. */
@@ -758,6 +783,7 @@ export const ENEMY_GOBLIN_SCOUT: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 120,
+  behaviorGraph: goblinScoutGraph,
 }
 
 /** Orc Warrior — heavy bruiser with an axe. High HP, punishes slow play. */
@@ -769,6 +795,7 @@ export const ENEMY_ORC_WARRIOR: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 220,
+  behaviorGraph: orcWarriorGraph,
 }
 
 /** Mirror Knight — armoured duelist with sword and shield. Tanky mid-campaign wall. */
@@ -780,6 +807,7 @@ export const ENEMY_MIRROR_KNIGHT: EnemyDef = {
   hitZoneMap: DEFAULT_HIT_ZONE_MAP,
   behavior: { pattern: 'static', speed: 0 },
   displayWidth: 160,
+  behaviorGraph: mirrorKnightGraph,
 }
 
 /**
@@ -798,6 +826,7 @@ export const ENEMY_INSECT_SWARM: EnemyDef = {
     amplitude: ENEMY_LR_AMPLITUDE_WIDE,
   },
   displayWidth: 128,
+  behaviorGraph: insectSwarmGraph,
 }
 
 /** Barn Spider — dog-sized ambush spider. Low HP beast enemy; precision over endurance. */

@@ -528,13 +528,13 @@ export class GameStateMachine {
   }
 
   /**
-   * Install a behaviour graph on the active enemy, bypassing _loadLevel.
-   * ENEMY_POOL entries do not (yet) carry graphs — graph configuration lands in
-   * TASK-60.6 — so unit tests use this to exercise the runner/delivery wiring.
+   * Install (or clear) a behaviour graph on the active enemy, bypassing _loadLevel.
+   * Pass a BehaviorGraph to install it; pass undefined to clear the runner so the
+   * enemy stops attacking — used by tests to verify the no-graph code path.
    * Also resets the delivery system so a freshly injected graph starts clean.
    * @internal For tests only.
    */
-  _initBehaviorGraphForTesting(graph: BehaviorGraph): void {
+  _initBehaviorGraphForTesting(graph: BehaviorGraph | undefined): void {
     this._initBehaviorRunner(graph)
     this._deliverySystem.reset()
   }
