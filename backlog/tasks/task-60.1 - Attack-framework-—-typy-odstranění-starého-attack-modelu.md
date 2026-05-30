@@ -1,7 +1,7 @@
 ---
 id: TASK-60.1
 title: Attack framework — typy & odstranění starého attack modelu
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 12:41'
 updated_date: '2026-05-30 12:53'

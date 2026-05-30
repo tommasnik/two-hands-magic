@@ -19,7 +19,18 @@
         "animationGroupId": "d4495fc0-f616-4eb0-b6c7-698b3d943938",
         "direction": "unknown",
         "description": "Top-down ambush-predator idle — legs twitch and reposition, body settles, fangs flex. Seamless loop."
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
     },
     "attack": {
       "frameCount": 9,
@@ -31,7 +42,18 @@
         "animationGroupId": "aa16e17e-f535-4021-89b0-a4601b586370",
         "direction": "unknown",
         "description": "Top-down venomous bite — surges forward, front legs spread, chelicerae fangs stab down, recoils to crouch."
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   },
   "_notes": "1-direction object (top-down, no rotation) used as a character enemy. Masks auto-generated (green GRAZE) by scripts/generate_masks.py."

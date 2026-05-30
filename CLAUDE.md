@@ -221,6 +221,17 @@ Testy ve `src/tests/game-design/` musí pokrývat:
 
 ---
 
+## Enemy Attack & Behavior Framework
+
+> ⚠️ **Pokud jdeš pracovat na útocích nepřátel, chování enemy (graf stavů), delivery (orb/overlay) nebo enemy animacích řízených soubojem, načti si nejdřív `EnemyAttacks.md`** — závazná architektura: state-graph runner, exit triggery, guardy, delivery model, render registry, runtime pravidla (stun, hold-frame) a co je mimo scope.
+
+Každý nepřítel útočí přes deklarativní **graf stavů** (`EnemyBehaviorRunner`, pure TS) —
+uzel = animace + volitelný útok, hrany = váhy + volitelný guard. Útok na release framu vyšle
+**delivery** (orb / overlay), damage padne na „connect". Konfigurace grafů žije v
+`src/game/enemyGraphs.ts`, číselné hodnoty v `constants.ts`. Detaily a kontrakt → `EnemyAttacks.md`.
+
+---
+
 ## Sprite & Character Asset System
 
 > ⚠️ **Pokud jdeš pracovat s PixelLab MCP nebo generovat/zadávat generování sprites, načti si nejdřív `PixelLab.md`** — obsahuje destilované instrukce (volba metody, side-scroller view, proces, jak psát prompty).

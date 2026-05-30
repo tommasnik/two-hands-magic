@@ -4,12 +4,12 @@ title: Game design testy pro 5 sprite-based characteru
 status: To Do
 assignee: []
 created_date: '2026-05-29 12:05'
+updated_date: '2026-05-30 12:54'
 labels:
   - testing
   - game-design
 milestone: m-0
-dependencies:
-  - TASK-56
+dependencies: []
 references:
   - src/tests/game-design/README.md — guide pro psani game design testu
   - src/game/constants.ts — zdrojove konstanty pro aserce

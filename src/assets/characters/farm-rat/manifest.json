@@ -17,7 +17,18 @@
         "animationId": "614e5b43-634e-47cc-801d-38ad01de7b07",
         "direction": "south",
         "description": "Alert scavenging rat, twitching ears, tail and whiskers; skittish vermin idle"
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04",
+        "idle_05",
+        "idle_06",
+        "idle_07",
+        "idle_08"
+      ]
     },
     "attack": {
       "frameCount": 9,
@@ -28,7 +39,18 @@
         "animationId": "e71a8ae8-521d-4527-8328-9488a3b4f9d7",
         "direction": "south",
         "description": "Quick darting bite lunge — crouch, spring, jaws snap on yellow incisors, recoil"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   }
 }

@@ -3,10 +3,10 @@ id: TASK-60.4
 title: >-
   GameStateMachine integrace — napojit runner + delivery, odstranit starý attack
   path
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 12:42'
-updated_date: '2026-05-30 14:15'
+updated_date: '2026-05-30 14:16'
 labels: []
 dependencies:
   - TASK-60.2

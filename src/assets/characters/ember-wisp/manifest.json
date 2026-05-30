@@ -16,7 +16,14 @@
       "hasMasks": true,
       "source": {
         "description": "Ping-pong from attack frames 0-1-2-1-0 (placeholder until proper idle is generated)"
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04"
+      ]
     },
     "attack": {
       "frameCount": 9,
@@ -28,7 +35,18 @@
         "animationGroupId": "b769cedf-49ce-4d7d-8644-1eaae2fbd95c",
         "direction": "unknown",
         "description": "Flame intensifies, pulsing with bright core, surges forward trailing embers"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   },
   "_notes": "1-direction object (no rotation). Static frame also saved as rotation.png."

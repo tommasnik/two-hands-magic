@@ -1,7 +1,7 @@
 ---
 id: TASK-60.2
 title: DeliverySystem — orb let + overlay connect (pure TS)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 12:41'
 updated_date: '2026-05-30 12:57'
