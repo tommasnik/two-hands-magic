@@ -80,22 +80,34 @@ Diskutabilní = nemá čistou humanoid/quadruped kostru nebo může vypadat víc
 Kompletní statický vizuální popis postavy: materiály, barvy, proporce, srst/peří, zbraně, vybavení, textury, póza. Čím víc detailů, tím konzistentnější výsledek.
 
 ### `action_description` (při animate)
-**Self-contained** — PixelLab generuje framy nezávisle, takže prompt musí nést VŠECHNY vizuální informace, ne jen popis pohybu. Musí být konzistentní s `description` (stejné barvy, materiály, zbraně).
+**Self-contained** — PixelLab generuje framy nezávisle, takže prompt musí nést vizuální informace nutné pro konzistenci, ne jen popis pohybu. `description` z create slouží jako vizuální kotva — v animaci ji není třeba opakovat celou.
+
+### Délka promptu
+
+Cílová délka: **40–70 slov (~250–450 znaků)**, tj. 2–3 věty.
+Delší prompt konzistenci nezlepšuje — `description` z create už nese plný vizuál.
+
+Struktura:
+- **1 věta** — vizuální kotva: silueta + 1–2 materiály + zbraň. **NE** celý inventář výstroje.
+- **1–2 věty** — pohyb: příprava → úder/drift → návrat.
+- idle navíc: povinná věta o seamless loop.
+
+**Anti-pattern**: opakovat kompletní soupisku výstroje (vesta + pláty + rukávy + kalhoty + boty + belt + pouches + kapuce + šátek…) v každém animačním promptu. Stačí 3–5 klíčových znaků.
 
 Pravidla:
 1. **Pre-check first** — popis odvoď od toho, co reálně vidíš na spritu, ne od idealizovaného zadání. Pokud sprite nemá zbraň ze zadání, uprav útok.
 2. **Idle = seamless loop** — první a poslední frame vizuálně identické (póza i pozice). Do promptu VŽDY explicitně přidej větu:
    > „The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
-3. **Rich konzistence** — opakuj kompletní vizuál (barvy, materiály, textury, svaly, srst, oči, ocas, výstroj) i v animačním promptu.
+3. **Vizuální kotva** — uveď siluetu + 1–2 dominantní materiály + zbraň. Neopakuj celý inventář výstroje z `description`.
 4. **Konzistence zbraní** — pokud postava drží zbraň (meč, sekera, dýka, oštěp…), attack MUSÍ útočit **touto** zbraní viditelnou na spritu. Žádný generic punch/slam. Zbraň na spritu je autoritativní, ne popis v zadání. Bestie útočí přirozeně (bite/pounce/gore/claw swipe).
 
-### Šablona (z tasku 59)
+### Šablona
 
 **idle** (loop):
-> „A [tvor s plným vizuálním popisem — barvy, materiály, srst, výstroj], [klidová póza, čelem]. [Drobné idle pohyby: dýchání, přešlapování, twitch uší/ocasu, oči sledující dopředu]. The overall impression is [charakter/nálada]. The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
+> „A [silueta + 1–2 materiály + zbraň], standing upright facing forward. [Drobné idle pohyby: dýchání, přešlapování, twitch uší/ocasu]. The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
 
 **attack** (one-shot):
-> „The [tvor] attacks with [konkrétní útok danou zbraní / přirozený útok] — it [příprava: coil/draw back/lower head], [úder směrem k cíli = ke kameře/hráči], [dopad/recoil zpět do ready stance]. [Detaily pohybu výstroje/srsti]."
+> „The [silueta + zbraň] attacks — [příprava: coil/draw back/lower head], [úder směrem ke kameře], [recoil zpět do ready stance]."
 
 ---
 
