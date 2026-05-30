@@ -3,7 +3,7 @@ import type { Projectile, GameState } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
 
 interface LightningState {
-  segments: { x: number; y: number }[]
+  paths: { x: number; y: number }[][]  // 3 pre-generated zigzag paths
   dischargeUntilMs: number
 }
 
@@ -192,7 +192,7 @@ export class SkillRenderer {
 
   /**
    * Draws a jagged yellow lightning bolt from bottom-center to the discharge target.
-   * Segments are generated once on spawn so the line stays static while active.
+   * 3 paths are pre-generated at spawn and cycled every 80 ms — tesla-coil jump effect.
    * Fades out over the final 100 ms.
    */
   drawLightningDischarge(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -212,19 +212,28 @@ export class SkillRenderer {
       const len = Math.hypot(dx, dy)
       const px = len > 0 ? -dy / len : 0
       const py = len > 0 ?  dx / len : 1
-      const numSegments = 6 + Math.floor(Math.random() * 3)
 
-      const segments: { x: number; y: number }[] = [{ x: ox, y: oy }]
-      for (let i = 1; i < numSegments; i++) {
-        const t = i / numSegments
-        const offset = (Math.random() - 0.5) * 80
-        segments.push({ x: ox + dx * t + px * offset, y: oy + dy * t + py * offset })
+      const makePath = (): { x: number; y: number }[] => {
+        const n = 3 + Math.floor(Math.random() * 2)  // 3–4 segments
+        const pts: { x: number; y: number }[] = [{ x: ox, y: oy }]
+        for (let i = 1; i < n; i++) {
+          const t = i / n
+          const offset = (Math.random() - 0.5) * 80
+          pts.push({ x: ox + dx * t + px * offset, y: oy + dy * t + py * offset })
+        }
+        pts.push({ x: tx, y: ty })
+        return pts
       }
-      segments.push({ x: tx, y: ty })
-      this._lightningState = { segments, dischargeUntilMs: lightningDischargeUntilMs }
+
+      this._lightningState = {
+        paths: [makePath(), makePath(), makePath()],
+        dischargeUntilMs: lightningDischargeUntilMs,
+      }
     }
 
-    const { segments } = this._lightningState
+    const { paths } = this._lightningState
+    const pathIndex = Math.floor(elapsedMs / 80) % paths.length
+    const segments = paths[pathIndex]
     const remainingMs = lightningDischargeUntilMs - elapsedMs
     const alpha = remainingMs < 100 ? remainingMs / 100 : 1.0
 
