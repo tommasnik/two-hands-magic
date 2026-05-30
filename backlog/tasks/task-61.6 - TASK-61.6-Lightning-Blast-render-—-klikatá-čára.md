@@ -1,9 +1,10 @@
 ---
 id: TASK-61.6
 title: 'TASK-61.6: Lightning Blast render — klikatá čára'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 18:52'
+updated_date: '2026-05-30 20:27'
 labels:
   - skills
   - visuals
@@ -49,10 +50,10 @@ Vizuální vrstva pro Lightning Blast. Klikatá žlutá/bílá čára od bottom-
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Kčikatá čára se objeví při lightning_blast releasu
-- [ ] #2 Čára jde z bottom-center k target bodu na nepříteli
-- [ ] #3 CRIT = 600ms, HIT = 300ms, GRAZE = 150ms vizualizace
-- [ ] #4 Fade-out na konci trvání
-- [ ] #5 Segmenty čáry se negenerují každý frame (statická klikatá čára)
-- [ ] #6 Otestováno manuálně v dev serveru
+- [x] #1 Kčikatá čára se objeví při lightning_blast releasu
+- [x] #2 Čára jde z bottom-center k target bodu na nepříteli
+- [x] #3 CRIT = 600ms, HIT = 300ms, GRAZE = 150ms vizualizace
+- [x] #4 Fade-out na konci trvání
+- [x] #5 Segmenty čáry se negenerují každý frame (statická klikatá čára)
+- [x] #6 Otestováno manuálně v dev serveru
 <!-- AC:END -->
