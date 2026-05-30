@@ -258,6 +258,27 @@ export interface AttackSpec {
 }
 
 /**
+ * Serialisable snapshot of one in-flight attack delivery for the render layer.
+ * Produced by DeliverySystem.getActive() and exposed in GameState so the render
+ * layer and the test bridge can draw / inspect orbs and overlays. Carries only
+ * data (a visualKey + geometry) — never any Phaser / render detail.
+ */
+export interface ActiveDelivery {
+  /** Unique id of this delivery. */
+  id: string
+  /** Delivery kind that produced a visual ('effect' deliveries never appear here). */
+  kind: 'orb' | 'overlay'
+  /** Render-layer lookup key. */
+  visualKey: string
+  /** Where the delivery originates. For overlay this equals target (it plays on the player). Unit: px. */
+  origin: { x: number; y: number }
+  /** Where the delivery connects (player centre). Unit: px. */
+  target: { x: number; y: number }
+  /** Flight / connect progress in 0..1. 1 = connected. */
+  progress: number
+}
+
+/**
  * Unique identifier for one of the 6 touch points.
  * Left side: green, violet, orange. Right side: blue, red, yellow.
  */
@@ -374,27 +395,6 @@ export interface Player {
   hp: number
   /** Maximum HP for bar fill calculation. Unit: HP. */
   maxHp: number
-}
-
-/**
- * A missile fired by an enemy travelling toward the player.
- * Mirrors the player Projectile shape but carries damage and a colour for rendering.
- */
-export interface IncomingMissile {
-  /** Unique missile identifier. */
-  id: string
-  /** World position the missile spawned at. Unit: px. */
-  origin: { x: number; y: number }
-  /** World position the missile is travelling toward (player centre). Unit: px. */
-  target: { x: number; y: number }
-  /** HP damage the missile deals on impact. Unit: HP. */
-  damage: number
-  /** CSS colour string for the orb. */
-  color: string
-  /** Normalised travel progress from origin to target. Range: 0–1. */
-  progress: number
-  /** Whether the missile is still in flight (false = can be removed). */
-  alive: boolean
 }
 
 /**
@@ -622,8 +622,12 @@ export interface GameState {
   enemyHitZonesPx: HitZoneEntryPx[]
   /** Player HP state — drives the player HP bar and game-over check. */
   player: Player
-  /** All enemy missiles currently in flight toward the player. */
-  incomingMissiles: IncomingMissile[]
+  /**
+   * All enemy attack deliveries currently in flight toward the player (orbs +
+   * overlays). Replaces the legacy incomingMissiles list. Drives the render
+   * layer (via DeliveryVisualRegistry) and the e2e test bridge.
+   */
+  activeDeliveries: ActiveDelivery[]
   /**
    * Most recent player-hit event, or null if the player has not been hit yet
    * during the current battle. Reset on battle/level restart.
@@ -649,7 +653,7 @@ export interface GameState {
   /**
    * Aggregated upgrade state — drives crit multiplier, crit zone tolerance,
    * cast time, projectile speed, quick chain bonus, spell area, and crit stun.
-   * Consumed by DamageSystem, Enemy, ProjectileSystem, EnemyAttackSystem and
+   * Consumed by DamageSystem, Enemy, ProjectileSystem and
    * touch point layout. Defaults to DEFAULT_GLOBAL_UPGRADE_STATE.
    */
   globalUpgrades: GlobalUpgradeState

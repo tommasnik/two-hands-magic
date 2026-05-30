@@ -124,6 +124,21 @@ export class Enemy {
     }
   }
 
+  /**
+   * Freeze the displayed sprite on a single frame of an animation.
+   * Used by behaviour-graph holdFrame nodes. Delegates to the AnimationController
+   * when present; otherwise updates the fallback anim/frame fields so getState()
+   * and mask hit detection still report the held frame.
+   */
+  holdFrame(animKey: string, frameIndex: number): void {
+    if (this._animController) {
+      this._animController.hold(animKey, frameIndex)
+    } else {
+      this._currentAnimKey = animKey
+      this._currentFrameIndex = frameIndex
+    }
+  }
+
   /** Advance the animation timer. No-op if no controller. */
   updateAnimation(dtMs: number): void {
     if (this._animController) {

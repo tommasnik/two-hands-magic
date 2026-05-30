@@ -40,14 +40,14 @@ describe('Upgrade flow — level-up gate blocks the battle tick', () => {
     expect(gsm.getState().pendingLevelUp).toBe(true)
     expect(gsm.getState().phase).toBe('fight_overview')
     const beforeTickElapsedMs = gsm.getState().elapsedMs
-    const beforeTickMissiles = gsm.getState().incomingMissiles.length
+    const beforeTickMissiles = gsm.getState().activeDeliveries.length
     // Tick the loop a few times — phase must stay fight_overview and elapsedMs frozen.
     for (let i = 0; i < 10; i++) gsm.update(MAX_DELTA_MS, [])
     const after = gsm.getState()
     expect(after.phase).toBe('fight_overview')
     expect(after.pendingLevelUp).toBe(true)
     expect(after.elapsedMs).toBe(beforeTickElapsedMs)
-    expect(after.incomingMissiles.length).toBe(beforeTickMissiles)
+    expect(after.activeDeliveries.length).toBe(beforeTickMissiles)
   })
 })
 

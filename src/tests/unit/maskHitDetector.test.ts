@@ -226,5 +226,14 @@ describe('MaskHitDetector', () => {
       expect(detector.hasMask('stone_giant', 'idle', 0)).toBe(true)
       expect(detector.hasMask('plague_rat', 'idle', 0)).toBe(false)
     })
+
+    it('getMaskDimensions returns the loaded dimensions, or undefined when absent', () => {
+      const data = new Uint8Array(W * H * 4)
+      detector.loadMaskData('stone_giant', 'idle', 0, data, W, H)
+
+      expect(detector.getMaskDimensions('stone_giant', 'idle', 0)).toEqual({ width: W, height: H })
+      // Missing frame → undefined (the `if (!entry)` guard).
+      expect(detector.getMaskDimensions('stone_giant', 'idle', 99)).toBeUndefined()
+    })
   })
 })

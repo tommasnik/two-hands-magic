@@ -571,5 +571,59 @@ describe('AnimationController', () => {
       // Remaining 100ms should not crash but we don't strictly require
       // it to advance idle frames (implementation detail)
     })
+
+    it('oneshot completing into a single-frame default stops cleanly', () => {
+      // Default is a single-frame loop — completing a oneshot returns to it and
+      // the early-return path (single-frame / zero-duration default) is taken.
+      const anims: Record<string, AnimationDef> = {
+        idle: { frameCount: 1, frameDurationMs: 100, loop: true },
+        attack: { frameCount: 3, frameDurationMs: 100, loop: false },
+      }
+      const ctrl = new AnimationController(anims)
+      ctrl.play('attack')
+      ctrl.update(400) // 3 * 100 = 300ms → completes, returns to single-frame idle
+      expect(ctrl.currentAnimKey).toBe('idle')
+      expect(ctrl.currentFrameIndex).toBe(0)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // hold() — freeze a single frame (behaviour-graph holdFrame nodes, TASK-60.4)
+  // ---------------------------------------------------------------------------
+
+  describe('hold()', () => {
+    it('freezes the requested animation and frame', () => {
+      const ctrl = new AnimationController(makeStoneGiant())
+      ctrl.hold('attack', 3)
+      expect(ctrl.currentAnimKey).toBe('attack')
+      expect(ctrl.currentFrameIndex).toBe(3)
+    })
+
+    it('update() is a no-op while held (frame stays frozen)', () => {
+      const ctrl = new AnimationController(makeStoneGiant())
+      ctrl.hold('attack', 2)
+      ctrl.update(10_000)
+      expect(ctrl.currentFrameIndex).toBe(2)
+    })
+
+    it('isPlaying is false while a frame is held', () => {
+      const ctrl = new AnimationController(makeStoneGiant())
+      ctrl.hold('attack', 0)
+      expect(ctrl.isPlaying).toBe(false)
+    })
+
+    it('throws on an unknown animation key', () => {
+      const ctrl = new AnimationController(makeStoneGiant())
+      expect(() => ctrl.hold('nope', 0)).toThrow('Unknown animation: "nope"')
+    })
+
+    it('a subsequent play() releases the hold and resumes animating', () => {
+      const ctrl = new AnimationController(makeStoneGiant())
+      ctrl.hold('attack', 2)
+      ctrl.play('attack')
+      expect(ctrl.currentFrameIndex).toBe(0)
+      ctrl.update(100)
+      expect(ctrl.currentFrameIndex).toBe(1)
+    })
   })
 })

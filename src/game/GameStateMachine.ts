@@ -11,9 +11,10 @@ import { ProjectileSystem } from './systems/ProjectileSystem'
 import { calculateDamage } from './systems/DamageSystem'
 import { computeEnemyPosition } from './systems/BehaviorSystem'
 import { scaleHitZoneMap } from './systems/HitZoneSystem'
-import { EnemyAttackSystem } from './systems/EnemyAttackSystem'
+import { DeliverySystem } from './systems/DeliverySystem'
+import { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
 import { applyUpgradeNode, getAvailableNodes } from './upgrades'
-import type { EnemyBehaviorDef, EnemyDef } from '../types'
+import type { EnemyBehaviorDef, EnemyDef, BehaviorGraph, BehaviorNode } from '../types'
 
 import type { MaskHitDetector } from './systems/MaskHitDetector'
 import { AnimationController } from './systems/AnimationController'
@@ -92,7 +93,16 @@ export class GameStateMachine {
   private _enemyHitZoneMap: readonly HitZoneEntry[] = resolveHitZoneMap(ENEMY_POOL[0])
   private inputManager: InputManager
   private projectileSystem = new ProjectileSystem()
-  private enemyAttackSystem = new EnemyAttackSystem()
+  // Enemy attack delivery layer (orb flight + overlay connect). Replaces the
+  // legacy EnemyAttackSystem missile mechanic. Always present; emptied per level.
+  private _deliverySystem = new DeliverySystem()
+  // Behaviour-graph runner for the active enemy. Undefined when the current
+  // enemy has no behaviorGraph — a valid, non-attacking state.
+  private _behaviorRunner?: EnemyBehaviorRunner
+  // Id of the behaviour-graph node whose animation the enemy is currently
+  // playing. Lets _syncEnemyAnimation (re)play an animation exactly once per
+  // node activation rather than every frame. Reset on level load.
+  private _lastAnimNodeId: string | null = null
   private player = new Player(PLAYER_MAX_HP)
   private lastHit: { result: HitResult; timestamp: number; damage: number; hitZone: HitZoneName; position: { x: number; y: number } | null } | null = null
   private lastPlayerHit: PlayerHitEvent | null = null
@@ -406,23 +416,36 @@ export class GameStateMachine {
     // 6. Advance enemy animation
     this.enemy.updateAnimation(cappedDt)
 
-    // 7. Update enemy attack system (cooldowns, missile flight)
-    //    Skip if the enemy is already dead (phase transitioned out of battle in step 5).
-    if (this.phase === 'battle') {
+    // 7. Tick the behaviour-graph runner (if the enemy has a graph).
+    //    The runner owns the state machine; the orchestrator owns animation
+    //    playback. Stun freezes the whole graph (tick = no-op) — already-flying
+    //    deliveries still advance in step 8. Skip if the enemy died in step 5.
+    if (this.phase === 'battle' && this._behaviorRunner) {
       const isStunned = this.elapsedMs < this._enemyStunnedUntilMs
-      const missileCountBefore = this.enemyAttackSystem.getMissiles().length
-      const missileHits = this.enemyAttackSystem.update(
-        cappedDt,
-        { x: this.enemy.x, y: this.enemy.y },
-        PLAYER_CENTRE,
+      const ctx = {
+        frameIndex: this.enemy.currentFrameIndex,
+        // A one-shot node's animation is complete once the controller is no
+        // longer playing it (it has returned to default or frozen on last).
+        animationComplete: !this.enemy.isAnimPlaying,
+        // enemyMaxHp is always positive (set from EnemyDef.maxHp on level load).
+        enemyHpPct: this.enemyHp / this.enemyMaxHp,
         isStunned,
-      )
-      // Trigger attack animation when a new missile is spawned
-      const missileCountAfter = this.enemyAttackSystem.getMissiles().length
-      if (missileCountAfter > missileCountBefore) {
-        this.enemy.playAnimation('attack')
       }
-      for (const hit of missileHits) {
+      const { attacks } = this._behaviorRunner.tick(cappedDt, ctx)
+      for (const spec of attacks) {
+        this._deliverySystem.spawn(spec, { x: this.enemy.x, y: this.enemy.y }, PLAYER_CENTRE)
+      }
+      // Drive the enemy sprite from the (possibly new) active node.
+      this._syncEnemyAnimation(this._behaviorRunner.currentNode)
+    }
+
+    // 8. Advance in-flight deliveries and apply connects to the player.
+    //    Deliveries are fire-and-forget: they keep travelling through stun and
+    //    even after the runner stops ticking, so this runs unconditionally while
+    //    in battle.
+    if (this.phase === 'battle') {
+      const deliveryHits = this._deliverySystem.update(cappedDt)
+      for (const hit of deliveryHits) {
         this._applyPlayerHit(hit.damage)
         if (this.phase !== 'battle') break
       }
@@ -505,6 +528,18 @@ export class GameStateMachine {
   }
 
   /**
+   * Install a behaviour graph on the active enemy, bypassing _loadLevel.
+   * ENEMY_POOL entries do not (yet) carry graphs — graph configuration lands in
+   * TASK-60.6 — so unit tests use this to exercise the runner/delivery wiring.
+   * Also resets the delivery system so a freshly injected graph starts clean.
+   * @internal For tests only.
+   */
+  _initBehaviorGraphForTesting(graph: BehaviorGraph): void {
+    this._initBehaviorRunner(graph)
+    this._deliverySystem.reset()
+  }
+
+  /**
    * Returns a fully serializable snapshot of the current game state.
    * JSON.stringify safe — no class instances or functions.
    */
@@ -571,7 +606,7 @@ export class GameStateMachine {
       touchPointsPerSide: { left: leftCount, right: rightCount },
       enemyHitZonesPx,
       player: { hp: this.player.hp, maxHp: this.player.maxHp },
-      incomingMissiles: this.enemyAttackSystem.getMissiles(),
+      activeDeliveries: this._deliverySystem.getActive(),
       lastPlayerHit: this.lastPlayerHit ? { ...this.lastPlayerHit } : null,
       playerXp: this.playerXp,
       playerLevel: this.playerLevel,
@@ -691,11 +726,40 @@ export class GameStateMachine {
     )
     this.player.reset()
     this.lastPlayerHit = null
-    // TASK-60.1: EnemyDef.attacks removed. Legacy system disabled until the
-    // EnemyBehaviorRunner + DeliverySystem replacement wires in (TASK-60.4).
-    this.enemyAttackSystem.setAttacks(undefined)
+    // Init the behaviour-graph runner from the enemy's graph. Enemies without a
+    // graph never attack — the runner stays undefined and update() skips ticking.
+    this._initBehaviorRunner(enemyDef.behaviorGraph)
+    this._deliverySystem.reset()
     this._enemyStunnedUntilMs = 0
     this._lastCastBySlot = {}
+  }
+
+  /**
+   * (Re)build the behaviour-graph runner for the active enemy.
+   * Resets the per-node animation latch so the start node's animation is played
+   * on the first tick. A null/undefined graph clears the runner (no attacks).
+   * Shares the machine's RNG channel so weighted edge picks stay deterministic
+   * under the same stubbed rng used elsewhere in tests.
+   */
+  private _initBehaviorRunner(graph: BehaviorGraph | undefined): void {
+    this._behaviorRunner = graph ? new EnemyBehaviorRunner(graph, this._rng) : undefined
+    this._lastAnimNodeId = null
+  }
+
+  /**
+   * Drive the enemy sprite from the runner's active node.
+   * Plays the node's animation (or freezes a holdFrame) exactly once per node
+   * activation: a one-shot animation returning to its default must not be
+   * re-triggered every frame while the node is still active.
+   */
+  private _syncEnemyAnimation(node: BehaviorNode): void {
+    if (node.id === this._lastAnimNodeId) return
+    this._lastAnimNodeId = node.id
+    if (node.holdFrame) {
+      this.enemy.holdFrame(node.holdFrame.animKey, node.holdFrame.frameIndex)
+    } else {
+      this.enemy.playAnimation(node.animKey)
+    }
   }
 
   /**

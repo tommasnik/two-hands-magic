@@ -5,8 +5,12 @@
 // Contract: EnemyAttacks.md §4.
 // ============================================================
 
-import type { AttackSpec } from '../../types'
+import type { ActiveDelivery, AttackSpec } from '../../types'
 import { PIXELS_PER_CM, PROJECTILE_SPEED_CM } from '../constants'
+
+// Re-exported so existing imports (`from '../../game/systems/DeliverySystem'`)
+// keep working now that the snapshot type is shared via the types barrel.
+export type { ActiveDelivery } from '../../types'
 
 /** 2D point in logical canvas coordinates. Unit: px. */
 interface Point {
@@ -23,25 +27,6 @@ export interface DeliveryHitEvent {
   deliveryId: string
   /** HP damage dealt on connect. Unit: HP. */
   damage: number
-}
-
-/**
- * Serialisable snapshot of one active delivery for the render layer.
- * Carries only data (visualKey + geometry) — never any Phaser detail.
- */
-export interface ActiveDelivery {
-  /** Unique id of this delivery. */
-  id: string
-  /** Delivery kind that produced a visual ('effect' deliveries never appear here). */
-  kind: 'orb' | 'overlay'
-  /** Render-layer lookup key. */
-  visualKey: string
-  /** Where the delivery originates. For overlay this equals target (it plays on the player). Unit: px. */
-  origin: Point
-  /** Where the delivery connects (player centre). Unit: px. */
-  target: Point
-  /** Flight / connect progress in 0..1. 1 = connected. */
-  progress: number
 }
 
 /** Internal delivery representation — adds timing + liveness to the public snapshot. */

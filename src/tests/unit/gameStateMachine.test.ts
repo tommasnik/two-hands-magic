@@ -1708,17 +1708,17 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
     expect(gsm.getState().lastPlayerHit).toBeNull()
   })
 
-  it('GameState.incomingMissiles is empty before any cooldown elapses', () => {
+  it('GameState.activeDeliveries is empty at battle start', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().incomingMissiles).toEqual([])
+    expect(gsm.getState().activeDeliveries).toEqual([])
   })
 
-  it('incomingMissiles stays empty when enemy has no attacks defined', () => {
+  it('activeDeliveries stays empty when the enemy has no behaviour graph', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     advance(gsm, 8000)
-    expect(gsm.getState().incomingMissiles).toEqual([])
+    expect(gsm.getState().activeDeliveries).toEqual([])
   })
 })
 
@@ -1773,13 +1773,13 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
     expect(state.enemyHp).toBe(state.enemyMaxHp)
   })
 
-  it('restartLevel() clears in-flight enemy missiles and lastPlayerHit', () => {
+  it('restartLevel() clears in-flight enemy deliveries and lastPlayerHit', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(MAX_DELTA_MS, [])
     gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
     gsm.restartLevel()
-    expect(gsm.getState().incomingMissiles).toEqual([])
+    expect(gsm.getState().activeDeliveries).toEqual([])
     expect(gsm.getState().lastPlayerHit).toBeNull()
   })
 })
@@ -2114,7 +2114,7 @@ describe('GameStateMachine — global upgrades wiring', () => {
     expect(gsm.getState().pendingLevelUp).toBe(false)
   })
 
-  it('enemy stun pauses missile cooldowns from advancing fires', () => {
+  it('enemy stun does not spawn new deliveries while frozen', () => {
     const gsm = new GameStateMachine(undefined, () => 0)
     gsm.startBattle()
     gsm._applyUpgradeForTesting('crit_dmg_1')
@@ -2123,10 +2123,10 @@ describe('GameStateMachine — global upgrades wiring', () => {
     // Land a CRIT to lock stun
     gsm._applyHitForTesting('CRIT', 'slow_shot')
     const stunUntil = gsm.getState().enemy.stunnedUntilMs
-    // Advance time inside the stun window — no new missile should be born
-    const startMissiles = gsm.getState().incomingMissiles.length
+    // Advance time inside the stun window — no new delivery should be born
+    const startDeliveries = gsm.getState().activeDeliveries.length
     gsm.update(Math.min(stunUntil - gsm.getState().elapsedMs - 50, MAX_DELTA_MS), [])
-    expect(gsm.getState().incomingMissiles.length).toBeLessThanOrEqual(startMissiles)
+    expect(gsm.getState().activeDeliveries.length).toBeLessThanOrEqual(startDeliveries)
   })
 })
 

@@ -78,6 +78,25 @@ export class AnimationController {
   }
 
   /**
+   * Freeze on a single frame of an animation without playing through it.
+   *
+   * Used by behaviour-graph holdFrame nodes: enemies missing an idle animation
+   * (crystal-spider, ice-giant) hold one frame of another animation while they
+   * dwell. The frame stays put until the next play()/hold() call — update() is a
+   * no-op while frozen.
+   */
+  hold(animKey: string, frameIndex: number): void {
+    const def = this.animations[animKey]
+    if (!def) {
+      throw new Error(`Unknown animation: "${animKey}"`)
+    }
+    this.activeKey = animKey
+    this.frameIndex = frameIndex
+    this.elapsedMs = 0
+    this.frozen = true
+  }
+
+  /**
    * Advance the animation timer. Called each frame from the game loop.
    *
    * @param dtMs - elapsed time in milliseconds since last update

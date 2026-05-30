@@ -342,3 +342,72 @@ describe('Enemy — critZoneTolerance and projectileRadius params', () => {
     expect(e.getHitResult({ x: 64, y: 55 }, 0, 50)).toBe('HIT')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Animation delegation — holdFrame + isAnimPlaying (TASK-60.4)
+// ---------------------------------------------------------------------------
+
+describe('Enemy — animation delegation (behaviour-graph driven)', () => {
+  const ANIM_DEFS: Record<string, AnimationDef> = {
+    idle: { frameCount: 4, frameDurationMs: 100, loop: true },
+    attack: { frameCount: 4, frameDurationMs: 100, loop: false },
+  }
+
+  it('holdFrame() without a controller sets the fallback anim key and frame', () => {
+    const e = new Enemy(0, 0) // no AnimationController
+    e.holdFrame('attack', 2)
+    expect(e.currentAnimKey).toBe('attack')
+    expect(e.currentFrameIndex).toBe(2)
+  })
+
+  it('holdFrame() with a controller freezes that frame and stops playback', () => {
+    const ctrl = new AnimationController(ANIM_DEFS)
+    const e = new Enemy(0, 0, 'sprite', ctrl)
+    e.playAnimation('attack')
+    expect(e.isAnimPlaying).toBe(true)
+    e.holdFrame('idle', 1)
+    expect(e.currentAnimKey).toBe('idle')
+    expect(e.currentFrameIndex).toBe(1)
+    expect(e.isAnimPlaying).toBe(false)
+    // Frozen — advancing time does not move the frame.
+    e.updateAnimation(1000)
+    expect(e.currentFrameIndex).toBe(1)
+  })
+
+  it('isAnimPlaying reflects the controller while a one-shot is playing', () => {
+    const ctrl = new AnimationController(ANIM_DEFS)
+    const e = new Enemy(0, 0, 'sprite', ctrl)
+    expect(e.isAnimPlaying).toBe(false) // default idle is a loop
+    e.playAnimation('attack')
+    expect(e.isAnimPlaying).toBe(true)
+    e.updateAnimation(500) // 4 frames * 100ms = 400ms → completes, back to idle
+    expect(e.isAnimPlaying).toBe(false)
+  })
+
+  it('isAnimPlaying is false (and play/update are no-ops) without a controller', () => {
+    const e = new Enemy(0, 0) // no AnimationController
+    expect(e.isAnimPlaying).toBe(false)
+    e.playAnimation('attack') // no-op
+    e.updateAnimation(1000) // no-op
+    expect(e.isAnimPlaying).toBe(false)
+  })
+
+  it('getHitZone resolves a zone using the default tolerance/radius arguments', () => {
+    const e = maskEnemy()
+    // Called with only the point — exercises the default parameter values.
+    expect(e.getHitZone({ x: 64, y: 25 })).toBe('head')
+    expect(e.getHitZone({ x: 10, y: 10 })).toBe('none')
+  })
+
+  it('returns "none" when a mask exists but its dimensions cannot be read', () => {
+    // Defensive guard: hasMask() says yes but getMaskDimensions() returns undefined.
+    // Unreachable with the real detector (both read one map) — covered via a stub.
+    const stub = {
+      hasMask: () => true,
+      getMaskDimensions: () => undefined,
+      getZone: () => 'head' as const,
+    } as unknown as MaskHitDetector
+    const e = new Enemy(64, 76.8, 'test_enemy', undefined, stub, DISPLAY_W, DISPLAY_H)
+    expect(e.getHitZone({ x: 64, y: 25 })).toBe('none')
+  })
+})

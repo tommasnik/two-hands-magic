@@ -802,11 +802,14 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
       this._drawProjectile(ctx, px, py, proj)
     }
 
-    // Incoming enemy missiles (orb with glow + trail)
-    for (const m of state.incomingMissiles) {
-      const mx = m.origin.x + (m.target.x - m.origin.x) * m.progress
-      const my = m.origin.y + (m.target.y - m.origin.y) * m.progress
-      this._drawIncomingMissile(ctx, mx, my, m.color, now)
+    // Incoming enemy attack deliveries (orb with glow + trail).
+    // Minimal placeholder rendering — the DeliveryVisualRegistry render layer
+    // (TASK-60.5) replaces this with per-visualKey visuals.
+    for (const d of state.activeDeliveries) {
+      if (d.kind !== 'orb') continue
+      const mx = d.origin.x + (d.target.x - d.origin.x) * d.progress
+      const my = d.origin.y + (d.target.y - d.origin.y) * d.progress
+      this._drawIncomingMissile(ctx, mx, my, '#ff5544', now)
     }
 
     this._drawSparks(ctx)
