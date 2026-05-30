@@ -1,9 +1,10 @@
 ---
 id: TASK-61.7
 title: 'TASK-61.7: E2E testy — Ice Crystal & Lightning Blast'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 18:52'
+updated_date: '2026-05-30 21:21'
 labels:
   - skills
   - testing
@@ -47,9 +48,15 @@ Playwright E2E testy pro oba nové skilly. Používají `window.__game` test bri
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 npm run test:e2e projde včetně nových testů
-- [ ] #2 Ice Crystal: freeze on HIT/CRIT, no freeze on GRAZE
-- [ ] #3 Ice Crystal: behavior runner se zastaví během freeze
-- [ ] #4 Lightning Blast: okamžité snížení HP
-- [ ] #5 Lightning Blast: discharge state v GameState
+- [x] #1 npm run test:e2e projde včetně nových testů
+- [x] #2 Ice Crystal: freeze on HIT/CRIT, no freeze on GRAZE
+- [x] #3 Ice Crystal: behavior runner se zastaví během freeze
+- [x] #4 Lightning Blast: okamžité snížení HP
+- [x] #5 Lightning Blast: discharge state v GameState
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implementovány E2E testy pro Ice Crystal a Lightning Blast. Opravena race condition v inicializaci test bridge (přesun z main.ts do BattleScene.create() za _initMaskDetector()). Smazány zastaralé testy. Všech 46 E2E testů + 824 unit testů prochází.
+<!-- SECTION:FINAL_SUMMARY:END -->
