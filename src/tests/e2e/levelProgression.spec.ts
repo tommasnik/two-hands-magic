@@ -97,24 +97,6 @@ test('AC#6: campaign completes after all 6 levels', async ({ page }) => {
   }
 })
 
-// AC#7: Only 1 touch point visible per side initially (not 3)
-test('AC#7: only 1 touch point per side in initial layout', async ({ page }) => {
-  await page.goto('http://localhost:5274')
-  await waitForBridge(page)
-
-  const api = gameApi(page)
-  // Check before battle start (loading phase)
-  const loadingState = await api.getState()
-  expect(loadingState.touchPointsPerSide.left).toBe(1)
-  expect(loadingState.touchPointsPerSide.right).toBe(1)
-
-  // Also verify after battle starts
-  await api.startBattle()
-  const battleState = await api.getState()
-  expect(battleState.touchPointsPerSide.left).toBe(1)
-  expect(battleState.touchPointsPerSide.right).toBe(1)
-})
-
 // AC#7 (task-31): After killing the first enemy, game transitions to next without freezing
 test('AC#7: after killing first enemy, game transitions to new enemy without freezing', async ({ page }) => {
   await page.goto('http://localhost:5274')

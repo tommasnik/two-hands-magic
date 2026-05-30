@@ -29,7 +29,11 @@ test('clicking Start calls requestFullscreen on documentElement', async ({ page 
   })
 
   await page.goto('http://localhost:5274')
-  await page.waitForSelector('#start-btn', { timeout: 5000 })
+  // Wait for BattleScene.create() to run — it registers the #start-btn click handler
+  await page.waitForFunction(
+    () => (window as unknown as Record<string, unknown>)['__game'] !== undefined,
+    { timeout: 10000 },
+  )
 
   // Click Start button
   await page.click('#start-btn')

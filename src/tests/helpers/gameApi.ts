@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import type { GameState, InputEvent, HitResult, SkillType, UpgradeNodeId } from '../../types'
+import type { GameState, InputEvent, HitResult, SkillType, UpgradeNodeId, BehaviorGraph } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
 
 /**
@@ -101,6 +101,20 @@ export function gameApi(page: Page) {
     completeFightOverview: (): Promise<void> =>
       page.evaluate(
         () => (window as unknown as Record<string, { completeFightOverview: () => void }>)['__game'].completeFightOverview(),
+      ),
+
+    /** Trigger a lightning_blast discharge with a given result, applying damage instantly. */
+    fireLightningBlast: (result: HitResult): Promise<void> =>
+      page.evaluate(
+        (r) => (window as unknown as Record<string, { fireLightningBlast: (result: HitResult) => void }>)['__game'].fireLightningBlast(r),
+        result,
+      ),
+
+    /** Install a behaviour graph on the active enemy for testing. */
+    installBehaviorGraph: (graph: BehaviorGraph): Promise<void> =>
+      page.evaluate(
+        (g) => (window as unknown as Record<string, { installBehaviorGraph: (graph: BehaviorGraph) => void }>)['__game'].installBehaviorGraph(g),
+        graph,
       ),
   }
 }

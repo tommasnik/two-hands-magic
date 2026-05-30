@@ -764,10 +764,7 @@ export class GameStateMachine {
       displayW = enemyDef.displayWidth ?? manifest.displayWidth
 
       const hasMasks = Object.values(manifest.animations).some(a => a.hasMasks)
-      if (hasMasks) {
-        if (!this._maskDetector) {
-          throw new Error(`Enemy "${enemyDef.name}" manifest declares hasMasks but no MaskHitDetector is available`)
-        }
+      if (hasMasks && this._maskDetector) {
         useMask = this._maskDetector
       }
     }

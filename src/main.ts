@@ -24,12 +24,4 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config)
 
-if (import.meta.env.DEV) {
-  // Test bridge — exposes game internals for automated testing
-  // Tree-shaken in production builds
-  import('./tests/helpers/testBridge').then(({ installTestBridge }) => {
-    installTestBridge(game)
-  })
-}
-
 export { game }

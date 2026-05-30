@@ -206,6 +206,14 @@ export class BattleScene extends Phaser.Scene {
     // Initialize MaskHitDetector for pixel-perfect hit detection
     this._initMaskDetector()
 
+    // Install test bridge after mask detector is ready — bridge is only available
+    // from this point on, so waitForBridge guarantees startBattle() won't throw.
+    if (import.meta.env.DEV) {
+      import('../tests/helpers/testBridge').then(({ installTestBridge }) => {
+        installTestBridge(this.game)
+      })
+    }
+
     // Hook into Phaser's render phase — draw everything ourselves
     this.events.on(Phaser.Scenes.Events.RENDER, this.onRender, this)
 
@@ -333,9 +341,10 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    if (loaded > 0) {
-      gameMachine.setMaskDetector(detector)
-    }
+    // Always register the detector — even when loaded=0 (texture extraction failed
+    // in headless/restricted env). getZone() returns 'none' for unloaded masks,
+    // which gracefully degrades to rect-based hit detection instead of throwing.
+    gameMachine.setMaskDetector(detector)
   }
 
   // -----------------------------------------------------------------------

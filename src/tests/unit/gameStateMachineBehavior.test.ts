@@ -105,11 +105,6 @@ function orbGraph(damage: number, speedCmS: number): BehaviorGraph {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — manifest-driven enemy loading', () => {
-  it('throws when a manifest declares masks but no MaskHitDetector is set', () => {
-    const gsm = new GameStateMachine()
-    expect(() => gsm.startBattle()).toThrow(/hasMasks but no MaskHitDetector/)
-  })
-
   it('loads a masked enemy when a detector is available', () => {
     const gsm = startWithDetector()
     expect(gsm.getState().phase).toBe('battle')
