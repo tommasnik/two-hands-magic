@@ -313,6 +313,37 @@ export const PROJECTILE_BASE_RADIUS_PX = PROJECTILE_BASE_RADIUS_CM * PIXELS_PER_
 export const ZONE_FLASH_DURATION_MS = 400
 
 // ============================================================
+// Delivery visuals (enemy attack render layer — EnemyAttacks.md §5)
+// ============================================================
+
+/**
+ * Base radius of a procedural flying orb delivery (OrbVisual).
+ * Unit: px. Affects: size of incoming enemy orb attacks on screen.
+ */
+export const DELIVERY_ORB_RADIUS_PX = 11
+
+/**
+ * Half-width of the procedural teeth overlay delivery (TeethVisual).
+ * Unit: px. Affects: how wide the jaws appear at the player on overlay attacks.
+ */
+export const DELIVERY_TEETH_HALF_WIDTH_PX = 46
+
+/**
+ * Duration of the post-connect impact/chomp flash a delivery visual keeps
+ * drawing after the delivery itself has connected and left the game snapshot.
+ * Unit: ms. Affects: how long the orb burst / teeth snap lingers on screen.
+ */
+export const DELIVERY_CONNECT_FLASH_MS = 180
+
+/**
+ * Minimum flight progress (0..1) a delivery must have reached for its
+ * disappearance to count as a connect (vs. a cancel on level/battle reset).
+ * Below this, the visual is dropped silently with no impact flash.
+ * Affects: spurious chomp effects when deliveries are cleared mid-flight.
+ */
+export const DELIVERY_CONNECT_PROGRESS_THRESHOLD = 0.9
+
+// ============================================================
 // Floating damage number font sizes (3 tiers)
 // ============================================================
 

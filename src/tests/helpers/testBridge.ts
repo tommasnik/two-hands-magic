@@ -1,7 +1,7 @@
 import type Phaser from 'phaser'
 import { gameMachine } from '../../game/GameStateMachine'
 import { MAX_DELTA_MS } from '../../game/constants'
-import type { InputEvent, HitResult, SkillType, UpgradeNodeId } from '../../types'
+import type { InputEvent, HitResult, SkillType, UpgradeNodeId, BehaviorGraph } from '../../types'
 
 /**
  * Installed only in DEV builds. Exposes game internals for autonomous agent testing
@@ -66,6 +66,15 @@ export function installTestBridge(_game: Phaser.Game): void {
     /** Complete the fight overview screen — advances to next level or restarts game. */
     completeFightOverview: () => {
       gameMachine.completeFightOverview()
+    },
+
+    /**
+     * Install a behaviour graph on the active enemy so it starts attacking.
+     * ENEMY_POOL entries do not carry graphs until TASK-60.6, so smoke tests use
+     * this to spawn deliveries (orbs / overlays) and exercise the render layer.
+     */
+    installBehaviorGraph: (graph: BehaviorGraph) => {
+      gameMachine._initBehaviorGraphForTesting(graph)
     },
   }
 }

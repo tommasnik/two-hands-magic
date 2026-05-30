@@ -3,9 +3,10 @@ id: TASK-60.5
 title: >-
   DeliveryVisualRegistry + render vrstva — orb i overlay, BattleScene jen
   deleguje
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 12:42'
+updated_date: '2026-05-30 17:45'
 labels: []
 dependencies:
   - TASK-60.4
@@ -31,11 +32,11 @@ Závislost na TASK-60.4: GameStateMachine vystavuje aktivní deliveries (getActi
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 DeliveryVisual rozhraní (spawn/update/onConnect/destroy) a DeliveryVisualRegistry (visualKey → instance) existují mimo BattleScene
-- [ ] #2 Procedurální OrbVisual vykresluje letící orb (nahrazuje dosavadní inline missile rendering)
-- [ ] #3 Procedurální overlay vizuál (zuby/drápy) se objeví u hráče a 'klapne' na onConnect
-- [ ] #4 Rozhraní prokazatelně umožňuje i spritesheet implementaci vizuálu bez úprav BattleScene (alespoň stub/ukázka nebo dokumentovaný postup)
-- [ ] #5 BattleScene jen iteruje deliveries a deleguje na registry — žádný case/kresba per vizuál ve scéně; starý inline missile rendering odstraněn
-- [ ] #6 Přidání nového vizuálu = jeden soubor + registrace, nula změn v BattleScene (ověřeno strukturou)
-- [ ] #7 npm run build prochází; vizuální smoke přes Playwright/dev server: orb i overlay se vykreslí bez console chyb
+- [x] #1 DeliveryVisual rozhraní (spawn/update/onConnect/destroy) a DeliveryVisualRegistry (visualKey → instance) existují mimo BattleScene
+- [x] #2 Procedurální OrbVisual vykresluje letící orb (nahrazuje dosavadní inline missile rendering)
+- [x] #3 Procedurální overlay vizuál (zuby/drápy) se objeví u hráče a 'klapne' na onConnect
+- [x] #4 Rozhraní prokazatelně umožňuje i spritesheet implementaci vizuálu bez úprav BattleScene (alespoň stub/ukázka nebo dokumentovaný postup)
+- [x] #5 BattleScene jen iteruje deliveries a deleguje na registry — žádný case/kresba per vizuál ve scéně; starý inline missile rendering odstraněn
+- [x] #6 Přidání nového vizuálu = jeden soubor + registrace, nula změn v BattleScene (ověřeno strukturou)
+- [x] #7 npm run build prochází; vizuální smoke přes Playwright/dev server: orb i overlay se vykreslí bez console chyb
 <!-- AC:END -->

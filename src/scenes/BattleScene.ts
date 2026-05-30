@@ -30,6 +30,8 @@ import {
   HIT_ZONE_OVERLAY_OPACITY,
 } from '../game/constants'
 import { characterRegistry } from '../game/CharacterRegistry'
+import { DeliveryRenderer } from './rendering/DeliveryRenderer'
+import { createDefaultDeliveryRegistry } from './rendering/DeliveryVisualRegistry'
 import { computeReticle } from '../game/systems/AimSystem'
 import { getUpgradeNodeStatus, getXpProgress } from '../game/upgrades'
 import type { GameState, HitResult, HitZoneName, ActiveSlotState, UpgradeNodeId, GlobalUpgradeState, SkillFightStats } from '../types'
@@ -109,6 +111,10 @@ export class BattleScene extends Phaser.Scene {
 
   // Last game state (set in update, read in onRender)
   private _lastState?: GameState
+  /** Time since the previous game-loop frame, forwarded to the delivery renderer. Unit: ms. */
+  private _lastFrameDtMs = 0
+  /** Render layer for enemy attack deliveries (orbs + overlays). Delegated to per frame. */
+  private _deliveryRenderer = new DeliveryRenderer(createDefaultDeliveryRegistry())
 
   constructor() {
     super({ key: 'BattleScene' })
@@ -209,10 +215,16 @@ export class BattleScene extends Phaser.Scene {
 
     // Hook into Phaser's render phase — draw everything ourselves
     this.events.on(Phaser.Scenes.Events.RENDER, this.onRender, this)
+
+    // Release delivery-visual resources (e.g. spritesheet GameObjects) on shutdown.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this._deliveryRenderer.destroy({ scene: this, ctx: this.ctx, nowMs: 0, dtMs: 0 })
+    })
   }
 
   update(_time: number, delta: number): void {
     const cappedDelta = Math.min(delta, MAX_DELTA_MS)
+    this._lastFrameDtMs = cappedDelta
     const inputs = this.pendingInputs.splice(0)
     const state = gameMachine.update(cappedDelta, inputs)
 
@@ -802,15 +814,15 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
       this._drawProjectile(ctx, px, py, proj)
     }
 
-    // Incoming enemy attack deliveries (orb with glow + trail).
-    // Minimal placeholder rendering — the DeliveryVisualRegistry render layer
-    // (TASK-60.5) replaces this with per-visualKey visuals.
-    for (const d of state.activeDeliveries) {
-      if (d.kind !== 'orb') continue
-      const mx = d.origin.x + (d.target.x - d.origin.x) * d.progress
-      const my = d.origin.y + (d.target.y - d.origin.y) * d.progress
-      this._drawIncomingMissile(ctx, mx, my, '#ff5544', now)
-    }
+    // Incoming enemy attack deliveries (orbs + overlays). The scene simply hands
+    // the snapshot to the render layer, which delegates each delivery to its
+    // visualKey's DeliveryVisual — no per-visual branching here (EnemyAttacks.md §5).
+    this._deliveryRenderer.render(state.activeDeliveries, {
+      scene: this,
+      ctx,
+      nowMs: now,
+      dtMs: this._lastFrameDtMs,
+    })
 
     this._drawSparks(ctx)
     this._drawActiveSlots(ctx, state.activeSlots, now)
@@ -986,28 +998,6 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     ctx.moveTo(ax, ay - 18); ctx.lineTo(ax, ay - 8)
     ctx.moveTo(ax, ay + 8);  ctx.lineTo(ax, ay + 18)
     ctx.stroke()
-    ctx.restore()
-  }
-
-  /**
-   * Draws a pulsing incoming-enemy missile at (px, py) with the given color.
-   * Pulse is driven by the global animation clock to keep all orbs in sync.
-   */
-  private _drawIncomingMissile(ctx: CanvasRenderingContext2D, px: number, py: number, color: string, now: number): void {
-    const pulse = 0.85 + Math.sin(now / 80) * 0.15
-    ctx.save()
-    // Outer halo
-    ctx.shadowBlur = 28; ctx.shadowColor = color
-    ctx.globalAlpha = 0.35
-    ctx.fillStyle = color
-    ctx.beginPath(); ctx.arc(px, py, 11 * pulse, 0, Math.PI * 2); ctx.fill()
-    // Core
-    ctx.globalAlpha = 1
-    ctx.shadowBlur = 14
-    ctx.beginPath(); ctx.arc(px, py, 6 * pulse, 0, Math.PI * 2); ctx.fill()
-    // Hot centre
-    ctx.shadowBlur = 6; ctx.fillStyle = '#fff'
-    ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2); ctx.fill()
     ctx.restore()
   }
 
