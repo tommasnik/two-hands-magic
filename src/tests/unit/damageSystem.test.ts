@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { calculateDamage } from '../../game/systems/DamageSystem'
+import { computePlayerStats } from '../../game/systems/PlayerProgression'
+import type { PlayerStats } from '../../game/systems/PlayerProgression'
 import {
   SLOW_SKILL_DAMAGE,
   FAST_SKILL_DAMAGE,
@@ -16,18 +18,18 @@ import {
 import { applyUpgradeNode } from '../../game/upgrades'
 import type { GlobalUpgradeState, UpgradeNodeId } from '../../types'
 
-/** Apply a chain of upgrade nodes to a fresh DEFAULT_GLOBAL_UPGRADE_STATE. */
-function upgradeWith(...ids: UpgradeNodeId[]): GlobalUpgradeState {
+/** Apply a chain of upgrade nodes to a fresh DEFAULT_GLOBAL_UPGRADE_STATE and convert to PlayerStats. */
+function upgradeWith(...ids: UpgradeNodeId[]): PlayerStats {
   let s: GlobalUpgradeState = {
     ...DEFAULT_GLOBAL_UPGRADE_STATE,
     unlockedNodeIds: [...DEFAULT_GLOBAL_UPGRADE_STATE.unlockedNodeIds],
   }
   for (const id of ids) s = applyUpgradeNode(s, id)
-  return s
+  return computePlayerStats(s)
 }
 
 /** Look up a node's `applyTo` definition for reading the magnitudes the test asserts on. */
-function nodeMultiplier(id: UpgradeNodeId, field: keyof GlobalUpgradeState): number {
+function nodeMultiplier(id: UpgradeNodeId, field: keyof PlayerStats): number {
   const after = upgradeWith(id)
   return after[field] as number
 }
@@ -250,23 +252,23 @@ describe('calculateDamage — concrete expected values (fixed skills)', () => {
 // calculateDamage — upgrade-aware crit damage multiplier
 // ============================================================
 
-describe('calculateDamage — upgrades.critDamageMultiplier', () => {
-  it('default upgrades preserve baseline CRIT damage (regression for unmodified runs)', () => {
+describe('calculateDamage — stats.critDamageMultiplier', () => {
+  it('default stats preserve baseline CRIT damage (regression for unmodified runs)', () => {
     const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, {
-      upgrades: { ...DEFAULT_GLOBAL_UPGRADE_STATE, unlockedNodeIds: [...DEFAULT_GLOBAL_UPGRADE_STATE.unlockedNodeIds] },
+      stats: computePlayerStats({ ...DEFAULT_GLOBAL_UPGRADE_STATE, unlockedNodeIds: [...DEFAULT_GLOBAL_UPGRADE_STATE.unlockedNodeIds] }),
     })
     expect(dmg).toBe(SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER)
   })
 
   it('crit_dmg_1 applies its multiplier instead of the base CRIT multiplier', () => {
     const m = nodeMultiplier('crit_dmg_1', 'critDamageMultiplier')
-    const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, { upgrades: upgradeWith('crit_dmg_1') })
+    const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, { stats: upgradeWith('crit_dmg_1') })
     expect(dmg).toBe(Math.round(SLOW_SKILL_DAMAGE * m))
   })
 
   it('crit_dmg_2 yields Math.round(SLOW_SKILL_DAMAGE × 2.7) damage on a slow_shot CRIT (AC #1)', () => {
     const m = nodeMultiplier('crit_dmg_2', 'critDamageMultiplier')
-    const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, { upgrades: upgradeWith('crit_dmg_1', 'crit_dmg_2') })
+    const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, { stats: upgradeWith('crit_dmg_1', 'crit_dmg_2') })
     expect(dmg).toBe(Math.round(SLOW_SKILL_DAMAGE * m))
   })
 
@@ -276,20 +278,20 @@ describe('calculateDamage — upgrades.critDamageMultiplier', () => {
     expect(m3).toBeGreaterThan(m2)
   })
 
-  it('upgrades.critDamageMultiplier does not affect HIT damage', () => {
-    const dmg = calculateDamage('HIT', 'slow_shot', Math.random, { upgrades: upgradeWith('crit_dmg_1', 'crit_dmg_2', 'crit_dmg_3') })
+  it('stats.critDamageMultiplier does not affect HIT damage', () => {
+    const dmg = calculateDamage('HIT', 'slow_shot', Math.random, { stats: upgradeWith('crit_dmg_1', 'crit_dmg_2', 'crit_dmg_3') })
     expect(dmg).toBe(SLOW_SKILL_DAMAGE)
   })
 
-  it('upgrades.critDamageMultiplier does not affect GRAZE damage', () => {
-    const dmg = calculateDamage('GRAZE', 'slow_shot', Math.random, { upgrades: upgradeWith('crit_dmg_1', 'crit_dmg_2', 'crit_dmg_3') })
+  it('stats.critDamageMultiplier does not affect GRAZE damage', () => {
+    const dmg = calculateDamage('GRAZE', 'slow_shot', Math.random, { stats: upgradeWith('crit_dmg_1', 'crit_dmg_2', 'crit_dmg_3') })
     expect(dmg).toBe(SLOW_SKILL_DAMAGE * GRAZE_DAMAGE_MULTIPLIER)
   })
 
-  it('upgrades.critDamageMultiplier scales fireball CRIT damage', () => {
+  it('stats.critDamageMultiplier scales fireball CRIT damage', () => {
     const m = nodeMultiplier('crit_dmg_1', 'critDamageMultiplier')
     const rngMin = () => 0
-    const dmg = calculateDamage('CRIT', 'fireball', rngMin, { upgrades: upgradeWith('crit_dmg_1') })
+    const dmg = calculateDamage('CRIT', 'fireball', rngMin, { stats: upgradeWith('crit_dmg_1') })
     expect(dmg).toBe(Math.round(FIREBALL_SKILL_DAMAGE_MIN * m))
   })
 })
@@ -301,24 +303,24 @@ describe('calculateDamage — upgrades.critDamageMultiplier', () => {
 describe('calculateDamage — quick chain bonus (precomputed at fire time)', () => {
   it('chainBonus = 0 leaves damage unchanged', () => {
     const dmg = calculateDamage('HIT', 'slow_shot', Math.random, {
-      upgrades: DEFAULT_GLOBAL_UPGRADE_STATE,
+      stats: computePlayerStats(DEFAULT_GLOBAL_UPGRADE_STATE),
       chainBonus: 0,
     })
     expect(dmg).toBe(SLOW_SKILL_DAMAGE)
   })
 
   it('chainBonus > 0 multiplies HIT damage by (1 + chainBonus) (AC #3)', () => {
-    const upgrades = upgradeWith('cast_time_1', 'quick_chain_1')
-    const bonus = upgrades.quickChainBonus
-    const dmg = calculateDamage('HIT', 'slow_shot', Math.random, { upgrades, chainBonus: bonus })
+    const stats = upgradeWith('cast_time_1', 'quick_chain_1')
+    const bonus = stats.quickChainBonus
+    const dmg = calculateDamage('HIT', 'slow_shot', Math.random, { stats, chainBonus: bonus })
     expect(dmg).toBe(Math.round(SLOW_SKILL_DAMAGE * (1 + bonus)))
   })
 
   it('chainBonus stacks multiplicatively with crit_dmg_1 on CRIT', () => {
-    const upgrades = upgradeWith('cast_time_1', 'quick_chain_1', 'crit_dmg_1')
-    const bonus = upgrades.quickChainBonus
-    const m = upgrades.critDamageMultiplier
-    const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, { upgrades, chainBonus: bonus })
+    const stats = upgradeWith('cast_time_1', 'quick_chain_1', 'crit_dmg_1')
+    const bonus = stats.quickChainBonus
+    const m = stats.critDamageMultiplier
+    const dmg = calculateDamage('CRIT', 'slow_shot', Math.random, { stats, chainBonus: bonus })
     expect(dmg).toBe(Math.round(SLOW_SKILL_DAMAGE * m * (1 + bonus)))
   })
 
@@ -330,9 +332,9 @@ describe('calculateDamage — quick chain bonus (precomputed at fire time)', () 
     expect(dmg2).toBeGreaterThan(dmg1)
   })
 
-  it('chainBonus ≤ 0 leaves damage untouched even when upgrades is provided', () => {
-    const upgrades = upgradeWith('cast_time_1', 'quick_chain_1')
-    const dmg = calculateDamage('HIT', 'slow_shot', Math.random, { upgrades, chainBonus: 0 })
+  it('chainBonus ≤ 0 leaves damage untouched even when stats is provided', () => {
+    const stats = upgradeWith('cast_time_1', 'quick_chain_1')
+    const dmg = calculateDamage('HIT', 'slow_shot', Math.random, { stats, chainBonus: 0 })
     expect(dmg).toBe(SLOW_SKILL_DAMAGE)
   })
 

@@ -3,7 +3,8 @@
 // Reads skill parameters from SkillRegistry — no switch/case on SkillType.
 // ============================================================
 
-import type { GlobalUpgradeState, HitResult, SkillType } from '../../types'
+import type { HitResult, SkillType } from '../../types'
+import type { PlayerStats } from './PlayerProgression'
 import { SkillRegistry } from '../skills/registry'
 import {
   CRIT_DAMAGE_MULTIPLIER,
@@ -22,7 +23,7 @@ function rollBaseDamage(skillType: SkillType, rng: () => number): number {
 
 /**
  * Optional damage modifiers (all default to "no effect"):
- * - upgrades — when provided, CRIT damage uses upgrades.critDamageMultiplier
+ * - stats — when provided, CRIT damage uses stats.critDamageMultiplier
  *   instead of the base CRIT_DAMAGE_MULTIPLIER.
  * - chainBonus — precomputed quick-chain bonus from GameStateMachine fire path.
  *   When > 0, the final multiplier is scaled by (1 + chainBonus). The bonus is
@@ -30,7 +31,7 @@ function rollBaseDamage(skillType: SkillType, rng: () => number): number {
  *   eat the chain window and same-slot rapid fires cannot retroactively chain.
  */
 export interface DamageOptions {
-  upgrades?: GlobalUpgradeState
+  stats?: PlayerStats
   chainBonus?: number
 }
 
@@ -39,7 +40,7 @@ export interface DamageOptions {
  *
  * Base formula: rollBaseDamage(skillType, rng) × multiplier(hitResult)
  *
- * - CRIT multiplier comes from upgrades.critDamageMultiplier when provided,
+ * - CRIT multiplier comes from stats.critDamageMultiplier when provided,
  *   otherwise the base CRIT_DAMAGE_MULTIPLIER.
  * - HIT multiplier is always HIT_DAMAGE_MULTIPLIER (1.0).
  * - GRAZE multiplier is per-skill (read from SkillRegistry: white_shot/fireball use 0.5).
@@ -54,7 +55,7 @@ export interface DamageOptions {
  * @param hitResult - Zone category of the hit (CRIT / HIT / GRAZE / MISS)
  * @param skillType - Skill that fired the projectile
  * @param rng - Random number generator [0, 1) — injectable for deterministic tests
- * @param opts - Optional upgrade state + precomputed chain bonus
+ * @param opts - Optional PlayerStats + precomputed chain bonus
  * @returns Damage dealt. Unit: HP.
  */
 export function calculateDamage(
@@ -68,7 +69,7 @@ export function calculateDamage(
 
   let multiplier: number
   if (hitResult === 'CRIT') {
-    multiplier = opts.upgrades?.critDamageMultiplier ?? CRIT_DAMAGE_MULTIPLIER
+    multiplier = opts.stats?.critDamageMultiplier ?? CRIT_DAMAGE_MULTIPLIER
   } else if (hitResult === 'HIT') {
     multiplier = HIT_DAMAGE_MULTIPLIER
   } else {

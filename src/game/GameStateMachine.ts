@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { GameState, InputEvent, HitResult, SkillType, Phase, HitZoneName, ActiveSlotState, HitZoneEntry, HitZoneEntryPx, PlayerHitEvent, GlobalUpgradeState, UpgradeNodeId, FightStats, SkillFightStats } from '../types'
+import { computePlayerStats } from './systems/PlayerProgression'
 import { InputManager } from './systems/InputManager'
 import type { TouchPointEntry } from './systems/InputManager'
 import { computeReticle } from './systems/AimSystem'
@@ -893,7 +894,7 @@ export class GameStateMachine {
     }
 
     const damage = calculateDamage(result, skillType, this._rng, {
-      upgrades: this._globalUpgrades,
+      stats: computePlayerStats(this._globalUpgrades),
       chainBonus,
     })
     this.enemyHp = Math.max(0, this.enemyHp - damage)
