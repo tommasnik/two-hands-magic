@@ -2432,25 +2432,11 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — MaskHitDetector integration', () => {
-  it('setMaskDetector() and setEnemyAnimState() do not throw', () => {
+  it('setMaskDetector() does not throw', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const detector = new MaskHitDetector()
     gsm.setMaskDetector(detector)
-    gsm.setEnemyAnimState('idle', 0)
-    // No error thrown — basic smoke test
-    const state = gsm.getState()
-    expect(state.enemyAnimKey).toBe('idle')
-    expect(state.enemyFrameIndex).toBe(0)
-  })
-
-  it('setEnemyAnimState() updates animation state in getState()', () => {
-    const gsm = new GameStateMachine()
-    gsm.startBattle()
-    gsm.setEnemyAnimState('attack', 3)
-    const state = gsm.getState()
-    expect(state.enemyAnimKey).toBe('attack')
-    expect(state.enemyFrameIndex).toBe(3)
   })
 
   it('enemyAnimKey and enemyFrameIndex have defaults in initial state', () => {

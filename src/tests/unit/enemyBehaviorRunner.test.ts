@@ -560,10 +560,10 @@ describe('EnemyBehaviorRunner — holdFrame & restart (AC#7)', () => {
 })
 
 // ------------------------------------------------------------
-// Construction, exposure & reset
+// Construction & exposure
 // ------------------------------------------------------------
 
-describe('EnemyBehaviorRunner — construction / exposure / reset', () => {
+describe('EnemyBehaviorRunner — construction / exposure', () => {
   const graph: BehaviorGraph = {
     start: 'idle',
     nodes: {
@@ -584,21 +584,6 @@ describe('EnemyBehaviorRunner — construction / exposure / reset', () => {
     expect(runner.currentHoldFrame).toBeUndefined()
     expect(runner.currentFrameIndex).toBe(0)
     expect(runner.attackCount).toBe(0)
-  })
-
-  it('reset returns to the start node and clears counters', () => {
-    const runner = new EnemyBehaviorRunner(graph)
-    // emit an attack + advance the frame
-    runner.tick(16, ctx({ frameIndex: 4 }))
-    expect(runner.attackCount).toBe(1)
-    expect(runner.currentFrameIndex).toBe(4)
-
-    runner.reset()
-    expect(runner.currentNode.id).toBe('idle')
-    expect(runner.attackCount).toBe(0)
-    expect(runner.currentFrameIndex).toBe(0)
-    // After reset the attack latch is re-armed: it can emit again.
-    expect(runner.tick(16, ctx({ frameIndex: 0 })).attacks).toHaveLength(1)
   })
 
   it('uses the default RNG (Math.random) when none is injected', () => {

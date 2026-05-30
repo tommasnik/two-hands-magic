@@ -127,13 +127,6 @@ export class EnemyBehaviorRunner {
     return this.attackCountValue
   }
 
-  /** Reset to the start node and clear all counters (e.g. for a new fight). */
-  reset(): void {
-    this.attackCountValue = 0
-    this.lastFrameIndex = 0
-    this.enterNode(this.graph.start)
-  }
-
   /** Whether the active node's exit trigger is satisfied this tick. */
   private shouldExit(ctx: BehaviorContext): boolean {
     const trigger = this.activeNode.exitTrigger

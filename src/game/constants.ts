@@ -353,14 +353,6 @@ export const DELIVERY_TEETH_HALF_WIDTH_PX = 46
  */
 export const DELIVERY_CONNECT_FLASH_MS = 180
 
-/**
- * Minimum flight progress (0..1) a delivery must have reached for its
- * disappearance to count as a connect (vs. a cancel on level/battle reset).
- * Below this, the visual is dropped silently with no impact flash.
- * Affects: spurious chomp effects when deliveries are cleared mid-flight.
- */
-export const DELIVERY_CONNECT_PROGRESS_THRESHOLD = 0.9
-
 // ============================================================
 // Floating damage number font sizes (3 tiers)
 // ============================================================
@@ -828,6 +820,11 @@ export const ENEMY_INSECT_SWARM: EnemyDef = {
   displayWidth: 128,
   behaviorGraph: insectSwarmGraph,
 }
+
+// ============================================================
+// Bench enemies — NOT in ENEMY_POOL, NOT in the campaign.
+// Each needs a behaviorGraph (see enemyGraphs.ts) before being added to ENEMY_POOL.
+// ============================================================
 
 /** Barn Spider — dog-sized ambush spider. Low HP beast enemy; precision over endurance. */
 export const ENEMY_BARN_SPIDER: EnemyDef = {

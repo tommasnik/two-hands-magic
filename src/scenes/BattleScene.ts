@@ -82,7 +82,7 @@ export class BattleScene extends Phaser.Scene {
   // DOM phase overlays
   private levelCompleteOverlay!: HTMLElement
   private levelCompleteText!: HTMLElement
-  private victoryOverlay!: HTMLElement
+  private victoryOverlay: HTMLElement | null = null
   private gameOverOverlay: HTMLElement | null = null
 
   // New fight overview / victory toast overlays (task-47)
@@ -159,7 +159,7 @@ export class BattleScene extends Phaser.Scene {
     // Wire phase overlay DOM elements
     this.levelCompleteOverlay = document.getElementById('level-complete-overlay')!
     this.levelCompleteText    = document.getElementById('level-complete-text')!
-    this.victoryOverlay       = document.getElementById('victory-overlay')!
+    this.victoryOverlay       = document.getElementById('victory-overlay')
     this.gameOverOverlay      = document.getElementById('game-over-overlay')
 
     // Wire upgrade picker overlay
@@ -180,6 +180,7 @@ export class BattleScene extends Phaser.Scene {
         if (this._fightOverviewOverlay) this._fightOverviewOverlay.classList.add('hidden')
         this._upgradePickerVisible = false  // force re-render next frame
       } else {
+        this._deliveryRenderer.cancelFlying()
         gameMachine.completeFightOverview()
       }
     })
@@ -455,10 +456,12 @@ export class BattleScene extends Phaser.Scene {
         // Legacy auto-advance (level_complete phase no longer emitted in normal flow).
         if (!gameMachine.getState().pendingLevelUp) {
           this._phaseTimerMs = null
+          this._deliveryRenderer.cancelFlying()
           gameMachine.nextLevel()
         }
       } else if (phase === 'game_over' && this._phaseTimerMs >= GAME_OVER_RESTART_DELAY_MS) {
         this._phaseTimerMs = null
+        this._deliveryRenderer.cancelFlying()
         gameMachine.restartLevel()
       }
     }
@@ -702,6 +705,7 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     if (!state.pendingLevelUp) return
     if (getUpgradeNodeStatus(state.globalUpgrades, nodeId) !== 'available') return
     gameMachine.confirmLevelUpUpgrade(nodeId)
+    this._deliveryRenderer.cancelFlying()
     gameMachine.nextLevel()
   }
 

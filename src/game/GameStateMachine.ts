@@ -14,7 +14,7 @@ import { scaleHitZoneMap } from './systems/HitZoneSystem'
 import { DeliverySystem } from './systems/DeliverySystem'
 import { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
 import { applyUpgradeNode, getAvailableNodes } from './upgrades'
-import type { EnemyBehaviorDef, EnemyDef, BehaviorGraph, BehaviorNode } from '../types'
+import type { EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
 
 import type { MaskHitDetector } from './systems/MaskHitDetector'
 import { AnimationController } from './systems/AnimationController'
@@ -184,11 +184,11 @@ export class GameStateMachine {
    * Advance to the next level.
    * Loads the next ENEMY_POOL entry (enemy name, HP, behavior).
    * Resets phase to 'battle' for the new fight.
-   * Does nothing if not in 'level_complete' or 'fight_overview' phase.
+   * Does nothing if not in 'fight_overview' phase.
    * Blocked while pendingLevelUp is true — the upgrade pick gate must clear first.
    */
   nextLevel(): void {
-    if (this.phase !== 'level_complete' && this.phase !== 'fight_overview') return
+    if (this.phase !== 'fight_overview') return
     if (this.pendingLevelUp) return
     // Guard: if already on the last level, nextLevel() is not valid — use completeFightOverview() instead.
     if (this.currentLevel >= ENEMY_POOL.length) return
@@ -221,11 +221,11 @@ export class GameStateMachine {
 
   /**
    * Restart the game from level 1.
-   * Used after 'victory' or 'fight_overview' (when on the last level) phase.
-   * Does nothing if not in 'victory' or 'fight_overview' phase.
+   * Used after 'fight_overview' (when on the last level) phase.
+   * Does nothing if not in 'fight_overview' phase.
    */
   restartGame(): void {
-    if (this.phase !== 'victory' && this.phase !== 'fight_overview') return
+    if (this.phase !== 'fight_overview') return
     this.currentLevel = 1
     this._enemyPoolIndex = 0
     this.score = { total: 0, crits: 0, hits: 0, grazes: 0, misses: 0 }
@@ -291,16 +291,6 @@ export class GameStateMachine {
    */
   setMaskDetector(detector: MaskHitDetector): void {
     this._maskDetector = detector
-  }
-
-  /**
-   * Update the current animation key and frame index for the active enemy.
-   * Called from BattleScene each frame to keep the Enemy entity in sync with
-   * the visual animation state. Needed for pixel-perfect mask lookup.
-   */
-  setEnemyAnimState(animKey: string, frameIndex: number): void {
-    this.enemy.currentAnimKey = animKey
-    this.enemy.currentFrameIndex = frameIndex
   }
 
   /**
@@ -436,7 +426,7 @@ export class GameStateMachine {
         this._deliverySystem.spawn(spec, { x: this.enemy.x, y: this.enemy.y }, PLAYER_CENTRE)
       }
       // Drive the enemy sprite from the (possibly new) active node.
-      this._syncEnemyAnimation(this._behaviorRunner.currentNode)
+      this._syncEnemyAnimation(this._behaviorRunner)
     }
 
     // 8. Advance in-flight deliveries and apply connects to the player.
@@ -752,13 +742,15 @@ export class GameStateMachine {
    * activation: a one-shot animation returning to its default must not be
    * re-triggered every frame while the node is still active.
    */
-  private _syncEnemyAnimation(node: BehaviorNode): void {
-    if (node.id === this._lastAnimNodeId) return
-    this._lastAnimNodeId = node.id
-    if (node.holdFrame) {
-      this.enemy.holdFrame(node.holdFrame.animKey, node.holdFrame.frameIndex)
+  private _syncEnemyAnimation(runner: EnemyBehaviorRunner): void {
+    const nodeId = runner.currentNode.id
+    if (nodeId === this._lastAnimNodeId) return
+    this._lastAnimNodeId = nodeId
+    const holdFrame = runner.currentHoldFrame
+    if (holdFrame) {
+      this.enemy.holdFrame(holdFrame.animKey, holdFrame.frameIndex)
     } else {
-      this.enemy.playAnimation(node.animKey)
+      this.enemy.playAnimation(runner.currentAnimKey)
     }
   }
 
@@ -795,7 +787,7 @@ export class GameStateMachine {
   /**
    * Applies a HitResult to the score, deals damage to the enemy HP,
    * and records lastHit (including damage dealt and hit zone).
-   * Transitions phase to 'level_complete' or 'victory' when HP reaches 0.
+   * Transitions phase to 'fight_overview' when HP reaches 0.
    * @param position - world position where the projectile landed (null for test-only calls)
    * @param projectileRadius - effective projectile radius (px) used by the originating
    *                           projectile, so the hitZone re-derivation matches the

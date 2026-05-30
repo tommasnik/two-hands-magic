@@ -7,16 +7,13 @@
 // Per frame it diffs the live delivery ids against the previous frame:
 //   - new id            → visual.spawn() then visual.update()
 //   - surviving id      → visual.update()
-//   - id that vanished  → connect (if it reached the threshold): visual.onConnect()
-//                         + a brief post-connect flash drawn via visual.update()
-//                         with connectAgeMs set.
+//   - id that vanished  → connect: visual.onConnect() + brief post-connect flash
+//                         (call cancelFlying() before a battle/level reset to
+//                          suppress spurious flashes on cleared mid-flight deliveries)
 // ============================================================
 
 import type { ActiveDelivery } from '../../types'
-import {
-  DELIVERY_CONNECT_FLASH_MS,
-  DELIVERY_CONNECT_PROGRESS_THRESHOLD,
-} from '../../game/constants'
+import { DELIVERY_CONNECT_FLASH_MS } from '../../game/constants'
 import type { DeliveryRenderContext, RenderDelivery } from './DeliveryVisual'
 import type { DeliveryVisualRegistry } from './DeliveryVisualRegistry'
 
@@ -54,16 +51,15 @@ export class DeliveryRenderer {
       visual.update(d as RenderDelivery, rc)
     }
 
-    // 2. Deliveries that disappeared since last frame: connect or cancel.
+    // 2. Deliveries that disappeared since last frame → connect + flash.
+    // Call cancelFlying() before any level/battle reset so this path is only
+    // reached for deliveries that genuinely completed (not ones cleared mid-flight).
     for (const [id, snapshot] of this.live) {
       if (seen.has(id)) continue
       this.live.delete(id)
       const visual = this.registry.get(snapshot.visualKey)
-      // Reached the player → connect + flash. Otherwise it was cancelled (reset).
-      if (snapshot.progress >= DELIVERY_CONNECT_PROGRESS_THRESHOLD) {
-        if (visual) visual.onConnect({ ...snapshot, progress: 1 } as RenderDelivery, rc)
-        this.flashes.set(id, { snapshot: { ...snapshot, progress: 1 }, ageMs: 0 })
-      }
+      if (visual) visual.onConnect({ ...snapshot, progress: 1 } as RenderDelivery, rc)
+      this.flashes.set(id, { snapshot: { ...snapshot, progress: 1 }, ageMs: 0 })
     }
 
     // 3. Advance + draw post-connect flashes.
@@ -86,6 +82,16 @@ export class DeliveryRenderer {
         visual.update({ ...flash.snapshot, connectAgeMs: flash.ageMs } as RenderDelivery, rc)
       }
     }
+  }
+
+  /**
+   * Silently drop all in-flight deliveries without triggering onConnect.
+   * Call this immediately before any level/battle reset (restartLevel, nextLevel,
+   * restartGame) so that deliveries cleared by DeliverySystem.reset() do not
+   * produce spurious impact flashes on the incoming enemy.
+   */
+  cancelFlying(): void {
+    this.live.clear()
   }
 
   /** Tear down every registered visual and forget all tracked state. */
