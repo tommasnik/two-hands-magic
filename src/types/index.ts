@@ -13,7 +13,7 @@ export type HitResult = 'CRIT' | 'HIT' | 'GRAZE' | 'MISS'
  * Skill type determining projectile behaviour.
  * Extensible union — add new skills here.
  */
-export type SkillType = 'fireball' | 'slow_shot' | 'fast_shot' | 'white_shot'
+export type SkillType = 'fireball' | 'slow_shot' | 'fast_shot' | 'white_shot' | 'ice_crystal' | 'lightning_blast'
 
 /** Named body-part zone on an enemy, or 'none' for a complete miss. */
 export type HitZoneName = 'head' | 'torso' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg' | 'none'
