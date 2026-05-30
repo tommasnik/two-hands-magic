@@ -9,7 +9,7 @@
   },
   "animations": {
     "idle": {
-      "frameCount": 9,
+      "frameCount": 5,
       "frameDurationMs": 150,
       "loop": true,
       "hasMasks": true,
@@ -17,7 +17,14 @@
         "animationId": "2cca1160-db58-43d1-bc77-94f2bd2724b2",
         "direction": "south",
         "description": "Alert four-legged wolf idle — shaggy gray fur, ears twitch, bushy tail sways, breathing; seamless loop"
-      }
+      },
+      "masksEdited": [
+        "idle_00",
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_04"
+      ]
     },
     "attack": {
       "frameCount": 9,
@@ -28,7 +35,18 @@
         "animationId": "39a8b6e6-9e40-461c-b3b1-2f1df412fe70",
         "direction": "south",
         "description": "Pouncing bite lunge — coil low, spring off hind legs, jaws bare fangs and snap, recoil to crouch"
-      }
+      },
+      "masksEdited": [
+        "attack_00",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "attack_04",
+        "attack_05",
+        "attack_06",
+        "attack_07",
+        "attack_08"
+      ]
     }
   }
 }
