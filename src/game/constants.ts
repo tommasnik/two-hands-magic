@@ -802,6 +802,17 @@ export const ENEMY_WILD_BOAR: EnemyDef = {
   displayWidth: 230,
 }
 
+/** Bandit — hooded dual-wielding outlaw. Humanoid mid-tier; nimble roadside robber. */
+export const ENEMY_BANDIT: EnemyDef = {
+  name: 'Bandit',
+  maxHp: 35,
+  manifestId: 'bandit',
+  spriteKey: 'bandit',
+  hitZoneMap: DEFAULT_HIT_ZONE_MAP,
+  behavior: { pattern: 'static', speed: 0 },
+  displayWidth: 150,
+}
+
 // ============================================================
 // Enemy pool — sequential rotation through all sprite-based characters
 // ============================================================

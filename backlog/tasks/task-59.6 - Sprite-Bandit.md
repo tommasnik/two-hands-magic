@@ -1,9 +1,11 @@
 ---
 id: TASK-59.6
 title: 'Sprite: Bandit'
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@agent'
 created_date: '2026-05-30 08:01'
+updated_date: '2026-05-30 11:49'
 labels:
   - sprites
   - pixellab
@@ -45,3 +47,20 @@ priority: medium
 - Download frames → `src/assets/characters/bandit/frames/`
 - Create manifest.json + generate masks
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Vygenerován Bandit sprite přes PixelLab (humanoid, view side, v3, size 64, stylized).
+
+- characterId: 53627962-8ae8-4656-b200-bc89941d5c2b
+- Base sprite schválen uživatelem. Sprite vyšel jako **dual-wield** (krátký meč v každé ruce) místo jediného meče — attack tomu přizpůsoben.
+- idle: 9 framů (seamless loop, 150ms), animationId e0810341-6271-4ed7-86c6-9e96a079a172
+- attack: 13 framů (100ms), široký sek oběma meči zároveň (12 frames dle požadavku uživatele), animationId 53b9011e-5de7-428d-874d-310ba00e54fa
+- 22 framů staženo (124×124) → src/assets/characters/bandit/frames/
+- manifest.json vytvořen (spriteKey: bandit, displayWidth: 150)
+- 22 základních masek vygenerováno (zelená GRAZE zóna) — zpřesnění red/yellow zón v mask editoru zatím neprovedeno (stejně jako u ostatních beast/outlaw sprite tasků)
+- Registrace: LoadingScene.ts (manifest import) + ENEMY_BANDIT EnemyDef v constants.ts (maxHp 35). Není zatím v ENEMY_POOL — stejný vzor jako sourozenci (wild-boar/wolf/barn-spider).
+
+Verifikace: tsc --noEmit OK; constants.ts coverage 100 %. Pre-existující coverage gap (98.88 %) v GameStateMachine/Enemy/EnemyController/MaskHitDetector je identický na čistém main, nesouvisí s touto změnou.
+<!-- SECTION:FINAL_SUMMARY:END -->

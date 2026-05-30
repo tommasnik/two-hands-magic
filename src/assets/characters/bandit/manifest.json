@@ -1,0 +1,32 @@
+{
+  "id": "bandit",
+  "spriteKey": "bandit",
+  "displayWidth": 150,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "53627962-8ae8-4656-b200-bc89941d5c2b",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "e0810341-6271-4ed7-86c6-9e96a079a172",
+        "direction": "south"
+      }
+    },
+    "attack": {
+      "frameCount": 13,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "53b9011e-5de7-428d-874d-310ba00e54fa",
+        "direction": "south"
+      }
+    }
+  }
+}

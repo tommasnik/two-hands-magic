@@ -17,6 +17,7 @@ import insectSwarmManifest from '../assets/characters/insect-swarm/manifest.json
 import barnSpiderManifest from '../assets/characters/barn-spider/manifest.json'
 import wolfManifest from '../assets/characters/wolf/manifest.json'
 import wildBoarManifest from '../assets/characters/wild-boar/manifest.json'
+import banditManifest from '../assets/characters/bandit/manifest.json'
 
 /** All character manifests to register and load. */
 const ALL_MANIFESTS: CharacterManifest[] = [
@@ -34,6 +35,7 @@ const ALL_MANIFESTS: CharacterManifest[] = [
   barnSpiderManifest as CharacterManifest,
   wolfManifest as CharacterManifest,
   wildBoarManifest as CharacterManifest,
+  banditManifest as CharacterManifest,
 ]
 
 export class LoadingScene extends Phaser.Scene {
