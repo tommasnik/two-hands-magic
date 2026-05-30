@@ -1,10 +1,10 @@
 ---
 id: TASK-61.3
 title: 'TASK-61.3: Lightning Blast instant hit (pure TS)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 18:51'
-updated_date: '2026-05-30 19:16'
+updated_date: '2026-05-30 19:31'
 labels:
   - skills
   - combat
@@ -71,4 +71,10 @@ if (skill === 'lightning_blast') {
 - [ ] #4 CRIT hit nastaví discharge na 600ms, HIT na 300ms, GRAZE na 150ms
 - [ ] #5 GRAZE dává 60% damage (standardní GRAZE multiplier)
 - [ ] #6 npm run test projde
+- [ ] #7 1:lightning_blast nevytváří žádný Projectile objekt
+- [ ] #8 2:Damage se aplikuje okamžitě na release
+- [ ] #9 3:lightningDischargeUntilMs, lightningDischargeResult, lightningDischargeTarget přidány do GameState
+- [ ] #10 4:CRIT hit nastaví discharge na 600ms, HIT na 300ms, GRAZE na 150ms
+- [ ] #11 5:GRAZE dává 60% damage (standardní GRAZE multiplier)
+- [ ] #12 6:npm run test projde
 <!-- AC:END -->

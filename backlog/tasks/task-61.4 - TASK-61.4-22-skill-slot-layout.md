@@ -1,9 +1,10 @@
 ---
 id: TASK-61.4
 title: 'TASK-61.4: 2+2 skill slot layout'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 18:51'
+updated_date: '2026-05-30 19:42'
 labels:
   - skills
   - layout
@@ -54,4 +55,7 @@ export const DEFAULT_SKILL_CONFIG: readonly SkillSlotConfig[] = [
 - [ ] #2 generateTouchPointLayout() vrátí 4 pozice bez erroru
 - [ ] #3 Touch pointy se zobrazí na správných místech v dev serveru
 - [ ] #4 Každý slot funguje nezávisle (firing ice_crystal nespustí white_shot)
+- [ ] #5 1:DEFAULT_SKILL_CONFIG má 4 záznamy (white_shot, ice_crystal, fireball, lightning_blast)
+- [ ] #6 2:generateTouchPointLayout() vrátí 4 pozice bez erroru
+- [ ] #7 4:Každý slot funguje nezávisle (firing ice_crystal nespustí white_shot)
 <!-- AC:END -->

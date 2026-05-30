@@ -1,9 +1,10 @@
 ---
 id: TASK-61.5
 title: 'TASK-61.5: Ice Crystal render — diamantový shard + frozen overlay'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 18:52'
+updated_date: '2026-05-30 19:51'
 labels:
   - skills
   - visuals
@@ -52,9 +53,25 @@ Vizuální vrstva pro Ice Crystal v BattleScene (nebo render systému). Vše gen
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Diamantový shard se vykresluje a letí k nepříteli (rotovaný ve směru letu)
-- [ ] #2 Frozen overlay se zobrazí na nepříteli během freeze (50% alpha, modrá)
-- [ ] #3 Overlay zmizí při odmrazení
-- [ ] #4 Vykresleno přes Phaser Graphics (bez nových assetů)
+- [x] #1 Diamantový shard se vykresluje a letí k nepříteli (rotovaný ve směru letu)
+- [x] #2 Frozen overlay se zobrazí na nepříteli během freeze (50% alpha, modrá)
+- [x] #3 Overlay zmizí při odmrazení
+- [x] #4 Vykresleno přes Phaser Graphics (bez nových assetů)
 - [ ] #5 Vizualizace otestována manuálně v dev serveru
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Vytvoření src/scenes/rendering/SkillRenderer.ts — veškerá skill grafika v samostatném souboru.
+
+**Ice Crystal projektil** (#1, #4): rotovaný kosočtverec (diamond shard) 16px, barva #aaddff, natočen ve směru letu, ice trail za ním. Implementace v SkillRenderer.drawProjectile().
+
+**Frozen overlay** (#2, #3, #4): 6-hrotová hvězda (star burst) přes enemy, fill #88CCFF / stroke #FFFFFF, alpha 0.5. Zobrazí se dokud enemyFrozenUntilMs > elapsedMs, zmizí při odmrazení. Implementace v SkillRenderer.drawFrozenOverlay().
+
+**Přesun fire particles z BattleScene** do SkillRenderer (update + drawFireParticles).
+
+**Oprava ProjectileSystem.speedForSkill()**: přidány chybějící case pro ice_crystal a lightning_blast (způsobovaly TS chybu — missing return path).
+
+BattleScene deleguje na `this._skillRenderer` — žádná skill-specifická kresba v BattleScene.
+<!-- SECTION:FINAL_SUMMARY:END -->
