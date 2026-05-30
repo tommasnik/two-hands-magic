@@ -6,15 +6,13 @@
 import type { SkillType, HitResult } from '../../types'
 import { Enemy } from '../entities/Enemy'
 import {
-  PROJECTILE_SPEED_CM,
-  FIREBALL_SPEED_CM,
   PIXELS_PER_CM,
   PROJECTILE_BASE_RADIUS_PX,
-  ICE_CRYSTAL_SPEED_CM,
 } from '../constants'
+import { SkillRegistry } from '../skills/registry'
 
-/** white_shot travels at base projectile speed — fast to match its quick DPS role. */
-const WHITE_SHOT_SPEED_CM = PROJECTILE_SPEED_CM
+// Ensure all skill modules are registered before ProjectileSystem is used.
+import '../skills/index'
 
 /**
  * Event emitted when a projectile reaches its target.
@@ -86,22 +84,10 @@ export interface FireUpgradeMods {
 
 /**
  * Returns the speed in cm/s for the given skill type.
- * Extensible: add new skill cases here without changing update logic.
+ * Reads from SkillRegistry — no switch/case on SkillType.
  */
 function speedForSkill(skillType: SkillType): number {
-  switch (skillType) {
-    case 'slow_shot':
-    case 'fireball':
-      return FIREBALL_SPEED_CM
-    case 'fast_shot':
-      return PROJECTILE_SPEED_CM
-    case 'white_shot':
-      return WHITE_SHOT_SPEED_CM
-    case 'ice_crystal':
-      return ICE_CRYSTAL_SPEED_CM
-    case 'lightning_blast':
-      return PROJECTILE_SPEED_CM
-  }
+  return SkillRegistry.get(skillType).projectileSpeedCm
 }
 
 /**

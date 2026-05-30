@@ -1,55 +1,23 @@
 // ============================================================
 // DamageSystem — pure damage calculation, no Phaser dependency
+// Reads skill parameters from SkillRegistry — no switch/case on SkillType.
 // ============================================================
 
 import type { GlobalUpgradeState, HitResult, SkillType } from '../../types'
+import { SkillRegistry } from '../skills/registry'
 import {
-  SLOW_SKILL_DAMAGE,
-  FAST_SKILL_DAMAGE,
-  WHITE_SHOT_SKILL_DAMAGE_MIN,
-  WHITE_SHOT_SKILL_DAMAGE_MAX,
-  FIREBALL_SKILL_DAMAGE_MIN,
-  FIREBALL_SKILL_DAMAGE_MAX,
-  ICE_CRYSTAL_DAMAGE_MIN,
-  ICE_CRYSTAL_DAMAGE_MAX,
-  LIGHTNING_BLAST_DAMAGE_MIN,
-  LIGHTNING_BLAST_DAMAGE_MAX,
   CRIT_DAMAGE_MULTIPLIER,
   HIT_DAMAGE_MULTIPLIER,
-  GRAZE_DAMAGE_MULTIPLIER,
-  NEW_SKILL_GREEN_ZONE_MULTIPLIER,
 } from '../constants'
 
-/**
- * Damage range [min, max] per skill type.
- * Fixed-damage skills use min === max.
- */
-const SKILL_DAMAGE_RANGE: Record<SkillType, [number, number]> = {
-  slow_shot: [SLOW_SKILL_DAMAGE, SLOW_SKILL_DAMAGE],
-  fast_shot: [FAST_SKILL_DAMAGE, FAST_SKILL_DAMAGE],
-  fireball: [FIREBALL_SKILL_DAMAGE_MIN, FIREBALL_SKILL_DAMAGE_MAX],
-  white_shot: [WHITE_SHOT_SKILL_DAMAGE_MIN, WHITE_SHOT_SKILL_DAMAGE_MAX],
-  ice_crystal: [ICE_CRYSTAL_DAMAGE_MIN, ICE_CRYSTAL_DAMAGE_MAX],
-  lightning_blast: [LIGHTNING_BLAST_DAMAGE_MIN, LIGHTNING_BLAST_DAMAGE_MAX],
-}
-
-/**
- * Map from SkillType to GRAZE multiplier override.
- * white_shot and fireball have a 50% graze multiplier (vs-green-zone reduction).
- * slow_shot and fast_shot use the standard GRAZE_DAMAGE_MULTIPLIER.
- */
-const SKILL_GRAZE_MULTIPLIER: Record<SkillType, number> = {
-  slow_shot: GRAZE_DAMAGE_MULTIPLIER,
-  fast_shot: GRAZE_DAMAGE_MULTIPLIER,
-  fireball: NEW_SKILL_GREEN_ZONE_MULTIPLIER,
-  white_shot: NEW_SKILL_GREEN_ZONE_MULTIPLIER,
-  ice_crystal: GRAZE_DAMAGE_MULTIPLIER,
-  lightning_blast: GRAZE_DAMAGE_MULTIPLIER,
-}
+// Ensure all skill modules are registered before DamageSystem is used.
+// This import triggers the side-effect registrations in each skill module file.
+import '../skills/index'
 
 function rollBaseDamage(skillType: SkillType, rng: () => number): number {
-  const [min, max] = SKILL_DAMAGE_RANGE[skillType]
-  return min + Math.floor(rng() * (max - min + 1))
+  const skill = SkillRegistry.get(skillType)
+  const { damageMin, damageMax } = skill
+  return damageMin + Math.floor(rng() * (damageMax - damageMin + 1))
 }
 
 /**
@@ -74,7 +42,7 @@ export interface DamageOptions {
  * - CRIT multiplier comes from upgrades.critDamageMultiplier when provided,
  *   otherwise the base CRIT_DAMAGE_MULTIPLIER.
  * - HIT multiplier is always HIT_DAMAGE_MULTIPLIER (1.0).
- * - GRAZE multiplier is per-skill (white_shot/fireball use NEW_SKILL_GREEN_ZONE_MULTIPLIER).
+ * - GRAZE multiplier is per-skill (read from SkillRegistry: white_shot/fireball use 0.5).
  * - When opts.chainBonus > 0, the final multiplier is scaled by (1 + chainBonus).
  * - MISS always returns 0.
  *
@@ -99,9 +67,14 @@ export function calculateDamage(
   const baseDamage = rollBaseDamage(skillType, rng)
 
   let multiplier: number
-  if (hitResult === 'CRIT') multiplier = opts.upgrades?.critDamageMultiplier ?? CRIT_DAMAGE_MULTIPLIER
-  else if (hitResult === 'HIT') multiplier = HIT_DAMAGE_MULTIPLIER
-  else multiplier = SKILL_GRAZE_MULTIPLIER[skillType]
+  if (hitResult === 'CRIT') {
+    multiplier = opts.upgrades?.critDamageMultiplier ?? CRIT_DAMAGE_MULTIPLIER
+  } else if (hitResult === 'HIT') {
+    multiplier = HIT_DAMAGE_MULTIPLIER
+  } else {
+    // GRAZE — read per-skill graze multiplier from registry (no switch/case)
+    multiplier = SkillRegistry.get(skillType).grazeMultiplier
+  }
 
   const chainBonus = opts.chainBonus ?? 0
   if (chainBonus > 0) multiplier *= 1 + chainBonus

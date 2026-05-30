@@ -32,10 +32,14 @@ import {
   PLAYER_START_LEVEL, PLAYER_MAX_LEVEL, XP_LEVEL_THRESHOLDS,
   DEFAULT_GLOBAL_UPGRADE_STATE,
   ENEMY_POOL,
-  ICE_CRYSTAL_FREEZE_CRIT_MS, ICE_CRYSTAL_FREEZE_HIT_MS,
   LIGHTNING_BLAST_DURATION_CRIT_MS, LIGHTNING_BLAST_DURATION_HIT_MS, LIGHTNING_BLAST_DURATION_GRAZE_MS,
 } from './constants'
 import type { SkillSlotConfig } from './constants'
+import { SkillRegistry } from './skills/registry'
+import type { StatusApplier } from './skills/types'
+
+// Ensure all skill modules are registered before GameStateMachine is used.
+import './skills/index'
 
 /** Player centre — origin point enemy missiles target. */
 const PLAYER_CENTRE = { x: GAME_WIDTH / 2, y: LASER_ORIGIN_Y }
@@ -916,14 +920,24 @@ export class GameStateMachine {
       this._enemyStunnedUntilMs = this.elapsedMs + this._globalUpgrades.critStunDurationMs
     }
 
-    // Ice Crystal freeze — CRIT → 2s, HIT → 1s, GRAZE → no freeze.
-    // Only when the enemy survived the hit (no corpse-freeze).
-    // Re-hit resets the timer (not additive).
-    if (skillType === 'ice_crystal' && this.enemyHp > 0) {
-      if (result === 'CRIT') {
-        this._enemyFrozenUntilMs = this.elapsedMs + ICE_CRYSTAL_FREEZE_CRIT_MS
-      } else if (result === 'HIT') {
-        this._enemyFrozenUntilMs = this.elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS
+    // Skill-specific post-hit effects — dispatched via SkillModule.onHit().
+    // No skill-specific branching here: each skill module declares its own onHit().
+    // In TASK-63: the StatusApplier bridges known effects inline; TASK-64 replaces
+    // this with a real StatusEffectSystem.apply() call.
+    if (this.enemyHp > 0 && SkillRegistry.has(skillType)) {
+      const skill = SkillRegistry.get(skillType)
+      if (skill.onHit) {
+        // TASK-63 StatusApplier bridge — applies only 'frozen' inline.
+        // Other kinds are intentionally ignored until StatusEffectSystem is available.
+        const applyStatus: StatusApplier = (effect) => {
+          switch (effect.kind) {
+            case 'frozen':
+              this._enemyFrozenUntilMs = this.elapsedMs + effect.remainingMs
+              break
+            // 'burning' and 'shocked' are no-ops until TASK-64.
+          }
+        }
+        skill.onHit({ hp: this.enemyHp, maxHp: this.enemyMaxHp }, result, applyStatus)
       }
     }
 

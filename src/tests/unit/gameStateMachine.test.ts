@@ -1548,6 +1548,35 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     expect(left1After?.active).toBe(true)
   })
 
+  it('setTouchPointPositions() initialises slot state for a brand-new slot ID not present at construction', () => {
+    // Construct GSM with 1 left + 1 right slot (IDs: left_0, right_0 only)
+    const oneEachConfig = [
+      { skillType: 'slow_shot' as const, side: 'left' as const, slotIndex: 0 },
+      { skillType: 'fast_shot' as const, side: 'right' as const, slotIndex: 0 },
+    ]
+    const gsm = new GameStateMachine(oneEachConfig)
+    gsm.startBattle()
+
+    // Build a layout with 2 left + 1 right slots — 'left_1' is a genuinely new ID
+    const newLayout = generateTouchPointLayout(
+      [
+        { skillType: 'slow_shot', side: 'left', slotIndex: 0 },
+        { skillType: 'slow_shot', side: 'left', slotIndex: 1 },
+      ],
+      [{ skillType: 'fast_shot', side: 'right', slotIndex: 0 }],
+      GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM,
+    )
+    // setTouchPointPositions must initialise the new 'left_1' slot state
+    gsm.setTouchPointPositions(newLayout)
+
+    const slots = gsm.getState().activeSlots
+    expect(slots).toHaveLength(3)
+    const left1 = slots.find(s => s.id === 'left_1')
+    expect(left1).toBeDefined()
+    // New slot must start inactive
+    expect(left1!.active).toBe(false)
+  })
+
   it('skill slot routing: 2-skill config (slow_shot left, fast_shot right) both fire correct skill types', () => {
     // Create a 2-skill config via constructor (AC#1, AC#6)
     const twoSkillConfig = [
