@@ -185,109 +185,148 @@ export class SkillRenderer {
   }
 
   /**
-   * Draws an ice crystal cluster over the enemy while freeze is active.
-   * Crystal columns grow upward from the enemy's base — like a gem cluster.
+   * Draws a single large ice crystal column over the enemy while freeze is active.
+   * Three vertical facets + three-part tip give a 3D hexagonal prism appearance.
    */
   drawFrozenOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (state.enemyFrozenUntilMs <= state.elapsedMs) return
 
     const cx = state.enemy.x
-    const cy = state.enemy.y
     const displayW = state.enemyDisplayWidth ?? 200
-    const s = displayW / 200  // scale factor
-
-    // Crystal columns: [offsetX, offsetY-from-center, halfWidth, height, tiltAngle]
-    // Positioned at the lower half of the enemy, growing upward
-    const columns: Array<[number, number, number, number, number]> = [
-      [  0,    displayW * 0.12,  13 * s,  90 * s,   0     ],  // center — tallest
-      [ -displayW * 0.18, displayW * 0.18,  9 * s,  65 * s,  -0.18 ],  // left-inner
-      [  displayW * 0.18, displayW * 0.18,  9 * s,  65 * s,   0.18 ],  // right-inner
-      [ -displayW * 0.35, displayW * 0.24,  6 * s,  42 * s,  -0.38 ],  // left-outer
-      [  displayW * 0.35, displayW * 0.24,  6 * s,  42 * s,   0.38 ],  // right-outer
-    ]
+    const totalW = displayW * 0.46
+    const totalH = displayW * 0.92
+    // Base sits slightly below enemy centre (toward feet)
+    const baseY = state.enemy.y + displayW * 0.22
 
     ctx.save()
-    ctx.globalAlpha = 0.55
-    ctx.shadowBlur = 16
+    ctx.globalAlpha = 0.35
+    ctx.shadowBlur = 24
     ctx.shadowColor = '#88ccff'
-
-    for (const [ox, oy, hw, h, tilt] of columns) {
-      const bx = cx + ox   // base x
-      const by = cy + oy   // base y (lower part of enemy)
-      _drawCrystalColumn(ctx, bx, by, hw, h, tilt)
-    }
+    _drawCrystalColumn(ctx, cx, baseY, totalW, totalH)
     ctx.restore()
   }
 }
 
 /**
- * Draws a single crystal column with base at (bx, by), pointing upward with optional tilt.
- * Shape: hexagonal prism with a faceted pointed tip (like the blue crystal in the reference).
+ * Draws a single 3D-looking hexagonal crystal column.
+ * Base at (cx, baseY), tip pointing upward.
+ *
+ * Facet layout (asymmetric — simulates viewing from slight right angle):
+ *   Left face  (20% width) — dark, in shadow
+ *   Center face(45% width) — medium, front-lit
+ *   Right face (35% width) — bright, highlight / reflection
+ * Tip mirrors the same three-facet scheme.
  */
 function _drawCrystalColumn(
   ctx: CanvasRenderingContext2D,
-  bx: number, by: number,
-  halfW: number, height: number,
-  tilt: number,
+  cx: number, baseY: number,
+  totalW: number, totalH: number,
 ): void {
-  ctx.save()
-  ctx.translate(bx, by)
-  ctx.rotate(tilt)
+  const half = totalW / 2
+  // Vertical facet dividers (x coords relative to cx)
+  const xL  = cx - half           // left edge
+  const xLD = cx - half * 0.60   // left-center divider
+  const xRD = cx + half * 0.20   // right-center divider
+  const xR  = cx + half           // right edge
 
-  const tipY = -height
-  const shoulderY = tipY + height * 0.28  // where tip meets the body
-  const bodyTopY = tipY + height * 0.28
-  const sw = halfW * 0.75   // body half-width at shoulder
+  const apex  = baseY - totalH             // crystal tip
+  const shldr = baseY - totalH * 0.68     // shoulder (tip-body boundary)
+  const mid1  = baseY - totalH * 0.44     // first horizontal facet line
+  const mid2  = baseY - totalH * 0.22     // second horizontal facet line
 
-  // Main body fill (deep blue)
-  ctx.fillStyle = '#3388cc'
+  // ── TIP ──────────────────────────────────────────────────────────────────
+  // Left tip facet — dark
+  ctx.fillStyle = '#1a5080'
   ctx.beginPath()
-  ctx.moveTo(0, tipY)            // apex
-  ctx.lineTo(sw, shoulderY)      // right shoulder
-  ctx.lineTo(halfW, bodyTopY + height * 0.08)
-  ctx.lineTo(halfW, 0)           // right base
-  ctx.lineTo(-halfW, 0)          // left base
-  ctx.lineTo(-halfW, bodyTopY + height * 0.08)
-  ctx.lineTo(-sw, shoulderY)     // left shoulder
-  ctx.closePath()
-  ctx.fill()
+  ctx.moveTo(cx, apex); ctx.lineTo(xLD, shldr); ctx.lineTo(xL, shldr)
+  ctx.closePath(); ctx.fill()
 
-  // Left facet — lighter blue
-  ctx.fillStyle = '#66aadd'
+  // Center tip facet — medium blue
+  ctx.fillStyle = '#3377bb'
   ctx.beginPath()
-  ctx.moveTo(0, tipY)
-  ctx.lineTo(-sw, shoulderY)
-  ctx.lineTo(-halfW, bodyTopY + height * 0.08)
-  ctx.lineTo(-halfW, 0)
-  ctx.lineTo(0, 0)
-  ctx.closePath()
-  ctx.fill()
+  ctx.moveTo(cx, apex); ctx.lineTo(xLD, shldr); ctx.lineTo(xRD, shldr)
+  ctx.closePath(); ctx.fill()
 
-  // Right facet highlight — bright (reflection)
+  // Right tip facet — bright (highlight)
+  ctx.fillStyle = '#77bbee'
+  ctx.beginPath()
+  ctx.moveTo(cx, apex); ctx.lineTo(xRD, shldr); ctx.lineTo(xR, shldr)
+  ctx.closePath(); ctx.fill()
+
+  // ── BODY ─────────────────────────────────────────────────────────────────
+  // Left face — dark (in shadow)
+  ctx.fillStyle = '#1a4f7a'
+  ctx.beginPath()
+  ctx.moveTo(xL, shldr); ctx.lineTo(xLD, shldr)
+  ctx.lineTo(xLD, baseY); ctx.lineTo(xL, baseY)
+  ctx.closePath(); ctx.fill()
+
+  // Center face — medium blue, split at mid1/mid2 for depth
+  ctx.fillStyle = '#2d6fa8'
+  ctx.beginPath()
+  ctx.moveTo(xLD, shldr); ctx.lineTo(xRD, shldr)
+  ctx.lineTo(xRD, mid1);  ctx.lineTo(xLD, mid1)
+  ctx.closePath(); ctx.fill()
+
+  ctx.fillStyle = '#2a6399'
+  ctx.beginPath()
+  ctx.moveTo(xLD, mid1); ctx.lineTo(xRD, mid1)
+  ctx.lineTo(xRD, mid2); ctx.lineTo(xLD, mid2)
+  ctx.closePath(); ctx.fill()
+
+  ctx.fillStyle = '#245e90'
+  ctx.beginPath()
+  ctx.moveTo(xLD, mid2); ctx.lineTo(xRD, mid2)
+  ctx.lineTo(xRD, baseY); ctx.lineTo(xLD, baseY)
+  ctx.closePath(); ctx.fill()
+
+  // Right face — bright, with internal highlight streak
+  ctx.fillStyle = '#4d99cc'
+  ctx.beginPath()
+  ctx.moveTo(xRD, shldr); ctx.lineTo(xR, shldr)
+  ctx.lineTo(xR, baseY);  ctx.lineTo(xRD, baseY)
+  ctx.closePath(); ctx.fill()
+
+  // Specular streak on right face — simulates a sharp reflection line
   ctx.fillStyle = '#aaddff'
-  ctx.globalAlpha = 0.7
+  ctx.globalAlpha = 0.55
+  const streakX = xRD + (xR - xRD) * 0.28
   ctx.beginPath()
-  ctx.moveTo(0, tipY)
-  ctx.lineTo(sw, shoulderY)
-  ctx.lineTo(halfW * 0.5, bodyTopY + height * 0.25)
-  ctx.lineTo(halfW * 0.1, bodyTopY + height * 0.25)
-  ctx.closePath()
-  ctx.fill()
+  ctx.moveTo(cx, apex)
+  ctx.lineTo(streakX, shldr)
+  ctx.lineTo(streakX, shldr + (baseY - shldr) * 0.55)
+  ctx.lineTo(streakX - 3, shldr + (baseY - shldr) * 0.55)
+  ctx.closePath(); ctx.fill()
+  ctx.globalAlpha = 1
 
-  // Outline
-  ctx.globalAlpha = 0.8
-  ctx.strokeStyle = '#cceeff'
-  ctx.lineWidth = 1
+  // ── OUTLINES ─────────────────────────────────────────────────────────────
+  ctx.strokeStyle = '#99ddff'
+  ctx.lineWidth = 1.2
+
+  // Outer silhouette
   ctx.beginPath()
-  ctx.moveTo(0, tipY)
-  ctx.lineTo(sw, shoulderY)
-  ctx.lineTo(halfW, bodyTopY + height * 0.08)
-  ctx.lineTo(halfW, 0)
-  ctx.lineTo(-halfW, 0)
-  ctx.lineTo(-halfW, bodyTopY + height * 0.08)
-  ctx.lineTo(-sw, shoulderY)
-  ctx.closePath()
-  ctx.stroke()
+  ctx.moveTo(cx, apex)
+  ctx.lineTo(xR, shldr); ctx.lineTo(xR, baseY)
+  ctx.lineTo(xL, baseY); ctx.lineTo(xL, shldr)
+  ctx.closePath(); ctx.stroke()
 
-  ctx.restore()
+  // Tip facet dividers
+  ctx.strokeStyle = '#77bbdd'
+  ctx.lineWidth = 0.8
+  ctx.beginPath(); ctx.moveTo(cx, apex); ctx.lineTo(xLD, shldr); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(cx, apex); ctx.lineTo(xRD, shldr); ctx.stroke()
+
+  // Vertical facet dividers (body)
+  ctx.beginPath(); ctx.moveTo(xLD, shldr); ctx.lineTo(xLD, baseY); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(xRD, shldr); ctx.lineTo(xRD, baseY); ctx.stroke()
+
+  // Horizontal facet lines (subtle depth bands)
+  ctx.strokeStyle = '#4488aa'
+  ctx.lineWidth = 0.6
+  ctx.beginPath(); ctx.moveTo(xLD, mid1); ctx.lineTo(xRD, mid1); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(xLD, mid2); ctx.lineTo(xRD, mid2); ctx.stroke()
+  // Faint continuation across all faces
+  ctx.strokeStyle = '#336688'
+  ctx.beginPath(); ctx.moveTo(xL, mid1); ctx.lineTo(xLD, mid1); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(xRD, mid1); ctx.lineTo(xR, mid1); ctx.stroke()
 }
