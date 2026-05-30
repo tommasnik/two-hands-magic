@@ -232,7 +232,7 @@ export class SkillRenderer {
     }
 
     const { paths } = this._lightningState
-    const pathIndex = Math.floor(elapsedMs / 80) % paths.length
+    const pathIndex = Math.floor(elapsedMs / 150) % paths.length
     const segments = paths[pathIndex]
     const remainingMs = lightningDischargeUntilMs - elapsedMs
     const alpha = remainingMs < 100 ? remainingMs / 100 : 1.0
