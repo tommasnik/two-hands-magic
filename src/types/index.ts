@@ -146,16 +146,115 @@ export interface EnemyDef {
    */
   behavior?: EnemyBehaviorDef
   /**
-   * Attack patterns this enemy uses to damage the player.
-   * Each entry has an independent cooldown; weighted random picks among ready ones.
-   * Optional — enemies without `attacks` never fire missiles (backwards-compatible).
+   * Declarative attack/behaviour state-graph driving how this enemy animates and
+   * attacks the player. Executed by EnemyBehaviorRunner. Replaces the old stateless
+   * weighted-picker `attacks[]`.
+   * Optional — enemies without a graph never attack (a valid, non-attacking state).
    */
-  attacks?: readonly EnemyAttackDef[]
+  behaviorGraph?: BehaviorGraph
   /**
    * Display width override in pixels when rendering the sprite.
    * When omitted, the value from CharacterRegistry manifest is used.
    */
   displayWidth?: number
+}
+
+// ============================================================
+// Enemy Attack & Behavior Framework (state-graph + delivery model)
+// Contract: EnemyAttacks.md §3–4. Pure data, no Phaser / render detail.
+// ============================================================
+
+/**
+ * Declarative behaviour graph for one enemy: named nodes + the starting node.
+ * The runner holds exactly one active node; when a node's exit trigger fires it
+ * evaluates the node's edges and transitions to the next node.
+ */
+export interface BehaviorGraph {
+  /** Id of the node the runner starts in (and restarts into from a terminal node). */
+  start: string
+  /** All nodes keyed by their unique id. */
+  nodes: Record<string, BehaviorNode>
+}
+
+/**
+ * A single node in a BehaviorGraph: one sprite animation plus an optional attack.
+ * A node with no attack is pure animation / idle.
+ */
+export interface BehaviorNode {
+  /** Unique node key within the graph. */
+  id: string
+  /** Which enemy sprite animation plays while this node is active. */
+  animKey: string
+  /**
+   * Fallback when animKey is missing from the manifest (crystal-spider, ice-giant
+   * have no idle): hold a single frame of another animation. animKey is then
+   * interpreted as 'hold'.
+   */
+  holdFrame?: { animKey: string; frameIndex: number }
+  /** What ends this node and triggers edge evaluation. */
+  exitTrigger: ExitTrigger
+  /** Optional attack emitted on its release frame. Omit for a pure animation/idle node. */
+  attack?: AttackSpec
+  /** Edges to successor nodes. Empty = terminal (the graph restarts into `start`). */
+  edges: Edge[]
+}
+
+/**
+ * What ends a node and triggers edge evaluation (hybrid trigger model).
+ * - animationComplete: one-shot animation node ends when the animation finishes.
+ * - afterMs: loop/idle node dwells for `ms` then exits.
+ * - condition: node exits as soon as `guard` becomes satisfied.
+ */
+export type ExitTrigger =
+  | { kind: 'animationComplete' }
+  | { kind: 'afterMs'; ms: number }
+  | { kind: 'condition'; guard: Guard }
+
+/**
+ * A weighted edge to a successor node, with an optional eligibility guard.
+ * On node exit: keep edges whose guard holds (or is absent), then weighted-random
+ * among them by `weight`.
+ */
+export interface Edge {
+  /** Target node id. */
+  to: string
+  /** Relative weight for the weighted random among eligible edges. */
+  weight: number
+  /** Optional eligibility condition; absent = 'always' (always eligible). */
+  guard?: Guard
+}
+
+/**
+ * A small typed set of edge guards. Intentionally minimal — extend only by agreement.
+ * Guards depending on player status effects are out of scope (see EnemyAttacks.md §7).
+ */
+export type Guard =
+  | { kind: 'always' }
+  | { kind: 'enemyHpBelow'; pct: number }
+  | { kind: 'enemyHpAbove'; pct: number }
+  | { kind: 'attackCountAtLeast'; n: number }
+
+/**
+ * Specification of an attack emitted on a node's release frame.
+ * The damage/effect applies only when the resulting delivery connects with the
+ * player — not on the sprite frame itself. Carries only data (a visualKey), never
+ * any Phaser / render detail.
+ */
+export interface AttackSpec {
+  /** HP removed from the player on connect. 0 for effect-only. Unit: HP. */
+  damage: number
+  /** Frame index of the node's animation on which the delivery is spawned. */
+  releaseFrame: number
+  /** Delivery kind. 'effect' = hook only, no implementation yet (EnemyAttacks.md §7). */
+  kind: 'orb' | 'overlay' | 'effect'
+  /** Render-layer lookup key (pure data, no Phaser). */
+  visualKey: string
+  /** Orb only: flight speed. Unit: cm/s. */
+  projectileSpeedCmS?: number
+  /** Orb only: offset from the enemy centre where the orb spawns. Unit: px. */
+  castPoint?: { dx: number; dy: number }
+  /** Overlay only: when during its animation the overlay 'connects' (bites). Unit: ms. */
+  overlayConnectMs?: number
 }
 
 /**
@@ -264,28 +363,6 @@ export interface Enemy {
    * 0 = not stunned. Set by crit-stun upgrade rolls in GameStateMachine.
    */
   stunnedUntilMs: number
-}
-
-/**
- * Definition of a single enemy attack pattern.
- * One enemy can have multiple attacks with independent cooldowns; the weighted
- * random selector picks among the ready ones each tick.
- */
-export interface EnemyAttackDef {
-  /** Display name for debug / future UI. */
-  name: string
-  /** HP removed from the player on impact. Unit: HP. */
-  damage: number
-  /** How long after firing this attack waits before it is eligible again. Unit: ms. */
-  cooldownMs: number
-  /** Relative weight for the weighted random pick across ready attacks. Higher = more often. */
-  weight: number
-  /** CSS colour string for the orb. */
-  projectileColor: string
-  /** Missile travel speed. Unit: cm/s. (Compare to PROJECTILE_SPEED_CM.) */
-  projectileSpeedCmS: number
-  /** Offset from enemy torso centre where the missile originates. Unit: px. */
-  castPoint: { dx: number; dy: number }
 }
 
 /**

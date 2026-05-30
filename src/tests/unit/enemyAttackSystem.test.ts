@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { EnemyAttackSystem } from '../../game/systems/EnemyAttackSystem'
-import type { EnemyAttackDef } from '../../types'
+import type { EnemyAttackDef } from '../../game/systems/EnemyAttackSystem'
 
 const enemyAt = { x: 100, y: 100 }
 const playerAt = { x: 100, y: 700 }

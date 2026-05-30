@@ -3,8 +3,33 @@
 // Owns enemy attack cooldowns and in-flight enemy missiles.
 // ============================================================
 
-import type { EnemyAttackDef, IncomingMissile } from '../../types'
+import type { IncomingMissile } from '../../types'
 import { PIXELS_PER_CM } from '../constants'
+
+/**
+ * Legacy enemy attack definition.
+ *
+ * @deprecated Removed from the public types (TASK-60.1). Kept locally only so this
+ * legacy system keeps compiling until it is deleted in TASK-60.4, after the
+ * EnemyBehaviorRunner + DeliverySystem replacement lands. Nothing in ENEMY_POOL
+ * populates these any more.
+ */
+export interface EnemyAttackDef {
+  /** Display name for debug / future UI. */
+  name: string
+  /** HP removed from the player on impact. Unit: HP. */
+  damage: number
+  /** How long after firing this attack waits before it is eligible again. Unit: ms. */
+  cooldownMs: number
+  /** Relative weight for the weighted random pick across ready attacks. Higher = more often. */
+  weight: number
+  /** CSS colour string for the orb. */
+  projectileColor: string
+  /** Missile travel speed. Unit: cm/s. (Compare to PROJECTILE_SPEED_CM.) */
+  projectileSpeedCmS: number
+  /** Offset from enemy torso centre where the missile originates. Unit: px. */
+  castPoint: { dx: number; dy: number }
+}
 
 /** Per-attack runtime state — independent cooldown timer. */
 interface AttackState {

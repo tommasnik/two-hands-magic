@@ -691,7 +691,9 @@ export class GameStateMachine {
     )
     this.player.reset()
     this.lastPlayerHit = null
-    this.enemyAttackSystem.setAttacks(enemyDef.attacks)
+    // TASK-60.1: EnemyDef.attacks removed. Legacy system disabled until the
+    // EnemyBehaviorRunner + DeliverySystem replacement wires in (TASK-60.4).
+    this.enemyAttackSystem.setAttacks(undefined)
     this._enemyStunnedUntilMs = 0
     this._lastCastBySlot = {}
   }
