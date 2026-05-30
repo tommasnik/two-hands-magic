@@ -1,6 +1,11 @@
-import { PROJECTILE_BASE_RADIUS_PX } from '../../game/constants'
+import { PROJECTILE_BASE_RADIUS_PX, GAME_WIDTH, GAME_HEIGHT } from '../../game/constants'
 import type { Projectile, GameState } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
+
+interface LightningState {
+  segments: { x: number; y: number }[]
+  dischargeUntilMs: number
+}
 
 interface FireParticle {
   x: number; y: number
@@ -32,6 +37,7 @@ export function getSkillColor(skillType: string, side: 'left' | 'right'): string
  */
 export class SkillRenderer {
   private fireParticles: FireParticle[] = []
+  private _lightningState: LightningState | null = null
 
   update(dtS: number, activeProjectiles: Projectile[]): void {
     for (let i = this.fireParticles.length - 1; i >= 0; i--) {
@@ -181,6 +187,78 @@ export class SkillRenderer {
     ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - nx * 22, py - ny * 22); ctx.stroke()
     ctx.shadowBlur = 10; ctx.fillStyle = '#fff'
     ctx.beginPath(); ctx.arc(px, py, 2.5 * radiusScale, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+  }
+
+  /**
+   * Draws a jagged yellow lightning bolt from bottom-center to the discharge target.
+   * Segments are generated once on spawn so the line stays static while active.
+   * Fades out over the final 100 ms.
+   */
+  drawLightningDischarge(ctx: CanvasRenderingContext2D, state: GameState): void {
+    const { lightningDischargeUntilMs, lightningDischargeTarget, elapsedMs } = state
+    if (lightningDischargeUntilMs <= elapsedMs || !lightningDischargeTarget) {
+      this._lightningState = null
+      return
+    }
+
+    if (this._lightningState?.dischargeUntilMs !== lightningDischargeUntilMs) {
+      const ox = GAME_WIDTH / 2
+      const oy = GAME_HEIGHT - 20
+      const tx = lightningDischargeTarget.x
+      const ty = lightningDischargeTarget.y
+      const dx = tx - ox
+      const dy = ty - oy
+      const len = Math.hypot(dx, dy)
+      const px = len > 0 ? -dy / len : 0
+      const py = len > 0 ?  dx / len : 1
+      const numSegments = 6 + Math.floor(Math.random() * 3)
+
+      const segments: { x: number; y: number }[] = [{ x: ox, y: oy }]
+      for (let i = 1; i < numSegments; i++) {
+        const t = i / numSegments
+        const offset = (Math.random() - 0.5) * 80
+        segments.push({ x: ox + dx * t + px * offset, y: oy + dy * t + py * offset })
+      }
+      segments.push({ x: tx, y: ty })
+      this._lightningState = { segments, dischargeUntilMs: lightningDischargeUntilMs }
+    }
+
+    const { segments } = this._lightningState
+    const remainingMs = lightningDischargeUntilMs - elapsedMs
+    const alpha = remainingMs < 100 ? remainingMs / 100 : 1.0
+
+    const drawPath = (): void => {
+      ctx.beginPath()
+      ctx.moveTo(segments[0].x, segments[0].y)
+      for (let i = 1; i < segments.length; i++) ctx.lineTo(segments[i].x, segments[i].y)
+    }
+
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    // Outer glow
+    ctx.globalAlpha = 0.3 * alpha
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 7
+    ctx.shadowBlur = 20; ctx.shadowColor = '#ffe066'
+    drawPath(); ctx.stroke()
+
+    // Main yellow line
+    ctx.globalAlpha = alpha
+    ctx.strokeStyle = '#ffff00'
+    ctx.lineWidth = 3
+    ctx.shadowBlur = 14; ctx.shadowColor = '#ffffff'
+    drawPath(); ctx.stroke()
+
+    // Bright white core
+    ctx.globalAlpha = 0.9 * alpha
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 1
+    ctx.shadowBlur = 0
+    drawPath(); ctx.stroke()
+
     ctx.restore()
   }
 

@@ -43,6 +43,11 @@ export function installTestBridge(_game: Phaser.Game): void {
       gameMachine._applyHitForTesting(result, skillType)
     },
 
+    /** Trigger a lightning_blast discharge visual for manual testing. */
+    fireLightningBlast: (result: HitResult) => {
+      gameMachine._fireLightningBlastForTesting(result)
+    },
+
     /** Advance to the next level. Only works when phase === 'level_complete'. */
     nextLevel: () => {
       gameMachine.nextLevel()

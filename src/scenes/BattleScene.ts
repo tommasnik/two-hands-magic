@@ -785,6 +785,9 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
     // Frozen overlay — ice crystal spike burst over the enemy
     this._skillRenderer.drawFrozenOverlay(ctx, state)
 
+    // Lightning discharge — jagged bolt from bottom-center to target
+    this._skillRenderer.drawLightningDischarge(ctx, state)
+
     // Incoming enemy attack deliveries (orbs + overlays). The scene simply hands
     // the snapshot to the render layer, which delegates each delivery to its
     // visualKey's DeliveryVisual — no per-visual branching here (EnemyAttacks.md §5).
