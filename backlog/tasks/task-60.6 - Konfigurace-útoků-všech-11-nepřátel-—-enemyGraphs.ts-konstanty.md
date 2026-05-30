@@ -1,9 +1,10 @@
 ---
 id: TASK-60.6
 title: Konfigurace útoků všech 11 nepřátel — enemyGraphs.ts + konstanty
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 12:43'
+updated_date: '2026-05-30 18:06'
 labels: []
 dependencies:
   - TASK-60.4
@@ -35,6 +36,12 @@ Nakonfigurovat behaviorGraph pro všech 11 nepřátel z ENEMY_POOL tak, aby kaž
 - [ ] #4 crystal-spider a ice-giant mají multi-attack graf s váženým výběrem a klidový uzel přes holdFrame (chybí jim idle)
 - [ ] #5 Každý z 11 nepřátel reálně vyšle útok a sebere hráči HP (ověřeno na runner+delivery úrovni)
 - [ ] #6 npm run build, npm run test a npm run test:coverage prochází (100% na src/game/**); grep 'from \'phaser\'' src/game/ nic nevrací
+- [ ] #7 1:src/game/enemyGraphs.ts obsahuje behaviorGraph pro všech 11 nepřátel z ENEMY_POOL; EnemyDef.behaviorGraph je nastavený u všech
+- [ ] #8 2:Žádná hardcoded čísla v grafech — všechny hodnoty z pojmenovaných konstant v constants.ts s JSDoc; constants.test.ts ověřuje vztahy kde dává smysl
+- [ ] #9 3:Ranged enemies používají orb delivery, melee enemies overlay delivery (dle archetypu)
+- [ ] #10 4:crystal-spider a ice-giant mají multi-attack graf s váženým výběrem a klidový uzel přes holdFrame (chybí jim idle)
+- [ ] #11 5:Každý z 11 nepřátel reálně vyšle útok a sebere hráči HP (ověřeno na runner+delivery úrovni)
+- [ ] #12 6:npm run build, npm run test a npm run test:coverage prochází (100% na src/game/**); grep 'from phaser' src/game/ nic nevrací
 <!-- AC:END -->
 
 ## Definition of Done

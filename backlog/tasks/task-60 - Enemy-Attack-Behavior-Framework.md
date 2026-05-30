@@ -1,9 +1,10 @@
 ---
 id: TASK-60
 title: Enemy Attack & Behavior Framework
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-30 12:40'
+updated_date: '2026-05-30 18:09'
 labels: []
 dependencies: []
 documentation:
