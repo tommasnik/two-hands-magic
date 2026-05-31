@@ -7,9 +7,8 @@ import {
   UPGRADE_TREE_COLUMNS,
 } from '../../game/constants'
 import { getUpgradeNodeStatus, getXpProgress } from '../../game/upgrades'
-import type { GameState, UpgradeNodeId, GlobalUpgradeState, SkillFightStats } from '../../types'
+import type { UpgradeNodeId, GlobalUpgradeState, SkillFightStats, GlobalSnapshot, FightStatsSnapshot } from '../../types'
 import { getSkillColor } from './SkillRenderer'
-import { gameMachine } from '../../game/GameStateMachine'
 import type { DeliveryRenderer } from './DeliveryRenderer'
 
 /**
@@ -39,6 +38,18 @@ export class PhaseOverlayManager {
   private _phaseTimerMs: number | null = null
   private _lastPhase: string | null = null
 
+  // Callbacks injected by BattleScene
+  onNextLevel: () => void = () => {}
+  onRestartLevel: () => void = () => {}
+  onConfirmUpgrade: (nodeId: UpgradeNodeId) => void = () => {}
+  onFightOverviewContinue: () => void = () => {}
+
+  // Last known snapshot for deferred rendering (fight overview timer)
+  private _lastGame: GlobalSnapshot | null = null
+  private _lastFightStats: FightStatsSnapshot | null = null
+  private _lastEnemyName: string = ''
+  private _lastGlobalUpgrades: GlobalUpgradeState | null = null
+
   constructor(private readonly deliveryRenderer: DeliveryRenderer) {}
 
   /** Wire DOM refs and event listeners — call once from BattleScene.create(). */
@@ -57,14 +68,13 @@ export class PhaseOverlayManager {
     this._buildUpgradeTreeDom()
 
     document.getElementById('fight-overview-btn')?.addEventListener('click', () => {
-      const { game } = gameMachine.getState()
-      if (game.pendingLevelUp) {
+      if (this._lastGame?.pendingLevelUp) {
         this._showUpgradeAfterFightOverview = true
         if (this._fightOverviewOverlay) this._fightOverviewOverlay.classList.add('hidden')
         this._upgradePickerVisible = false
       } else {
         this.deliveryRenderer.cancelFlying()
-        gameMachine.completeFightOverview()
+        this.onFightOverviewContinue()
       }
     })
   }
@@ -72,10 +82,22 @@ export class PhaseOverlayManager {
   /**
    * Handle phase transitions and advance timers.
    * Must be called each frame from BattleScene.update().
+   * @param enemyName - current enemy display name; used in fight overview header.
+   * @param globalUpgrades - current upgrade state; used by upgrade picker.
    */
-  update(state: GameState, dtMs: number): void {
-    this._handlePhaseTransitions(state.phase, state.currentLevel, dtMs)
-    this._updateUpgradePicker(state)
+  update(
+    game: GlobalSnapshot,
+    fightStats: FightStatsSnapshot | null,
+    dtMs: number,
+    enemyName?: string,
+    globalUpgrades?: GlobalUpgradeState,
+  ): void {
+    this._lastGame = game
+    this._lastFightStats = fightStats
+    if (enemyName !== undefined) this._lastEnemyName = enemyName
+    if (globalUpgrades !== undefined) this._lastGlobalUpgrades = globalUpgrades
+    this._handlePhaseTransitions(game.phase, game.currentLevel, dtMs)
+    this._updateUpgradePicker(game)
   }
 
   // -----------------------------------------------------------------------
@@ -127,10 +149,9 @@ export class PhaseOverlayManager {
 
       if (phase === 'fight_overview' && this._phaseTimerMs >= 1000) {
         this._phaseTimerMs = null
-        const { fight, game } = gameMachine.getState()
-        const flatState = { ...fight, ...game }
+        const game = this._lastGame
         if (this._victoryToast) this._victoryToast.classList.add('hidden')
-        if (this._fightOverviewOverlay) {
+        if (this._fightOverviewOverlay && game) {
           const isLastLevel = game.currentLevel >= ENEMY_POOL.length
           const btn = document.getElementById('fight-overview-btn')
           if (btn) {
@@ -138,19 +159,19 @@ export class PhaseOverlayManager {
             else if (isLastLevel) btn.textContent = 'Play again'
             else btn.textContent = 'Next Fight →'
           }
-          this._renderFightOverviewContent(flatState)
+          this._renderFightOverviewContent(game, this._lastFightStats)
           this._fightOverviewOverlay.classList.remove('hidden')
         }
       } else if (phase === 'level_complete' && this._phaseTimerMs >= LEVEL_COMPLETE_DELAY_MS) {
-        if (!gameMachine.getState().game.pendingLevelUp) {
+        if (!this._lastGame?.pendingLevelUp) {
           this._phaseTimerMs = null
           this.deliveryRenderer.cancelFlying()
-          gameMachine.nextLevel()
+          this.onNextLevel()
         }
       } else if (phase === 'game_over' && this._phaseTimerMs >= GAME_OVER_RESTART_DELAY_MS) {
         this._phaseTimerMs = null
         this.deliveryRenderer.cancelFlying()
-        gameMachine.restartLevel()
+        this.onRestartLevel()
       }
     }
   }
@@ -159,10 +180,9 @@ export class PhaseOverlayManager {
   // Fight overview overlay content
   // -----------------------------------------------------------------------
 
-  private _renderFightOverviewContent(state: GameState): void {
+  private _renderFightOverviewContent(game: GlobalSnapshot, snap: FightStatsSnapshot | null): void {
     const contentEl = document.getElementById('fight-overview-content')
     if (!contentEl) return
-    const snap = state.fightStatsSnapshot
     if (!snap) return
 
     const durationSec = snap.durationMs / 1000
@@ -222,21 +242,21 @@ export class PhaseOverlayManager {
     const leftLabel = snap.left.skillType.replace(/_/g, ' ').toUpperCase()
     const rightLabel = snap.right.skillType.replace(/_/g, ' ').toUpperCase()
 
-    const xpAfter = getXpProgress(state.playerLevel, state.playerXp)
-    const xpBefore = state.pendingLevelUp
-      ? getXpProgress(state.playerLevel - 1, state.playerXp - 1)
-      : getXpProgress(state.playerLevel, state.playerXp - 1)
+    const xpAfter = getXpProgress(game.playerLevel, game.playerXp)
+    const xpBefore = game.pendingLevelUp
+      ? getXpProgress(game.playerLevel - 1, game.playerXp - 1)
+      : getXpProgress(game.playerLevel, game.playerXp - 1)
     const beforePct = Math.round(xpBefore.progress * 100)
     const afterPct = Math.round(xpAfter.progress * 100)
-    const levelUpBadge = state.pendingLevelUp
+    const levelUpBadge = game.pendingLevelUp
       ? `<div class="fo-level-up-badge">LEVEL UP!</div>`
       : ''
-    const xpLabel = xpAfter.isMax ? 'MAX LEVEL' : `${state.playerXp} / ${xpAfter.nextThreshold} XP`
+    const xpLabel = xpAfter.isMax ? 'MAX LEVEL' : `${game.playerXp} / ${xpAfter.nextThreshold} XP`
 
     contentEl.innerHTML = `
 <div class="fo-header">
   <span class="fo-title">FIGHT OVERVIEW</span>
-  <span class="fo-meta">${state.enemyName} &bull; ${fmt1(durationSec)}s &bull; ${fmt1(totalDps)} DPS</span>
+  <span class="fo-meta">${this._lastEnemyName} &bull; ${fmt1(durationSec)}s &bull; ${fmt1(totalDps)} DPS</span>
 </div>
 ${renderSkillBar(snap.left, leftLabel, leftDps, leftColor)}
 ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
@@ -254,7 +274,7 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
 <div class="fo-xp-section">
   <div class="fo-xp-row">
     <div class="fo-xp-gained">+1 XP</div>
-    <div id="fo-xp-level-num" class="fo-xp-level-num">Lvl ${state.playerLevel}</div>
+    <div id="fo-xp-level-num" class="fo-xp-level-num">Lvl ${game.playerLevel}</div>
   </div>
   ${levelUpBadge}
   <div class="fo-xp-track" id="fo-xp-track">
@@ -264,7 +284,7 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
   <div class="fo-xp-label">${xpLabel}</div>
 </div>`
 
-    this._animateXpBar(state.pendingLevelUp, beforePct, afterPct)
+    this._animateXpBar(game.pendingLevelUp, beforePct, afterPct)
   }
 
   private _animateXpBar(pendingLevelUp: boolean, beforePct: number, afterPct: number): void {
@@ -349,25 +369,27 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
   }
 
   private _onUpgradePicked(nodeId: UpgradeNodeId): void {
-    const { fight, game } = gameMachine.getState()
-    if (!game.pendingLevelUp) return
-    if (getUpgradeNodeStatus(fight.globalUpgrades, nodeId) !== 'available') return
-    gameMachine.confirmLevelUpUpgrade(nodeId)
+    if (!this._lastGame?.pendingLevelUp) return
+    if (!this._lastGlobalUpgrades) return
+    if (getUpgradeNodeStatus(this._lastGlobalUpgrades, nodeId) !== 'available') return
+    this.onConfirmUpgrade(nodeId)
     this.deliveryRenderer.cancelFlying()
-    gameMachine.nextLevel()
+    this.onNextLevel()
   }
 
-  private _updateUpgradePicker(state: GameState): void {
+  private _updateUpgradePicker(game: GlobalSnapshot): void {
     if (!this.upgradeOverlay) return
-    if (state.phase === 'fight_overview' && !this._showUpgradeAfterFightOverview) return
-    const shouldShow = state.pendingLevelUp
+    if (game.phase === 'fight_overview' && !this._showUpgradeAfterFightOverview) return
+    const shouldShow = game.pendingLevelUp
     if (shouldShow) {
       if (!this._upgradePickerVisible) {
-        if (this.upgradeLevelLabel) this.upgradeLevelLabel.textContent = `LEVEL ${state.playerLevel} REACHED`
+        if (this.upgradeLevelLabel) this.upgradeLevelLabel.textContent = `LEVEL ${game.playerLevel} REACHED`
         this.upgradeOverlay.classList.remove('hidden')
         this._upgradePickerVisible = true
       }
-      this._refreshUpgradeNodeStatuses(state.globalUpgrades)
+      if (this._lastGlobalUpgrades) {
+        this._refreshUpgradeNodeStatuses(this._lastGlobalUpgrades)
+      }
     } else if (this._upgradePickerVisible) {
       this.upgradeOverlay.classList.add('hidden')
       this._upgradePickerVisible = false

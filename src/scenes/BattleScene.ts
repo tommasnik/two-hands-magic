@@ -67,6 +67,10 @@ export class BattleScene extends Phaser.Scene {
     // Initialize sub-systems
     this._hudRenderer.init()
     this._phaseOverlay = new PhaseOverlayManager(this._deliveryRenderer)
+    this._phaseOverlay.onNextLevel = () => gameMachine.nextLevel()
+    this._phaseOverlay.onRestartLevel = () => gameMachine.restartLevel()
+    this._phaseOverlay.onConfirmUpgrade = (id) => gameMachine.confirmLevelUpUpgrade(id)
+    this._phaseOverlay.onFightOverviewContinue = () => gameMachine.completeFightOverview()
     this._phaseOverlay.init()
     initMaskDetector(this.textures)
 
@@ -122,7 +126,13 @@ export class BattleScene extends Phaser.Scene {
     this._enemyRenderer.update(dtS, { ...fight, ...game })
     this._skillRenderer.update(dtS, fight.activeProjectiles)
     this._hudRenderer.update(cappedDelta, { ...fight, ...game })
-    this._phaseOverlay.update({ ...fight, ...game }, cappedDelta)
+    this._phaseOverlay.update(
+      game,
+      fight.fightStatsSnapshot,
+      cappedDelta,
+      fight.enemyName,
+      fight.globalUpgrades,
+    )
   }
 
   // -----------------------------------------------------------------------
