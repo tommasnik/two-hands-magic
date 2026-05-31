@@ -1286,6 +1286,17 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     expect(XP_LEVEL_THRESHOLDS[PLAYER_MAX_LEVEL]).toBe(ENEMY_POOL.length)
   })
 
+  it('no pendingLevelUp when already at PLAYER_MAX_LEVEL — _onEnemyKilled early-return branch', () => {
+    // Set player to max level directly, then kill an enemy — should not trigger pendingLevelUp.
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._setPlayerLevelForTesting(PLAYER_MAX_LEVEL)
+    killCurrentEnemy(gsm)
+    // playerXp increments, but level stays capped and no pendingLevelUp fires.
+    expect(gsm.getState().playerLevel).toBe(PLAYER_MAX_LEVEL)
+    expect(gsm.getState().pendingLevelUp).toBe(false)
+  })
+
   it('fight_overview on last kill clears pendingLevelUp — no inconsistent state', () => {
     // The final kill reaches both the campaign end (→ fight_overview last level) and the last
     // XP threshold (would set pendingLevelUp). The state machine clears pendingLevelUp
