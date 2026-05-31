@@ -1,23 +1,25 @@
 // GameStateMachine — pure TypeScript, no Phaser dependency.
 // Orchestrates all game systems and tracks state transitions.
 
-import type { GameState, InputEvent, HitResult, SkillType, PlayerHitEvent, UpgradeNodeId, FightStats, HitZoneEntry, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
+import type { GameState, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
 import { InputManager } from './systems/InputManager'; import type { TouchPointEntry } from './systems/InputManager'
 import { ProjectileSystem } from './systems/ProjectileSystem'
 import { computeEnemyPosition } from './systems/BehaviorSystem'
 import { DeliverySystem } from './systems/DeliverySystem'
 import { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
 import type { MaskHitDetector } from './systems/MaskHitDetector'
-import { PlayerProgression } from './systems/PlayerProgression'
 import { Enemy } from './entities/Enemy'; import { Player } from './entities/Player'
 import { generateTouchPointLayout } from './entities/touchPoints'; import type { ActiveTouchPointPos } from './entities/touchPoints'
 import { MAX_DELTA_MS, GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM, ENEMY_DEFAULT_Y, DEFAULT_SKILL_CONFIG, PLAYER_MAX_HP, ENEMY_POOL } from './constants'
-import type { SkillSlotConfig } from './constants'; import type { EnemyStateSlice, StatusEffect } from './skills/types'
+import type { SkillSlotConfig } from './constants'; import type { EnemyStateSlice } from './skills/types'
 import { StatusEffectSystem } from './systems/StatusEffectSystem'; import { PhaseManager } from './systems/PhaseManager'
 import { CombatSystem, initSkillFightStats } from './systems/CombatSystem'
 import { buildGameState } from './systems/StateBuilder'; import { loadLevel } from './systems/LevelLoader'; import { processCommands } from './systems/CommandProcessor'
-import { resolveBehavior, resolveSpriteKey, resolveHitZoneMap, PLAYER_CENTRE, LIGHTNING_DURATIONS } from './resolvers'
-export { resolveBehavior, resolveSpriteKey, resolveHitZoneMap }; import './skills/index'
+import { resolveBehavior, PLAYER_CENTRE, LIGHTNING_DURATIONS } from './resolvers'
+export { resolveBehavior }; import { resolveSpriteKey, resolveHitZoneMap } from './resolvers'
+export { resolveSpriteKey, resolveHitZoneMap }; import './skills/index'
+import { FightState } from './systems/FightState'
+import { GlobalState } from './systems/GlobalState'
 
 export class GameStateMachine {
   private _phaseManager = new PhaseManager('loading')
@@ -29,28 +31,15 @@ export class GameStateMachine {
   private _enemyBehavior: EnemyBehaviorDef = resolveBehavior(ENEMY_POOL[0])
   private enemy = new Enemy(GAME_WIDTH / 2, ENEMY_DEFAULT_Y)
   private _enemyPoolIndex = 0
-  private currentLevel = 1
-  private enemyHp = ENEMY_POOL[0].maxHp
-  private enemyMaxHp = ENEMY_POOL[0].maxHp
-  private enemyName = ENEMY_POOL[0].name
-  private _enemySpriteKey = resolveSpriteKey(ENEMY_POOL[0])
-  private _enemyManifestId?: string = ENEMY_POOL[0].manifestId
-  private _enemyHitZoneMap: readonly HitZoneEntry[] = resolveHitZoneMap(ENEMY_POOL[0])
+  private _global = new GlobalState('loading', 1)
+  private _fight: FightState = new FightState(ENEMY_POOL[0], { upgrades: this._global.progression.upgrades, playerMaxHp: PLAYER_MAX_HP })
+  private player = new Player(PLAYER_MAX_HP)
   private inputManager: InputManager
   private projectileSystem = new ProjectileSystem()
   private _deliverySystem = new DeliverySystem()
   private _behaviorRunner?: EnemyBehaviorRunner
   private _lastAnimNodeId: string | null = null
-  private _progression = new PlayerProgression()
-  private player = new Player(PLAYER_MAX_HP)
-  private lastPlayerHit: PlayerHitEvent | null = null
   private _pendingInputs: InputEvent[] = []
-  private _enemyStunnedUntilMs = 0
-  private _enemyStatusEffects: StatusEffect[] = []
-  private _wasFrozenLastTick = false
-  private _lightningDischargeUntilMs = 0
-  private _lightningDischargeResult: HitResult | null = null
-  private _lightningDischargeTarget: { x: number; y: number } | null = null
   private _maskDetector?: MaskHitDetector
   private _rng: () => number
   private _lastTouchUpMs: Record<string, number | null> = {}
@@ -79,8 +68,8 @@ export class GameStateMachine {
 
   nextLevel(): void {
     if (this._phaseManager.currentPhase !== 'fight_overview') return
-    if (this._progression.pendingLevelUp || this.currentLevel >= ENEMY_POOL.length) return
-    this.currentLevel++
+    if (this._global.progression.pendingLevelUp || this._global.currentLevel >= ENEMY_POOL.length) return
+    this._global.currentLevel++
     this._enemyPoolIndex = (this._enemyPoolIndex + 1) % ENEMY_POOL.length
     this._applyLoadLevel(ENEMY_POOL[this._enemyPoolIndex])
     this.projectileSystem.reset(); this._combat.fightStats = this._initFightStats()
@@ -90,17 +79,17 @@ export class GameStateMachine {
 
   restartLevel(): void {
     if (this._phaseManager.currentPhase !== 'game_over') return
-    this._progression.pendingLevelUp = false
+    this._global.progression.pendingLevelUp = false
     this._applyLoadLevel(ENEMY_POOL[this._enemyPoolIndex])
     this.projectileSystem.reset(); this._phaseManager.forceTransition('battle')
   }
 
   restartGame(): void {
     if (this._phaseManager.currentPhase !== 'fight_overview') return
-    this.currentLevel = 1; this._enemyPoolIndex = 0
+    this._global.currentLevel = 1; this._enemyPoolIndex = 0
     this._combat.score = { total: 0, crits: 0, hits: 0, grazes: 0, misses: 0 }
     this.elapsedMs = 0; this._combat.lastHit = null
-    this._progression.reset()
+    this._global.progression.reset()
     this._applyLoadLevel(ENEMY_POOL[0]); this.projectileSystem.reset()
     this._combat.fightStats = this._initFightStats(); this._combat.fightStatsSnapshot = null
     this._lastTouchUpMs = {}; this._phaseManager.forceTransition('battle')
@@ -108,11 +97,14 @@ export class GameStateMachine {
 
   completeFightOverview(): void {
     if (this._phaseManager.currentPhase !== 'fight_overview') return
-    if (this.currentLevel >= ENEMY_POOL.length) { this.restartGame() } else { this.nextLevel() }
+    if (this._global.currentLevel >= ENEMY_POOL.length) { this.restartGame() } else { this.nextLevel() }
   }
 
   confirmLevelUpUpgrade(nodeId?: UpgradeNodeId): void {
-    this._progression.confirmUpgrade(nodeId)
+    this._global.progression.confirmUpgrade(nodeId)
+    // Sync the fight snapshot so getState().globalUpgrades reflects the new upgrade.
+    // (The next fight will re-snapshot from progression anyway via _resetFight.)
+    this._fight.upgrades = { ...this._global.progression.upgrades, unlockedNodeIds: [...this._global.progression.upgrades.unlockedNodeIds] }
   }
 
   setMaskDetector(detector: MaskHitDetector): void { this._maskDetector = detector }
@@ -124,18 +116,18 @@ export class GameStateMachine {
     const allInputs = [...this._pendingInputs, ...inputs]; this._pendingInputs = []
     const lightning = processCommands(this.inputManager.update(allInputs), {
       layout: this._layout, slotStates: this._slotStates, lastTouchUpMs: this._lastTouchUpMs,
-      elapsedMs: this.elapsedMs, globalUpgrades: this._progression.upgrades,
+      elapsedMs: this.elapsedMs, globalUpgrades: this._fight.upgrades,
       combat: this._combat, projectileSystem: this.projectileSystem, enemy: this.enemy,
       applyHit: (r, sk, pos, cb, pr, side) => this._applyHit(r, sk, pos, cb, pr, side),
     })
     if (lightning) {
-      this._lightningDischargeUntilMs = lightning.lightningDischargeUntilMs
-      this._lightningDischargeResult = lightning.lightningDischargeResult
-      this._lightningDischargeTarget = lightning.lightningDischargeTarget
+      this._fight.lightningDischargeUntilMs = lightning.lightningDischargeUntilMs
+      this._fight.lightningDischargeResult = lightning.lightningDischargeResult
+      this._fight.lightningDischargeTarget = lightning.lightningDischargeTarget
     }
     const newPos = computeEnemyPosition(this._enemyOriginX, this._enemyOriginY, this.elapsedMs, this._enemyBehavior)
     this.enemy.x = newPos.x; this.enemy.y = newPos.y
-    for (const evt of this.projectileSystem.update(cappedDt, this.enemy, this._progression.upgrades.critZoneTolerance)) {
+    for (const evt of this.projectileSystem.update(cappedDt, this.enemy, this._fight.upgrades.critZoneTolerance)) {
       this._applyHit(evt.result, evt.skillType, evt.position, evt.chainBonus, evt.projectileRadius, evt.side)
     }
     this.enemy.updateAnimation(cappedDt); this._statusEffectSystem.tick(cappedDt, this._enemyStateSlice())
@@ -166,16 +158,16 @@ export class GameStateMachine {
       phaseManager: this._phaseManager, combat: this._combat, enemy: this.enemy, player: this.player,
       projectileSystem: this.projectileSystem, deliverySystem: this._deliverySystem,
       layout: this._layout, slotStates: this._slotStates, elapsedMs: this.elapsedMs,
-      enemyHp: this.enemyHp, enemyMaxHp: this.enemyMaxHp, enemyName: this.enemyName,
-      enemySpriteKey: this._enemySpriteKey, enemyManifestId: this._enemyManifestId,
-      enemyHitZoneMap: this._enemyHitZoneMap, enemyStunnedUntilMs: this._enemyStunnedUntilMs,
-      lightningDischargeUntilMs: this._lightningDischargeUntilMs,
-      lightningDischargeResult: this._lightningDischargeResult,
-      lightningDischargeTarget: this._lightningDischargeTarget,
-      currentLevel: this.currentLevel, lastPlayerHit: this.lastPlayerHit,
-      playerXp: this._progression.playerXp, playerLevel: this._progression.playerLevel,
-      pendingLevelUp: this._progression.pendingLevelUp, globalUpgrades: this._progression.upgrades,
-      enemyStatusEffects: this._enemyStatusEffects,
+      enemyHp: this._fight.enemyHp, enemyMaxHp: this._fight.enemyMaxHp, enemyName: this._fight.enemyName,
+      enemySpriteKey: this._fight.enemySpriteKey, enemyManifestId: this._fight.enemyManifestId,
+      enemyHitZoneMap: this._fight.enemyHitZoneMap, enemyStunnedUntilMs: this._fight.enemyStunnedUntilMs,
+      lightningDischargeUntilMs: this._fight.lightningDischargeUntilMs,
+      lightningDischargeResult: this._fight.lightningDischargeResult,
+      lightningDischargeTarget: this._fight.lightningDischargeTarget,
+      currentLevel: this._global.currentLevel, lastPlayerHit: this._fight.lastPlayerHit,
+      playerXp: this._global.progression.playerXp, playerLevel: this._global.progression.playerLevel,
+      pendingLevelUp: this._global.progression.pendingLevelUp, globalUpgrades: this._fight.upgrades,
+      enemyStatusEffects: this._fight.enemyStatusEffects,
     })
   }
 
@@ -185,13 +177,15 @@ export class GameStateMachine {
   }
   _fireLightningBlastForTesting(result: HitResult): void {
     this._applyHit(result, 'lightning_blast', null, 0, 0, 'left')
-    this._lightningDischargeUntilMs = this.elapsedMs + LIGHTNING_DURATIONS[result]
-    this._lightningDischargeResult = result; this._lightningDischargeTarget = { x: GAME_WIDTH / 2, y: 0 }
+    this._fight.lightningDischargeUntilMs = this.elapsedMs + LIGHTNING_DURATIONS[result]
+    this._fight.lightningDischargeResult = result; this._fight.lightningDischargeTarget = { x: GAME_WIDTH / 2, y: 0 }
   }
   _applyUpgradeForTesting(nodeId: UpgradeNodeId): void {
-    this._progression.applyUpgradeForTesting(nodeId)
+    this._global.progression.applyUpgradeForTesting(nodeId)
+    // Also sync the fight snapshot so tests that apply upgrades mid-fight see the effect.
+    this._fight.upgrades = { ...this._global.progression.upgrades, unlockedNodeIds: [...this._global.progression.upgrades.unlockedNodeIds] }
   }
-  _setPlayerLevelForTesting(level: number): void { this._progression.setLevelForTesting(level) }
+  _setPlayerLevelForTesting(level: number): void { this._global.progression.setLevelForTesting(level) }
   _initBehaviorGraphForTesting(graph: BehaviorGraph | undefined): void { this._initBehaviorRunner(graph); this._deliverySystem.reset() }
   _applyPlayerHitForTesting(damage: number): void { this._applyPlayerHit(damage) }
 
@@ -204,14 +198,20 @@ export class GameStateMachine {
     return { left: initSkillFightStats(leftSkill), right: initSkillFightStats(rightSkill), durationMs: 0 }
   }
 
+  /**
+   * Initialise a new FightState from the current progression snapshot + enemy def.
+   * Called at the start of every encounter (level load, restart).
+   */
+  private _resetFight(def: EnemyDef): void {
+    this._fight = new FightState(def, this._global.progression.snapshotForFight())
+  }
+
   private _applyLoadLevel(enemyDef: EnemyDef): void {
     const lvl = loadLevel(enemyDef, this._enemyOriginX, this._enemyOriginY, this._maskDetector)
-    this.enemyHp = lvl.enemyHp; this.enemyMaxHp = lvl.enemyMaxHp; this.enemyName = lvl.enemyName
-    this._enemySpriteKey = lvl.enemySpriteKey; this._enemyManifestId = lvl.enemyManifestId
-    this._enemyHitZoneMap = lvl.enemyHitZoneMap; this._enemyBehavior = lvl.enemyBehavior; this.enemy = lvl.enemy
-    this.player.reset(); this.lastPlayerHit = null; this._initBehaviorRunner(enemyDef.behaviorGraph)
-    this._deliverySystem.reset(); this._enemyStunnedUntilMs = 0; this._enemyStatusEffects = []; this._wasFrozenLastTick = false
-    this._lightningDischargeUntilMs = 0; this._lightningDischargeResult = null; this._lightningDischargeTarget = null
+    this._enemyBehavior = lvl.enemyBehavior; this.enemy = lvl.enemy
+    this._resetFight(enemyDef)
+    this.player.reset(); this._initBehaviorRunner(enemyDef.behaviorGraph)
+    this._deliverySystem.reset()
     this._combat.resetForLevel()
   }
 
@@ -238,37 +238,37 @@ export class GameStateMachine {
   }
 
   private _enemyStateSlice(): EnemyStateSlice {
-    return { hp: this.enemyHp, maxHp: this.enemyMaxHp, activeStatusEffects: this._enemyStatusEffects }
+    return { hp: this._fight.enemyHp, maxHp: this._fight.enemyMaxHp, activeStatusEffects: this._fight.enemyStatusEffects }
   }
 
   private _applyHit(result: HitResult, skillType: SkillType, position: { x: number; y: number } | null, chainBonus = 0, projectileRadius = 0, side: 'left' | 'right' = 'left'): void {
     const { damage, enemyDied, stunnedUntilMs } = this._combat.processHit(
       result, skillType, position, chainBonus, projectileRadius, side,
-      { elapsedMs: this.elapsedMs, enemyHp: this.enemyHp, enemy: this.enemy, globalUpgrades: this._progression.upgrades, enemyStateSlice: this._enemyStateSlice(), rng: this._rng },
+      { elapsedMs: this.elapsedMs, enemyHp: this._fight.enemyHp, enemy: this.enemy, globalUpgrades: this._fight.upgrades, enemyStateSlice: this._enemyStateSlice(), rng: this._rng },
     )
-    this.enemyHp = Math.max(0, this.enemyHp - damage)
-    if (stunnedUntilMs > 0) this._enemyStunnedUntilMs = stunnedUntilMs
-    this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this.enemyHp })
+    this._fight.enemyHp = Math.max(0, this._fight.enemyHp - damage)
+    if (stunnedUntilMs > 0) this._fight.enemyStunnedUntilMs = stunnedUntilMs
+    this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this._fight.enemyHp })
     if (enemyDied && this._phaseManager.currentPhase === 'fight_overview') {
-      this._combat.snapshotFightStats(); this._progression.applyKill()
-      if (this.currentLevel >= ENEMY_POOL.length) this._progression.pendingLevelUp = false
+      this._combat.snapshotFightStats(); this._global.progression.applyKill()
+      if (this._global.currentLevel >= ENEMY_POOL.length) this._global.progression.pendingLevelUp = false
     }
   }
 
   private _applyPlayerHit(damage: number): void {
-    this.player.takeDamage(damage); this.lastPlayerHit = { timestamp: this.elapsedMs, damage }
-    this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this.enemyHp })
+    this.player.takeDamage(damage); this._fight.lastPlayerHit = { timestamp: this.elapsedMs, damage }
+    this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this._fight.enemyHp })
   }
 
   private _tickBehaviorRunner(cappedDt: number): void {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const runner = this._behaviorRunner!
     const isFrozen = this._statusEffectSystem.isActive(this._enemyStateSlice(), 'frozen')
-    const isStunned = isFrozen || this.elapsedMs < this._enemyStunnedUntilMs
-    if (isFrozen && !this._wasFrozenLastTick) this.enemy.holdFrame(this.enemy.currentAnimKey, this.enemy.currentFrameIndex)
-    if (!isFrozen && this._wasFrozenLastTick) this._lastAnimNodeId = null
-    this._wasFrozenLastTick = isFrozen
-    const { attacks } = runner.tick(cappedDt, { frameIndex: this.enemy.currentFrameIndex, animationComplete: !this.enemy.isAnimPlaying, enemyHpPct: this.enemyHp / this.enemyMaxHp, isStunned })
+    const isStunned = isFrozen || this.elapsedMs < this._fight.enemyStunnedUntilMs
+    if (isFrozen && !this._fight.wasFrozenLastTick) this.enemy.holdFrame(this.enemy.currentAnimKey, this.enemy.currentFrameIndex)
+    if (!isFrozen && this._fight.wasFrozenLastTick) this._lastAnimNodeId = null
+    this._fight.wasFrozenLastTick = isFrozen
+    const { attacks } = runner.tick(cappedDt, { frameIndex: this.enemy.currentFrameIndex, animationComplete: !this.enemy.isAnimPlaying, enemyHpPct: this._fight.enemyHp / this._fight.enemyMaxHp, isStunned })
     for (const spec of attacks) this._deliverySystem.spawn(spec, { x: this.enemy.x, y: this.enemy.y }, PLAYER_CENTRE)
     this._syncEnemyAnimation(runner)
   }

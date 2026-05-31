@@ -578,6 +578,25 @@ export interface FightInitSnapshot {
 }
 
 /**
+ * Snapshot of per-fight statistics captured at the end of a fight.
+ * Alias for FightStats — named separately to clarify it is a terminal snapshot.
+ */
+export type FightStatsSnapshot = FightStats
+
+/**
+ * Result object produced when a fight ends (enemy killed or player died).
+ * Created by FightState.buildResult() and consumed by GSM to update GlobalState.
+ */
+export interface FightResult {
+  /** XP gained from this fight (always 1 for a kill, 0 for a loss). */
+  xpGained: number
+  /** Snapshot of fight statistics at the moment the fight ended. */
+  statsSnapshot: FightStatsSnapshot
+  /** Whether the player survived (false = game over). */
+  playerSurvived: boolean
+}
+
+/**
  * Complete game state snapshot.
  * Must be fully serializable via JSON.stringify — no class instances, no functions.
  */
