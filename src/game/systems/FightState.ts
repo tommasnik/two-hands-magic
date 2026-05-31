@@ -20,10 +20,16 @@ import type {
   FightStats,
   FightStatsSnapshot,
   FightResult,
+  BehaviorGraph,
 } from '../../types'
 import type { HitResult, HitZoneName } from '../../types'
 import type { StatusEffect } from '../skills/types'
 import { resolveSpriteKey, resolveHitZoneMap } from '../resolvers'
+import { StatusEffectSystem } from './StatusEffectSystem'
+import { CombatSystem } from './CombatSystem'
+import { EnemyBehaviorRunner } from './EnemyBehaviorRunner'
+import { ProjectileSystem } from './ProjectileSystem'
+import { DeliverySystem } from './DeliverySystem'
 
 // ============================================================
 // FightState
@@ -45,6 +51,16 @@ export class FightState {
   // ------------------------------------------------------------------
   upgrades: GlobalUpgradeState
   readonly playerMaxHp: number
+
+  // ------------------------------------------------------------------
+  // Fight-local systems (owned exclusively for the duration of this fight)
+  // ------------------------------------------------------------------
+  readonly statusEffects: StatusEffectSystem
+  readonly combat: CombatSystem
+  /** EnemyBehaviorRunner — undefined when the enemy has no behaviorGraph. */
+  runner: EnemyBehaviorRunner | undefined
+  readonly projectiles: ProjectileSystem
+  readonly delivery: DeliverySystem
 
   // ------------------------------------------------------------------
   // Enemy state
@@ -97,9 +113,18 @@ export class FightState {
   /** Whether the enemy was frozen during the previous tick (used to sync anim). */
   wasFrozenLastTick = false
 
-  constructor(def: EnemyDef, snapshot: FightInitSnapshot) {
+  constructor(def: EnemyDef, snapshot: FightInitSnapshot, rng: () => number = Math.random) {
     this.upgrades = snapshot.upgrades
     this.playerMaxHp = snapshot.playerMaxHp
+
+    // Create fight-local systems
+    this.statusEffects = new StatusEffectSystem()
+    this.combat = new CombatSystem(this.statusEffects)
+    this.runner = def.behaviorGraph
+      ? new EnemyBehaviorRunner(def.behaviorGraph, rng)
+      : undefined
+    this.projectiles = new ProjectileSystem()
+    this.delivery = new DeliverySystem()
 
     this.enemyHp = def.maxHp
     this.enemyMaxHp = def.maxHp
@@ -109,6 +134,15 @@ export class FightState {
     this.enemyHitZoneMap = resolveHitZoneMap(def)
 
     this.playerHp = snapshot.playerMaxHp
+  }
+
+  /**
+   * Reinitialise the behavior runner for the given graph.
+   * Used when the fight is restarted mid-session (e.g. restartLevel)
+   * or when tests inject a custom graph via _initBehaviorGraphForTesting.
+   */
+  resetRunner(graph: BehaviorGraph | undefined, rng: () => number): void {
+    this.runner = graph ? new EnemyBehaviorRunner(graph, rng) : undefined
   }
 
   // ------------------------------------------------------------------
