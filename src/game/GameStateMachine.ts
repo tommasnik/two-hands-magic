@@ -1,7 +1,7 @@
 // GameStateMachine — pure TypeScript, no Phaser dependency.
 // Orchestrates all game systems and tracks state transitions.
 
-import type { GameStateResult, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
+import type { GameStateResult, GameEvent, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
 import { InputManager } from './systems/InputManager'; import type { TouchPointEntry } from './systems/InputManager'
 import { computeEnemyPosition } from './systems/BehaviorSystem'
 import type { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
@@ -13,7 +13,7 @@ import type { SkillSlotConfig } from './constants'; import type { EnemyStateSlic
 import { PhaseManager } from './systems/PhaseManager'
 import { initSkillFightStats } from './systems/CombatSystem'
 import { buildGameStateResult } from './systems/StateBuilder'; import { loadLevel } from './systems/LevelLoader'; import { processCommands } from './systems/CommandProcessor'
-import { resolveBehavior, PLAYER_CENTRE, LIGHTNING_DURATIONS } from './resolvers'
+import { resolveBehavior, PLAYER_CENTRE } from './resolvers'
 export { resolveBehavior }; import { resolveSpriteKey, resolveHitZoneMap } from './resolvers'
 export { resolveSpriteKey, resolveHitZoneMap }; import './skills/index'
 import { FightState } from './systems/FightState'
@@ -38,6 +38,7 @@ export class GameStateMachine {
   private _lastTouchUpMs: Record<string, number | null> = {}
   private _layout: ActiveTouchPointPos[]
   private _slotStates: Record<string, { active: boolean; dragOffsetX: number; touchStartMs: number }>
+  private _pendingEvents: GameEvent[] = []
 
   constructor(skillConfig?: readonly SkillSlotConfig[], rng: () => number = Math.random) {
     const config = skillConfig ?? DEFAULT_SKILL_CONFIG
@@ -103,22 +104,18 @@ export class GameStateMachine {
 
   setMaskDetector(detector: MaskHitDetector): void { this._maskDetector = detector }
 
-  update(dt: number, inputs: InputEvent[]): GameStateResult {
-    if (this._phaseManager.currentPhase !== 'battle') return this.getState()
+  update(dt: number, inputs: InputEvent[]): GameEvent[] {
+    this._pendingEvents = []
+    if (this._phaseManager.currentPhase !== 'battle') return this._pendingEvents
     const cappedDt = Math.min(dt, MAX_DELTA_MS)
     this.elapsedMs += cappedDt; this._fight.combat.fightStats.durationMs += cappedDt
     const allInputs = [...this._pendingInputs, ...inputs]; this._pendingInputs = []
-    const lightning = processCommands(this.inputManager.update(allInputs), {
+    processCommands(this.inputManager.update(allInputs), {
       layout: this._layout, slotStates: this._slotStates, lastTouchUpMs: this._lastTouchUpMs,
       elapsedMs: this.elapsedMs, globalUpgrades: this._fight.upgrades,
       combat: this._fight.combat, projectileSystem: this._fight.projectiles, enemy: this.enemy,
       applyHit: (r, sk, pos, cb, pr, side) => this._applyHit(r, sk, pos, cb, pr, side),
     })
-    if (lightning) {
-      this._fight.lightningDischargeUntilMs = lightning.lightningDischargeUntilMs
-      this._fight.lightningDischargeResult = lightning.lightningDischargeResult
-      this._fight.lightningDischargeTarget = lightning.lightningDischargeTarget
-    }
     const newPos = computeEnemyPosition(this._enemyOriginX, this._enemyOriginY, this.elapsedMs, this._enemyBehavior)
     this.enemy.x = newPos.x; this.enemy.y = newPos.y
     for (const evt of this._fight.projectiles.update(cappedDt, this.enemy, this._fight.upgrades.critZoneTolerance)) {
@@ -132,7 +129,7 @@ export class GameStateMachine {
         if (this._phaseManager.currentPhase !== 'battle') break
       }
     }
-    return this.getState()
+    return this._pendingEvents
   }
 
   queueInput(event: InputEvent): void { this._pendingInputs.push(event) }
@@ -155,9 +152,6 @@ export class GameStateMachine {
       enemyHp: this._fight.enemyHp, enemyMaxHp: this._fight.enemyMaxHp, enemyName: this._fight.enemyName,
       enemySpriteKey: this._fight.enemySpriteKey, enemyManifestId: this._fight.enemyManifestId,
       enemyHitZoneMap: this._fight.enemyHitZoneMap, enemyStunnedUntilMs: this._fight.enemyStunnedUntilMs,
-      lightningDischargeUntilMs: this._fight.lightningDischargeUntilMs,
-      lightningDischargeResult: this._fight.lightningDischargeResult,
-      lightningDischargeTarget: this._fight.lightningDischargeTarget,
       currentLevel: this._global.currentLevel, lastPlayerHit: this._fight.lastPlayerHit,
       playerXp: this._global.progression.playerXp, playerLevel: this._global.progression.playerLevel,
       pendingLevelUp: this._global.progression.pendingLevelUp, globalUpgrades: this._fight.upgrades,
@@ -166,13 +160,12 @@ export class GameStateMachine {
   }
 
   // @internal test-only
-  _applyHitForTesting(result: HitResult, skillType: SkillType, chainBonus = 0, projectileRadius = 0, side: 'left' | 'right' = 'left'): void {
+  _applyHitForTesting(result: HitResult, skillType: SkillType, chainBonus = 0, projectileRadius = 0, side: 'left' | 'right' = 'left'): GameEvent[] {
+    this._pendingEvents = []
     this._applyHit(result, skillType, null, chainBonus, projectileRadius, side)
-  }
-  _fireLightningBlastForTesting(result: HitResult): void {
-    this._applyHit(result, 'lightning_blast', null, 0, 0, 'left')
-    this._fight.lightningDischargeUntilMs = this.elapsedMs + LIGHTNING_DURATIONS[result]
-    this._fight.lightningDischargeResult = result; this._fight.lightningDischargeTarget = { x: GAME_WIDTH / 2, y: 0 }
+    const events = [...this._pendingEvents]
+    this._pendingEvents = []
+    return events
   }
   _applyUpgradeForTesting(nodeId: UpgradeNodeId): void {
     this._global.progression.applyUpgradeForTesting(nodeId)
@@ -236,6 +229,7 @@ export class GameStateMachine {
       result, skillType, position, chainBonus, projectileRadius, side,
       { elapsedMs: this.elapsedMs, enemyHp: this._fight.enemyHp, enemy: this.enemy, globalUpgrades: this._fight.upgrades, enemyStateSlice: this._enemyStateSlice(), rng: this._rng },
     )
+    this._pendingEvents.push({ type: 'ENEMY_HIT', skillType, result, position, damage })
     this._fight.enemyHp = Math.max(0, this._fight.enemyHp - damage)
     if (stunnedUntilMs > 0) this._fight.enemyStunnedUntilMs = stunnedUntilMs
     this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this._fight.enemyHp })

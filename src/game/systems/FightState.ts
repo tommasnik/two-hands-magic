@@ -96,13 +96,6 @@ export class FightState {
   enemyStatusEffects: StatusEffect[] = []
 
   // ------------------------------------------------------------------
-  // Lightning discharge
-  // ------------------------------------------------------------------
-  lightningDischargeUntilMs = 0
-  lightningDischargeResult: HitResult | null = null
-  lightningDischargeTarget: { x: number; y: number } | null = null
-
-  // ------------------------------------------------------------------
   // Fight statistics
   // ------------------------------------------------------------------
   statsSnapshot: FightStatsSnapshot | null = null

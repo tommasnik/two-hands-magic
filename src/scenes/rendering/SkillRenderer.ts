@@ -1,10 +1,10 @@
 import { PROJECTILE_BASE_RADIUS_PX, GAME_WIDTH, GAME_HEIGHT } from '../../game/constants'
 import type { Projectile, GameState } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
+import type { ActiveEffect } from '../effects/EffectsManager'
 
-interface LightningState {
+interface LightningPaths {
   paths: { x: number; y: number }[][]  // 3 pre-generated zigzag paths
-  dischargeUntilMs: number
 }
 
 interface FireParticle {
@@ -37,7 +37,7 @@ export function getSkillColor(skillType: string, side: 'left' | 'right'): string
  */
 export class SkillRenderer {
   private fireParticles: FireParticle[] = []
-  private _lightningState: LightningState | null = null
+  private _lightningPaths: Map<number, LightningPaths> = new Map()
 
   update(dtS: number, activeProjectiles: Projectile[]): void {
     for (let i = this.fireParticles.length - 1; i >= 0; i--) {
@@ -191,22 +191,37 @@ export class SkillRenderer {
   }
 
   /**
-   * Draws a jagged yellow lightning bolt from bottom-center to the discharge target.
-   * 3 paths are pre-generated at spawn and cycled every 80 ms — tesla-coil jump effect.
-   * Fades out over the final 100 ms.
+   * Renders all active visual effects dispatched by EffectsManager.
+   * Cleans up per-effect visual state for effects no longer in the list.
    */
-  drawLightningDischarge(ctx: CanvasRenderingContext2D, state: GameState): void {
-    const { lightningDischargeUntilMs, lightningDischargeTarget, elapsedMs } = state
-    if (lightningDischargeUntilMs <= elapsedMs || !lightningDischargeTarget) {
-      this._lightningState = null
-      return
+  drawActiveEffects(ctx: CanvasRenderingContext2D, effects: readonly ActiveEffect[], elapsedMs: number): void {
+    // Prune visual state for effects that are no longer active.
+    const activeIds = new Set(effects.map(e => e.id))
+    for (const id of this._lightningPaths.keys()) {
+      if (!activeIds.has(id)) this._lightningPaths.delete(id)
     }
 
-    if (this._lightningState?.dischargeUntilMs !== lightningDischargeUntilMs) {
+    for (const effect of effects) {
+      if (effect.type === 'lightning_discharge') {
+        this._drawLightningDischarge(ctx, effect, elapsedMs)
+      }
+    }
+  }
+
+  /**
+   * Draws a jagged yellow lightning bolt from bottom-center to the hit position.
+   * 3 paths are pre-generated at first render and cycled every 150 ms.
+   * Fades out over the final 100 ms.
+   */
+  private _drawLightningDischarge(ctx: CanvasRenderingContext2D, effect: ActiveEffect, elapsedMs: number): void {
+    const target = effect.position
+    if (!target) return
+
+    if (!this._lightningPaths.has(effect.id)) {
       const ox = GAME_WIDTH / 2
       const oy = GAME_HEIGHT - 20
-      const tx = lightningDischargeTarget.x
-      const ty = lightningDischargeTarget.y
+      const tx = target.x
+      const ty = target.y
       const dx = tx - ox
       const dy = ty - oy
       const len = Math.hypot(dx, dy)
@@ -214,7 +229,7 @@ export class SkillRenderer {
       const py = len > 0 ?  dx / len : 1
 
       const makePath = (): { x: number; y: number }[] => {
-        const n = 3 + Math.floor(Math.random() * 2)  // 3–4 segments
+        const n = 3 + Math.floor(Math.random() * 2)
         const pts: { x: number; y: number }[] = [{ x: ox, y: oy }]
         for (let i = 1; i < n; i++) {
           const t = i / n
@@ -225,16 +240,15 @@ export class SkillRenderer {
         return pts
       }
 
-      this._lightningState = {
-        paths: [makePath(), makePath(), makePath()],
-        dischargeUntilMs: lightningDischargeUntilMs,
-      }
+      this._lightningPaths.set(effect.id, { paths: [makePath(), makePath(), makePath()] })
     }
 
-    const { paths } = this._lightningState
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const { paths } = this._lightningPaths.get(effect.id)!
     const pathIndex = Math.floor(elapsedMs / 150) % paths.length
     const segments = paths[pathIndex]
-    const remainingMs = lightningDischargeUntilMs - elapsedMs
+    const expiresAt = effect.startMs + effect.durationMs
+    const remainingMs = expiresAt - elapsedMs
     const alpha = remainingMs < 100 ? remainingMs / 100 : 1.0
 
     const drawPath = (): void => {
@@ -247,21 +261,18 @@ export class SkillRenderer {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
-    // Outer glow
     ctx.globalAlpha = 0.3 * alpha
     ctx.strokeStyle = '#ffffff'
     ctx.lineWidth = 7
     ctx.shadowBlur = 20; ctx.shadowColor = '#ffe066'
     drawPath(); ctx.stroke()
 
-    // Main yellow line
     ctx.globalAlpha = alpha
     ctx.strokeStyle = '#ffff00'
     ctx.lineWidth = 3
     ctx.shadowBlur = 14; ctx.shadowColor = '#ffffff'
     drawPath(); ctx.stroke()
 
-    // Bright white core
     ctx.globalAlpha = 0.9 * alpha
     ctx.strokeStyle = '#ffffff'
     ctx.lineWidth = 1

@@ -1,10 +1,10 @@
 ---
 id: TASK-62
 title: 'Refactoring: Split constants.ts do domén'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 22:27'
-updated_date: '2026-05-30 22:39'
+updated_date: '2026-05-30 22:48'
 labels:
   - refactoring
 dependencies: []

@@ -26,9 +26,6 @@ import {
   XP_LEVEL_THRESHOLDS,
   ICE_CRYSTAL_FREEZE_CRIT_MS,
   ICE_CRYSTAL_FREEZE_HIT_MS,
-  LIGHTNING_BLAST_DURATION_CRIT_MS,
-  LIGHTNING_BLAST_DURATION_HIT_MS,
-  LIGHTNING_BLAST_DURATION_GRAZE_MS,
   LIGHTNING_BLAST_DAMAGE_MAX,
 } from '../../game/constants'
 import { computeTouchPointPositions, generateTouchPointLayout, createInitialLayout } from '../../game/entities/touchPoints'
@@ -2627,15 +2624,6 @@ describe('GameStateMachine — MaskHitDetector integration', () => {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
-  it('AC #3 — discharge fields are 0/null at battle start', () => {
-    const gsm = new GameStateMachine()
-    gsm.startBattle()
-    const state = getFlat(gsm)
-    expect(state.lightningDischargeUntilMs).toBe(0)
-    expect(state.lightningDischargeResult).toBeNull()
-    expect(state.lightningDischargeTarget).toBeNull()
-  })
-
   it('AC #1 — lightning_blast fire does not create a projectile', () => {
     const gsm = new GameStateMachine([
       { skillType: 'lightning_blast', side: 'left', slotIndex: 0 },
@@ -2654,14 +2642,12 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     ])
     gsm.startBattle()
     const hpBefore = getFlat(gsm).enemyHp
-    // Hold for half a rotation period so reticle is mid-screen (should hit enemy)
     gsm.update(100, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
     gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
-    // Note: if reticle misses, HP stays the same — so we only assert it didn't increase
     expect(getFlat(gsm).enemyHp).toBeLessThanOrEqual(hpBefore)
   })
 
-  it('AC #3 — lightningDischargeTarget is set after lightning_blast release', () => {
+  it('AC #3 — ENEMY_HIT event carries position after lightning_blast release', () => {
     const gsm = new GameStateMachine([
       { skillType: 'lightning_blast', side: 'left', slotIndex: 0 },
       { skillType: 'fast_shot', side: 'right', slotIndex: 0 },
@@ -2671,71 +2657,73 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     const lb = pos.find(p => p.id === 'left_0')!
     const lbX = Math.round(lb.x), lbY = Math.round(lb.y)
     gsm.update(16, [makeDown(0, lbX, lbY)])
-    gsm.update(16, [makeUp(0, lbX, lbY)])
-    expect(getFlat(gsm).lightningDischargeTarget).not.toBeNull()
+    const events = gsm.update(16, [makeUp(0, lbX, lbY)])
+    const hitEvent = events.find(e => e.type === 'ENEMY_HIT' && e.skillType === 'lightning_blast')
+    expect(hitEvent).toBeDefined()
+    expect(hitEvent?.position).not.toBeNull()
   })
 
-  it('AC #4 — CRIT hit sets discharge to LIGHTNING_BLAST_DURATION_CRIT_MS', () => {
+  it('AC #4 — CRIT hit emits ENEMY_HIT event with result CRIT', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(100, [])
-    const before = getFlat(gsm)
-    gsm._fireLightningBlastForTesting('CRIT')
-    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_CRIT_MS)
-    expect(getFlat(gsm).lightningDischargeResult).toBe('CRIT')
+    const events = gsm._applyHitForTesting('CRIT', 'lightning_blast')
+    const hit = events.find(e => e.type === 'ENEMY_HIT')
+    expect(hit?.result).toBe('CRIT')
+    expect(hit?.skillType).toBe('lightning_blast')
   })
 
-  it('AC #4 — HIT hit sets discharge to LIGHTNING_BLAST_DURATION_HIT_MS', () => {
+  it('AC #4 — HIT hit emits ENEMY_HIT event with result HIT', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm.update(100, [])
-    const before = getFlat(gsm)
-    gsm._fireLightningBlastForTesting('HIT')
-    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_HIT_MS)
-    expect(getFlat(gsm).lightningDischargeResult).toBe('HIT')
+    const events = gsm._applyHitForTesting('HIT', 'lightning_blast')
+    const hit = events.find(e => e.type === 'ENEMY_HIT')
+    expect(hit?.result).toBe('HIT')
+    expect(hit?.skillType).toBe('lightning_blast')
   })
 
-  it('AC #4 — GRAZE hit sets discharge to LIGHTNING_BLAST_DURATION_GRAZE_MS', () => {
+  it('AC #4 — GRAZE hit emits ENEMY_HIT event with result GRAZE', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm.update(100, [])
-    const before = getFlat(gsm)
-    gsm._fireLightningBlastForTesting('GRAZE')
-    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_GRAZE_MS)
-    expect(getFlat(gsm).lightningDischargeResult).toBe('GRAZE')
+    const events = gsm._applyHitForTesting('GRAZE', 'lightning_blast')
+    const hit = events.find(e => e.type === 'ENEMY_HIT')
+    expect(hit?.result).toBe('GRAZE')
+    expect(hit?.skillType).toBe('lightning_blast')
   })
 
-  it('AC #4 — MISS sets discharge duration to 0, result to MISS', () => {
+  it('AC #4 — MISS emits ENEMY_HIT event with result MISS', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm.update(100, [])
-    gsm._fireLightningBlastForTesting('MISS')
-    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(getFlat(gsm).elapsedMs)
-    expect(getFlat(gsm).lightningDischargeResult).toBe('MISS')
+    const events = gsm._applyHitForTesting('MISS', 'lightning_blast')
+    const hit = events.find(e => e.type === 'ENEMY_HIT')
+    expect(hit?.result).toBe('MISS')
   })
 
   it('AC #5 — GRAZE uses standard GRAZE damage multiplier', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const hpBefore = getFlat(gsm).enemyHp
-    gsm._fireLightningBlastForTesting('GRAZE')
+    gsm._applyHitForTesting('GRAZE', 'lightning_blast')
     const damage = hpBefore - getFlat(gsm).enemyHp
     expect(damage).toBeGreaterThan(0)
     expect(damage).toBeLessThan(LIGHTNING_BLAST_DAMAGE_MAX * CRIT_DAMAGE_MULTIPLIER)
   })
 
-  it('AC #3 — discharge fields reset to 0/null on level load', () => {
+  it('AC #6 — lightning_blast _applyHitForTesting emits exactly one ENEMY_HIT event per call', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._fireLightningBlastForTesting('CRIT')
-    expect(getFlat(gsm).lightningDischargeUntilMs).toBeGreaterThan(0)
-    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    gsm.confirmLevelUpUpgrade()
-    gsm.nextLevel()
-    const state = getFlat(gsm)
-    expect(state.lightningDischargeUntilMs).toBe(0)
-    expect(state.lightningDischargeResult).toBeNull()
-    expect(state.lightningDischargeTarget).toBeNull()
+    const events = gsm._applyHitForTesting('CRIT', 'lightning_blast')
+    expect(events).toHaveLength(1)
+    expect(events[0].type).toBe('ENEMY_HIT')
+  })
+
+  it('AC #8 — consecutive lightning_blast hits each emit their own ENEMY_HIT event', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    const events1 = gsm._applyHitForTesting('CRIT', 'lightning_blast')
+    const events2 = gsm._applyHitForTesting('HIT', 'lightning_blast')
+    expect(events1.find(e => e.type === 'ENEMY_HIT' && e.result === 'CRIT')).toBeDefined()
+    expect(events2.find(e => e.type === 'ENEMY_HIT' && e.result === 'HIT')).toBeDefined()
   })
 })
 

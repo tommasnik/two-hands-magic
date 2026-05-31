@@ -15,7 +15,7 @@ import type { ProjectileSystem } from './ProjectileSystem'
 import type { DeliverySystem } from './DeliverySystem'
 import type { CombatSystem } from './CombatSystem'
 import type { PhaseManager } from './PhaseManager'
-import type { HitResult, HitZoneEntry, GlobalUpgradeState, PlayerHitEvent } from '../../types'
+import type { HitZoneEntry, GlobalUpgradeState, PlayerHitEvent } from '../../types'
 import type { StatusEffect } from '../skills/types'
 
 export interface StateBuilderInput {
@@ -35,9 +35,6 @@ export interface StateBuilderInput {
   enemyManifestId: string | undefined
   enemyHitZoneMap: readonly HitZoneEntry[]
   enemyStunnedUntilMs: number
-  lightningDischargeUntilMs: number
-  lightningDischargeResult: HitResult | null
-  lightningDischargeTarget: { x: number; y: number } | null
   currentLevel: number
   lastPlayerHit: PlayerHitEvent | null
   playerXp: number
@@ -106,9 +103,6 @@ export function buildGameStateResult(s: StateBuilderInput): GameStateResult {
     enemyManifestId: s.enemyManifestId,
     enemyDisplayWidth: s.enemy.displayWidth,
     enemyFrozenUntilMs,
-    lightningDischargeUntilMs: s.lightningDischargeUntilMs,
-    lightningDischargeResult: s.lightningDischargeResult,
-    lightningDischargeTarget: s.lightningDischargeTarget ? { ...s.lightningDischargeTarget } : null,
     enemyAnimKey: s.enemy.currentAnimKey,
     enemyFrameIndex: s.enemy.currentFrameIndex,
     touchPointsPerSide: { left: leftCount, right: rightCount },

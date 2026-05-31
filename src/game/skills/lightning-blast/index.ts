@@ -7,6 +7,9 @@ import {
   LIGHTNING_BLAST_DAMAGE_MIN,
   LIGHTNING_BLAST_DAMAGE_MAX,
   LIGHTNING_BLAST_ROTATION_PERIOD_MS,
+  LIGHTNING_BLAST_DURATION_CRIT_MS,
+  LIGHTNING_BLAST_DURATION_HIT_MS,
+  LIGHTNING_BLAST_DURATION_GRAZE_MS,
 } from '../../constants/skills'
 import { PROJECTILE_SPEED_CM, GRAZE_DAMAGE_MULTIPLIER } from '../../constants/combat'
 import { SkillRegistry } from '../registry'
@@ -34,6 +37,15 @@ export const lightningBlastModule: SkillModule = {
       visualKey: 'lightning_frozen_discharge',
     },
   ],
+  hitEffect: {
+    type: 'lightning_discharge',
+    durationByResult: {
+      CRIT:  LIGHTNING_BLAST_DURATION_CRIT_MS,
+      HIT:   LIGHTNING_BLAST_DURATION_HIT_MS,
+      GRAZE: LIGHTNING_BLAST_DURATION_GRAZE_MS,
+      MISS:  0,
+    },
+  },
 }
 
 SkillRegistry.register(lightningBlastModule)

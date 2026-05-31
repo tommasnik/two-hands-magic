@@ -1,10 +1,10 @@
 ---
 id: TASK-66
 title: 'Refactoring: Split BattleScene do renderer submodulů'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 22:29'
-updated_date: '2026-05-30 23:25'
+updated_date: '2026-05-30 23:36'
 labels:
   - refactoring
 dependencies:

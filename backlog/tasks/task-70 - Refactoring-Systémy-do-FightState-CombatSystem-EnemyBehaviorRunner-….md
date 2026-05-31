@@ -1,10 +1,10 @@
 ---
 id: TASK-70
 title: 'Refactoring: Systémy do FightState (CombatSystem, EnemyBehaviorRunner, …)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 07:50'
-updated_date: '2026-05-31 08:09'
+updated_date: '2026-05-31 08:17'
 labels:
   - refactoring
   - architecture

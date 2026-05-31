@@ -1,10 +1,10 @@
 ---
 id: TASK-68
 title: 'Refactoring: PlayerProgression — samostatná třída'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 07:49'
-updated_date: '2026-05-31 07:58'
+updated_date: '2026-05-31 08:04'
 labels:
   - refactoring
   - architecture

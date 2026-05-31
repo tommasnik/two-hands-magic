@@ -221,6 +221,14 @@ Testy ve `src/tests/game-design/` musí pokrývat:
 
 ---
 
+## Game Design & Architecture
+
+> ⚠️ **Pokud jdeš pracovat na architektuře, přidávat systém, refactorovat, nebo ti task říká „přečti GameDesign.md", načti si:**
+> - `GameDesign.md` — vize cílového stavu, skill systém, skill interakce, enemy kompozice, otevřené otázky
+> - `DependencyMap.md` — co závisí na čem, kde jsou OCP problémy, navrhované pořadí refactoringu
+
+---
+
 ## Enemy Attack & Behavior Framework
 
 > ⚠️ **Pokud jdeš pracovat na útocích nepřátel, chování enemy (graf stavů), delivery (orb/overlay) nebo enemy animacích řízených soubojem, načti si nejdřív `EnemyAttacks.md`** — závazná architektura: state-graph runner, exit triggery, guardy, delivery model, render registry, runtime pravidla (stun, hold-frame) a co je mimo scope.

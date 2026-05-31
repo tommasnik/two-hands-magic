@@ -128,9 +128,9 @@ async function runProfile(
     let remaining = ms
     while (remaining > 0) {
       const step = Math.min(remaining, MAX_DELTA_MS)
-      const state = machine.update(step, [])
+      machine.update(step, [])
       remaining -= step
-      collectStateMetrics(state)
+      collectStateMetrics(machine.getState())
     }
   }
 
@@ -139,8 +139,8 @@ async function runProfile(
     if (action.type === 'injectInput') {
       machine.queueInput(action.payload)
       // Process immediately on the next micro-step so the command is applied
-      const state = machine.update(1, [])
-      collectStateMetrics(state)
+      machine.update(1, [])
+      collectStateMetrics(machine.getState())
     } else if (action.type === 'wait') {
       advanceTime(action.payload.ms)
     }

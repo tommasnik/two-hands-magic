@@ -1,10 +1,10 @@
 ---
 id: TASK-65
 title: 'Refactoring: PlayerProgression abstrakce nad upgrade tree'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 22:28'
-updated_date: '2026-05-30 23:04'
+updated_date: '2026-05-30 23:12'
 labels:
   - refactoring
 dependencies:

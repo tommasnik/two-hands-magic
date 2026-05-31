@@ -17,6 +17,7 @@ import { HUDRenderer } from './rendering/HUDRenderer'
 import { PhaseOverlayManager } from './rendering/PhaseOverlayManager'
 import { SkillRenderer } from './rendering/SkillRenderer'
 import { initMaskDetector } from './rendering/MaskDetectorLoader'
+import { EffectsManager } from './effects/EffectsManager'
 import type { InputEvent } from '../types'
 
 export class BattleScene extends Phaser.Scene {
@@ -31,6 +32,7 @@ export class BattleScene extends Phaser.Scene {
   private _skillRenderer = new SkillRenderer()
   private _deliveryRenderer = new DeliveryRenderer(createDefaultDeliveryRegistry())
   private _phaseOverlay!: PhaseOverlayManager
+  private _effectsManager = new EffectsManager()
 
   /** Time since the previous game-loop frame, forwarded to the delivery renderer. Unit: ms. */
   private _lastFrameDtMs = 0
@@ -119,7 +121,11 @@ export class BattleScene extends Phaser.Scene {
 
     // Collect inputs → update game state
     const inputs = this.pendingInputs.splice(0)
-    const { fight, game } = gameMachine.update(cappedDelta, inputs)
+    const events = gameMachine.update(cappedDelta, inputs)
+    const { fight, game } = gameMachine.getState()
+
+    // Feed events into the effects manager so it can create/expire visual effects.
+    this._effectsManager.process(events, { fight, game })
 
     // Advance renderers that need per-frame state (animations, timers)
     const dtS = cappedDelta / 1000
@@ -161,9 +167,9 @@ export class BattleScene extends Phaser.Scene {
       this._skillRenderer.drawProjectile(ctx, px, py, proj, this._dynamicLayout)
     }
 
-    // Skill overlays (frozen, lightning discharge)
+    // Skill overlays (frozen, active hit effects)
     this._skillRenderer.drawFrozenOverlay(ctx, state)
-    this._skillRenderer.drawLightningDischarge(ctx, state)
+    this._skillRenderer.drawActiveEffects(ctx, this._effectsManager.activeEffects, fight.elapsedMs)
 
     // Incoming enemy attack deliveries
     this._deliveryRenderer.render(fight.activeDeliveries, {

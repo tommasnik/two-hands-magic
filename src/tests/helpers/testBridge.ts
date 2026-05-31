@@ -43,9 +43,9 @@ export function installTestBridge(_game: Phaser.Game): void {
       gameMachine._applyHitForTesting(result, skillType)
     },
 
-    /** Trigger a lightning_blast discharge visual for manual testing. */
+    /** Trigger a lightning_blast hit for manual E2E testing — applies damage instantly. */
     fireLightningBlast: (result: HitResult) => {
-      gameMachine._fireLightningBlastForTesting(result)
+      gameMachine._applyHitForTesting(result, 'lightning_blast')
     },
 
     /** Advance to the next level. Only works when phase === 'level_complete'. */

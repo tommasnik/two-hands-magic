@@ -1,10 +1,10 @@
 ---
 id: TASK-69
 title: 'Refactoring: FightState — fight-local data vyčleněno z GSM'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 07:50'
-updated_date: '2026-05-31 08:04'
+updated_date: '2026-05-31 08:09'
 labels:
   - refactoring
   - architecture

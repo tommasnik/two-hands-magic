@@ -4,7 +4,6 @@
 // No Phaser dependency.
 // ============================================================
 
-import type { HitResult } from '../../types'
 import type { ActiveTouchPointPos } from '../entities/touchPoints'
 import type { GameCommand } from './InputManager'
 import type { ProjectileSystem } from './ProjectileSystem'
@@ -13,18 +12,6 @@ import type { Enemy } from '../entities/Enemy'
 import { computeReticle } from './AimSystem'
 import type { TouchPoint } from '../../types'
 import type { GlobalUpgradeState } from '../../types'
-import {
-  LIGHTNING_BLAST_DURATION_CRIT_MS,
-  LIGHTNING_BLAST_DURATION_HIT_MS,
-  LIGHTNING_BLAST_DURATION_GRAZE_MS,
-} from '../constants'
-
-const LIGHTNING_DURATIONS: Record<HitResult, number> = {
-  CRIT: LIGHTNING_BLAST_DURATION_CRIT_MS,
-  HIT: LIGHTNING_BLAST_DURATION_HIT_MS,
-  GRAZE: LIGHTNING_BLAST_DURATION_GRAZE_MS,
-  MISS: 0,
-}
 
 export interface CommandProcessorContext {
   layout: ActiveTouchPointPos[]
@@ -36,7 +23,7 @@ export interface CommandProcessorContext {
   projectileSystem: ProjectileSystem
   enemy: Enemy
   applyHit: (
-    result: HitResult,
+    result: import('../../types').HitResult,
     skillType: import('../../types').SkillType,
     position: { x: number; y: number } | null,
     chainBonus: number,
@@ -45,26 +32,17 @@ export interface CommandProcessorContext {
   ) => void
 }
 
-export interface LightningState {
-  lightningDischargeUntilMs: number
-  lightningDischargeResult: HitResult | null
-  lightningDischargeTarget: { x: number; y: number } | null
-}
-
 /**
  * Process a batch of InputCommands:
  *  - 'aim'  → update slot active/drag state, record touchGap
  *  - 'fire' → compute reticle, fire projectile or apply lightning hit
  *
  * Mutates slotStates and lastTouchUpMs in-place (same objects owned by GSM).
- * Returns updated lightning discharge state (or null if unchanged).
  */
 export function processCommands(
   commands: GameCommand[],
   ctx: CommandProcessorContext,
-): LightningState | null {
-  let lightning: LightningState | null = null
-
+): void {
   for (const cmd of commands) {
     if (cmd.type === 'aim') {
       const ts = ctx.slotStates[cmd.touchPointId]
@@ -106,11 +84,6 @@ export function processCommands(
             ctx.globalUpgrades.critZoneTolerance,
           )
           ctx.applyHit(hitResult, 'lightning_blast', { x: reticle.x, y: reticle.y }, chainBonus, 0, slot.side)
-          lightning = {
-            lightningDischargeUntilMs: ctx.elapsedMs + LIGHTNING_DURATIONS[hitResult],
-            lightningDischargeResult: hitResult,
-            lightningDischargeTarget: { x: reticle.x, y: reticle.y },
-          }
         } else {
           ctx.projectileSystem.fire(
             { x: slot.x, y: slot.y },
@@ -127,6 +100,4 @@ export function processCommands(
       }
     }
   }
-
-  return lightning
 }

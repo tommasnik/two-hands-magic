@@ -1,10 +1,10 @@
 ---
 id: TASK-63
 title: 'Refactoring: SkillModule — self-contained modul per skill (OCP fix)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-30 22:28'
-updated_date: '2026-05-30 22:48'
+updated_date: '2026-05-30 23:04'
 labels:
   - refactoring
 dependencies:

@@ -15,6 +15,23 @@ export type HitResult = 'CRIT' | 'HIT' | 'GRAZE' | 'MISS'
  */
 export type SkillType = 'fireball' | 'slow_shot' | 'fast_shot' | 'white_shot' | 'ice_crystal' | 'lightning_blast'
 
+/**
+ * Visual effect type emitted by a skill on hit.
+ * Consumed by EffectsManager to create ActiveEffects in the renderer layer.
+ */
+export type SkillEffectType = 'lightning_discharge' | 'ice_crystal'
+
+/**
+ * Ephemeral event emitted by GameStateMachine.update() per frame.
+ * Events are not stored in state — they are produced during the tick,
+ * returned to the caller, and consumed by the renderer layer (EffectsManager).
+ *
+ * Two projectiles hitting in the same delta time both emit an ENEMY_HIT event —
+ * neither overwrites the other.
+ */
+export type GameEvent =
+  | { type: 'ENEMY_HIT'; skillType: SkillType; result: HitResult; position: { x: number; y: number } | null; damage: number }
+
 /** Named body-part zone on an enemy, or 'none' for a complete miss. */
 export type HitZoneName = 'head' | 'torso' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg' | 'none'
 
@@ -701,15 +718,6 @@ export interface FightSnapshot {
    * 0 = not frozen. Set by ice_crystal CRIT/HIT hits in GameStateMachine.
    */
   enemyFrozenUntilMs: number
-  /**
-   * Absolute elapsedMs until which the lightning discharge visual is active.
-   * 0 = no active discharge. Set on lightning_blast release in GameStateMachine.
-   */
-  lightningDischargeUntilMs: number
-  /** Hit result of the last lightning_blast release. Null = never fired / reset on level load. */
-  lightningDischargeResult: HitResult | null
-  /** Screen-space target point of the active lightning discharge. Null if none. */
-  lightningDischargeTarget: { x: number; y: number } | null
 }
 
 /**

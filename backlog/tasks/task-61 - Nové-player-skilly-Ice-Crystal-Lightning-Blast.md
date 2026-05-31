@@ -4,11 +4,13 @@ title: 'Nové player skilly: Ice Crystal & Lightning Blast'
 status: To Do
 assignee: []
 created_date: '2026-05-30 18:50'
+updated_date: '2026-05-30 22:35'
 labels:
   - skills
   - combat
   - gameplay
-dependencies: []
+dependencies:
+  - TASK-63
 priority: high
 ---
 

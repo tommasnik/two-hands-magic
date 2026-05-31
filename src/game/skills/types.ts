@@ -4,7 +4,7 @@
 // instead of using switch/case on SkillType.
 // ============================================================
 
-import type { SkillType, HitResult } from '../../types'
+import type { SkillType, HitResult, SkillEffectType } from '../../types'
 
 // ============================================================
 // Status effects (placeholder for TASK-64 StatusEffectSystem)
@@ -155,4 +155,14 @@ export interface SkillModule {
    * Read by InteractionSystem (TASK-64). Empty array = no interactions.
    */
   interactions?: InteractionRule[]
+
+  /**
+   * Hit-effect descriptor: which visual effect fires on hit and for how long.
+   * Consumed by EffectsManager (renderer layer) — game logic never reads this.
+   * MISS duration = 0 means no visual effect on miss.
+   */
+  hitEffect?: {
+    type: SkillEffectType
+    durationByResult: Record<HitResult, number>
+  }
 }

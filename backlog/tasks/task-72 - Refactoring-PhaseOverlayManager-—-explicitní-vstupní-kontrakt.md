@@ -1,10 +1,10 @@
 ---
 id: TASK-72
 title: 'Refactoring: PhaseOverlayManager — explicitní vstupní kontrakt'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 07:51'
-updated_date: '2026-05-31 08:37'
+updated_date: '2026-05-31 08:47'
 labels:
   - refactoring
   - architecture
