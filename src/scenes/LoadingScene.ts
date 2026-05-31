@@ -39,11 +39,22 @@ const ALL_MANIFESTS: CharacterManifest[] = [
 ]
 
 export class LoadingScene extends Phaser.Scene {
+  private _fill: HTMLElement | null = null
+  private _label: HTMLElement | null = null
+
   constructor() {
     super({ key: 'LoadingScene' })
   }
 
   preload(): void {
+    this._fill = document.getElementById('loading-fill')
+    this._label = document.getElementById('loading-label')
+
+    this.load.on('progress', (value: number) => {
+      if (this._fill) this._fill.style.width = `${value * 100}%`
+      if (this._label) this._label.textContent = `Loading… ${Math.round(value * 100)} %`
+    })
+
     // Register all manifests into the global CharacterRegistry
     for (const manifest of ALL_MANIFESTS) {
       if (!characterRegistry.has(manifest.id)) {
@@ -80,6 +91,7 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   create(): void {
+    document.getElementById('loading-screen')?.classList.add('hidden')
     this.scene.start('BattleScene')
   }
 }

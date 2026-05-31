@@ -1,4 +1,7 @@
-import { PROJECTILE_BASE_RADIUS_PX, GAME_WIDTH, GAME_HEIGHT } from '../../game/constants'
+import {
+  PROJECTILE_BASE_RADIUS_PX, GAME_WIDTH, GAME_HEIGHT,
+  TOUCHPOINT_RADIUS, SKILL_READY_FLASH_START_RADIUS, SKILL_READY_FLASH_OPACITY,
+} from '../../game/constants'
 import type { Projectile, FightSnapshot } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
 import type { ActiveEffect } from '../effects/EffectsManager'
@@ -204,8 +207,34 @@ export class SkillRenderer {
     for (const effect of effects) {
       if (effect.type === 'lightning_discharge') {
         this._drawLightningDischarge(ctx, effect, elapsedMs)
+      } else if (effect.type === 'skill_ready') {
+        this._drawSkillReady(ctx, effect, elapsedMs)
       }
     }
+  }
+
+  /**
+   * Draws the cooldown-ready flash: a coloured ring that shrinks from
+   * SKILL_READY_FLASH_START_RADIUS down into the touch point (TOUCHPOINT_RADIUS)
+   * over the effect's duration, at a constant low opacity, then vanishes.
+   */
+  private _drawSkillReady(ctx: CanvasRenderingContext2D, effect: ActiveEffect, elapsedMs: number): void {
+    const pos = effect.position
+    if (!pos) return
+    const t = Math.min(1, Math.max(0, (elapsedMs - effect.startMs) / effect.durationMs))
+    const radius = SKILL_READY_FLASH_START_RADIUS + (TOUCHPOINT_RADIUS - SKILL_READY_FLASH_START_RADIUS) * t
+    const color = effect.color ?? '#ffffff'
+
+    ctx.save()
+    ctx.globalAlpha = SKILL_READY_FLASH_OPACITY
+    ctx.shadowBlur = 16
+    ctx.shadowColor = color
+    ctx.strokeStyle = color
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
   }
 
   /**

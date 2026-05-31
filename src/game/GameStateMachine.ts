@@ -36,6 +36,8 @@ export class GameStateMachine {
   private _pendingInputs: InputEvent[] = []
   private _maskDetector?: MaskHitDetector
   private _lastTouchUpMs: Record<string, number | null> = {}
+  /** Per-SkillType cooldown end times (absolute elapsedMs). Reset on every level load. */
+  private _skillCooldownUntil: Partial<Record<SkillType, number>> = {}
   private _layout: ActiveTouchPointPos[]
   private _slotStates: Record<string, { active: boolean; dragOffsetX: number; touchStartMs: number }>
   private _pendingEvents: GameEvent[] = []
@@ -112,6 +114,7 @@ export class GameStateMachine {
     const allInputs = [...this._pendingInputs, ...inputs]; this._pendingInputs = []
     processCommands(this.inputManager.update(allInputs), {
       layout: this._layout, slotStates: this._slotStates, lastTouchUpMs: this._lastTouchUpMs,
+      skillCooldownUntil: this._skillCooldownUntil,
       elapsedMs: this.elapsedMs, globalUpgrades: this._fight.upgrades,
       combat: this._fight.combat, projectileSystem: this._fight.projectiles, enemy: this.enemy,
       applyHit: (r, sk, pos, cb, pr, side) => this._applyHit(r, sk, pos, cb, pr, side),
@@ -129,7 +132,24 @@ export class GameStateMachine {
         if (this._phaseManager.currentPhase !== 'battle') break
       }
     }
+    this._emitReadyCooldowns()
     return this._pendingEvents
+  }
+
+  /**
+   * Emit one SKILL_READY event per skill whose cooldown has just elapsed, then
+   * clear its entry so the event fires exactly once. Renderer (EffectsManager)
+   * turns this into the ready flash on the skill's touch points.
+   */
+  private _emitReadyCooldowns(): void {
+    for (const key of Object.keys(this._skillCooldownUntil)) {
+      const skillType = key as SkillType
+      const until = this._skillCooldownUntil[skillType]
+      if (until !== undefined && until <= this.elapsedMs) {
+        this._pendingEvents.push({ type: 'SKILL_READY', skillType })
+        delete this._skillCooldownUntil[skillType]
+      }
+    }
   }
 
   queueInput(event: InputEvent): void { this._pendingInputs.push(event) }
@@ -156,6 +176,7 @@ export class GameStateMachine {
       playerXp: this._global.progression.playerXp, playerLevel: this._global.progression.playerLevel,
       pendingLevelUp: this._global.progression.pendingLevelUp, globalUpgrades: this._fight.upgrades,
       enemyStatusEffects: this._fight.enemyStatusEffects,
+      skillCooldownUntil: this._skillCooldownUntil,
     })
   }
 
@@ -199,6 +220,7 @@ export class GameStateMachine {
     this._resetFight(enemyDef)
     this.player.reset()
     this._lastAnimNodeId = null
+    this._skillCooldownUntil = {}
     this._fight.combat.fightStats = this._initFightStats()
   }
 

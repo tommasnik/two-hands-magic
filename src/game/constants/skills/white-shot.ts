@@ -23,3 +23,9 @@ export const WHITE_SHOT_SKILL_DAMAGE_MAX = 4
  * Unit: ms. Affects: white_shot laser sweep rate.
  */
 export const WHITE_SHOT_ROTATION_PERIOD_MS = 600
+
+/**
+ * Cooldown after firing white_shot. 0 = no cooldown (spammable rapid-fire skill).
+ * Unit: ms. Affects: how soon white_shot can be cast again after touch-up.
+ */
+export const WHITE_SHOT_COOLDOWN_MS = 0

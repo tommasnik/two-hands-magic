@@ -3,7 +3,7 @@
 // from raw GSM fields. No Phaser dependency.
 // ============================================================
 
-import type { GameStateResult, FightSnapshot, GlobalSnapshot, ActiveSlotState, HitZoneEntryPx } from '../../types'
+import type { GameStateResult, FightSnapshot, GlobalSnapshot, ActiveSlotState, HitZoneEntryPx, SkillType } from '../../types'
 import type { ActiveTouchPointPos } from '../entities/touchPoints'
 import { scaleHitZoneMap } from './HitZoneSystem'
 import {
@@ -42,6 +42,7 @@ export interface StateBuilderInput {
   pendingLevelUp: boolean
   globalUpgrades: GlobalUpgradeState
   enemyStatusEffects: StatusEffect[]
+  skillCooldownUntil: Partial<Record<SkillType, number>>
 }
 
 /**
@@ -103,6 +104,7 @@ export function buildGameStateResult(s: StateBuilderInput): GameStateResult {
     enemyManifestId: s.enemyManifestId,
     enemyDisplayWidth: s.enemy.displayWidth,
     enemyFrozenUntilMs,
+    skillCooldownUntil: { ...s.skillCooldownUntil },
     enemyAnimKey: s.enemy.currentAnimKey,
     enemyFrameIndex: s.enemy.currentFrameIndex,
     touchPointsPerSide: { left: leftCount, right: rightCount },

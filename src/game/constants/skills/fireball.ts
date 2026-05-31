@@ -28,3 +28,9 @@ export const FIREBALL_SKILL_DAMAGE_MAX = 14
  * Unit: ms. Affects: fireball laser sweep rate.
  */
 export const FIREBALL_ROTATION_PERIOD_MS = 2000
+
+/**
+ * Cooldown after firing fireball. Heavy burst skill gated behind a 1 s recharge.
+ * Unit: ms. Affects: how soon fireball can be cast again after touch-up.
+ */
+export const FIREBALL_COOLDOWN_MS = 1000

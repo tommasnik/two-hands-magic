@@ -1,24 +1,30 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { EffectsManager } from '../../scenes/effects/EffectsManager'
-import type { GameEvent, GameStateResult, FightSnapshot, GlobalSnapshot } from '../../types'
+import { getSkillColor } from '../../scenes/rendering/SkillRenderer'
+import type { GameEvent, GameStateResult, FightSnapshot, GlobalSnapshot, ActiveSlotState } from '../../types'
 import {
   LIGHTNING_BLAST_DURATION_CRIT_MS,
   LIGHTNING_BLAST_DURATION_HIT_MS,
   LIGHTNING_BLAST_DURATION_GRAZE_MS,
+  SKILL_READY_FLASH_MS,
 } from '../../game/constants'
 // Register all skill modules so SkillRegistry is populated.
 import '../../game/skills/index'
 
 // ---------------------------------------------------------------------------
 // Minimal GameStateResult stub for EffectsManager.process()
-// Only elapsedMs is used by the manager — everything else can be stubbed.
+// elapsedMs drives expiry; activeSlots is read for SKILL_READY flashes.
 // ---------------------------------------------------------------------------
 
-function fakeState(elapsedMs: number): GameStateResult {
+function fakeState(elapsedMs: number, activeSlots: ActiveSlotState[] = []): GameStateResult {
   return {
-    fight: { elapsedMs } as unknown as FightSnapshot,
+    fight: { elapsedMs, activeSlots } as unknown as FightSnapshot,
     game: {} as unknown as GlobalSnapshot,
   }
+}
+
+function slot(id: string, skillType: ActiveSlotState['skillType'], side: 'left' | 'right', x: number, y: number): ActiveSlotState {
+  return { id, x, y, side, skillType, rotationPeriodMs: 1000, active: false, dragOffsetX: 0, touchStartMs: 0 }
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +101,35 @@ describe('EffectsManager', () => {
     const state = fakeState(100)
     const events: GameEvent[] = [{ type: 'ENEMY_HIT', skillType: 'slow_shot', result: 'CRIT', position: null, damage: 15 }]
     mgr.process(events, state)
+    expect(mgr.activeEffects).toHaveLength(0)
+  })
+
+  it('spawns a skill_ready flash at the touch point on SKILL_READY', () => {
+    const state = fakeState(500, [slot('left_0', 'fireball', 'left', 40, 780)])
+    mgr.process([{ type: 'SKILL_READY', skillType: 'fireball' }], state)
+    expect(mgr.activeEffects).toHaveLength(1)
+    const fx = mgr.activeEffects[0]
+    expect(fx.type).toBe('skill_ready')
+    expect(fx.durationMs).toBe(SKILL_READY_FLASH_MS)
+    expect(fx.position).toEqual({ x: 40, y: 780 })
+    expect(fx.color).toBe(getSkillColor('fireball', 'left'))
+    expect(fx.startMs).toBe(500)
+  })
+
+  it('spawns one flash per touch point hosting the ready skill (shared cooldown)', () => {
+    const state = fakeState(0, [
+      slot('left_0', 'fireball', 'left', 40, 780),
+      slot('right_0', 'fireball', 'right', 350, 780),
+      slot('left_1', 'white_shot', 'left', 80, 740),
+    ])
+    mgr.process([{ type: 'SKILL_READY', skillType: 'fireball' }], state)
+    expect(mgr.activeEffects).toHaveLength(2)
+    expect(mgr.activeEffects.every(e => e.type === 'skill_ready')).toBe(true)
+  })
+
+  it('spawns no flash when no touch point hosts the ready skill', () => {
+    const state = fakeState(0, [slot('left_0', 'white_shot', 'left', 40, 780)])
+    mgr.process([{ type: 'SKILL_READY', skillType: 'fireball' }], state)
     expect(mgr.activeEffects).toHaveLength(0)
   })
 })

@@ -69,6 +69,34 @@ export const LASER_ORIGIN_Y =
  */
 export const TOUCHPOINT_RADIUS = 30
 
+/**
+ * Duration of the "skill ready" flash that fires when a skill's cooldown expires.
+ * A coloured ring shrinks from SKILL_READY_FLASH_START_RADIUS down into the touch
+ * point over this window, then vanishes.
+ * Unit: ms. Affects: cooldown-ready feedback length.
+ */
+export const SKILL_READY_FLASH_MS = 300
+
+/**
+ * Start radius of the ready flash ring. Shrinks down to TOUCHPOINT_RADIUS.
+ * Derived as 3× the touch point radius so the ring starts well outside the button.
+ * Unit: px. Affects: how far out the ready flash begins.
+ */
+export const SKILL_READY_FLASH_START_RADIUS = TOUCHPOINT_RADIUS * 3
+
+/**
+ * Opacity of the ready flash ring (constant for the whole animation, then it vanishes).
+ * Unit: 0–1 alpha. Affects: subtlety of the cooldown-ready feedback.
+ */
+export const SKILL_READY_FLASH_OPACITY = 0.2
+
+/**
+ * Opacity multiplier applied to a touch point's ring/fill while its skill is on cooldown.
+ * Dims the button so the player can see the skill is unavailable.
+ * Unit: 0–1 alpha multiplier. Affects: dimmed appearance during cooldown.
+ */
+export const SKILL_COOLDOWN_DIM_ALPHA = 0.4
+
 // ============================================================
 // Touch point definitions
 // 6 fixed points: 3 on the left side, 3 on the right side.

@@ -35,6 +35,7 @@ const skillNoInteractions: SkillModule = {
   grazeMultiplier: 0.5,
   projectileSpeedCm: 70,
   castTimePeriodMs: 600,
+  cooldownMs: 0,
   visualKey: 'white_shot',
   interactions: [],
 }
@@ -47,6 +48,7 @@ const skillWithFrozenInteraction: SkillModule = {
   grazeMultiplier: 0.5,
   projectileSpeedCm: 70,
   castTimePeriodMs: 2800,
+  cooldownMs: 0,
   visualKey: 'lightning_blast',
   interactions: [
     {
@@ -147,7 +149,8 @@ describe('resolveHit() — no switch/case (OCP)', () => {
     const enemy = makeEnemy(['frozen'])
     const base = baseResolution('CRIT')
     const result = resolveHit(lightning, enemy, base)
-    expect(result.damageMultiplier).toBe(2.0)
+    // frozen rule swaps the visual only — no damage multiplier → stays 1.0
+    expect(result.damageMultiplier).toBe(1.0)
     expect(result.visualKey).toBe('lightning_frozen_discharge')
   })
 })

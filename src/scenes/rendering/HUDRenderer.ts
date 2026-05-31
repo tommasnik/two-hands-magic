@@ -6,6 +6,7 @@ import {
   PLAYER_HIT_FLASH_DURATION_MS,
   PLAYER_HIT_FLOAT_COLOR,
   LASER_ORIGIN_Y,
+  SKILL_COOLDOWN_DIM_ALPHA,
 } from '../../game/constants'
 import { computeReticle } from '../../game/systems/AimSystem'
 import { getXpProgress } from '../../game/upgrades'
@@ -89,7 +90,7 @@ export class HUDRenderer {
 
   /** Draw canvas HUD elements: slot rings, lasers, aim points, float texts. */
   render(ctx: CanvasRenderingContext2D, state: GameStateResult, _dynamicLayout: ActiveTouchPointPos[], now: number): void {
-    this._drawActiveSlots(ctx, state.fight.activeSlots, now)
+    this._drawActiveSlots(ctx, state.fight.activeSlots, now, state.fight.skillCooldownUntil, state.fight.elapsedMs)
 
     for (const slot of state.fight.activeSlots) {
       if (slot.active) {
@@ -160,24 +161,33 @@ export class HUDRenderer {
     return getSkillColor(slot.skillType, slot.side)
   }
 
-  private _drawActiveSlots(ctx: CanvasRenderingContext2D, slots: ActiveSlotState[], now: number): void {
+  private _drawActiveSlots(
+    ctx: CanvasRenderingContext2D,
+    slots: ActiveSlotState[],
+    now: number,
+    skillCooldownUntil: Partial<Record<string, number>>,
+    elapsedMs: number,
+  ): void {
     for (const slot of slots) {
       const isActive = slot.active
       const pulse = 0.85 + 0.15 * Math.sin(now / 380)
       const color = this._slotColor(slot)
+      // Dim the button while its skill is cooling down (cooldown shared per SkillType).
+      const cooldownUntil = skillCooldownUntil[slot.skillType]
+      const dim = cooldownUntil !== undefined && cooldownUntil > elapsedMs ? SKILL_COOLDOWN_DIM_ALPHA : 1
 
       ctx.save()
       ctx.shadowBlur = isActive ? 30 : 18
       ctx.shadowColor = color
       ctx.strokeStyle = color
-      ctx.globalAlpha = isActive ? 1 : 0.7 * pulse
+      ctx.globalAlpha = (isActive ? 1 : 0.7 * pulse) * dim
       ctx.lineWidth = isActive ? 3 : 2
       ctx.beginPath(); ctx.arc(slot.x, slot.y, TOUCHPOINT_RADIUS, 0, Math.PI * 2); ctx.stroke()
       ctx.shadowBlur = 8
-      ctx.globalAlpha = isActive ? 0.35 : 0.14
+      ctx.globalAlpha = (isActive ? 0.35 : 0.14) * dim
       ctx.fillStyle = color
       ctx.beginPath(); ctx.arc(slot.x, slot.y, TOUCHPOINT_RADIUS - 3, 0, Math.PI * 2); ctx.fill()
-      ctx.globalAlpha = 1; ctx.shadowBlur = 12; ctx.fillStyle = '#fff'
+      ctx.globalAlpha = dim; ctx.shadowBlur = 12; ctx.fillStyle = '#fff'
       ctx.beginPath(); ctx.arc(slot.x, slot.y, 3.2, 0, Math.PI * 2); ctx.fill()
       ctx.restore()
     }

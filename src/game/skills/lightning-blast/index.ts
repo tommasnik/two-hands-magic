@@ -10,6 +10,7 @@ import {
   LIGHTNING_BLAST_DURATION_CRIT_MS,
   LIGHTNING_BLAST_DURATION_HIT_MS,
   LIGHTNING_BLAST_DURATION_GRAZE_MS,
+  LIGHTNING_BLAST_COOLDOWN_MS,
 } from '../../constants/skills'
 import { PROJECTILE_SPEED_CM, GRAZE_DAMAGE_MULTIPLIER } from '../../constants/combat'
 import { SkillRegistry } from '../registry'
@@ -29,11 +30,11 @@ export const lightningBlastModule: SkillModule = {
   // GameStateMachine handles lightning_blast's instant-hit path separately.
   projectileSpeedCm: PROJECTILE_SPEED_CM,
   castTimePeriodMs: LIGHTNING_BLAST_ROTATION_PERIOD_MS,
+  cooldownMs: LIGHTNING_BLAST_COOLDOWN_MS,
   visualKey: 'lightning_blast',
   interactions: [
     {
       whenEnemyHas: 'frozen',
-      damageMultiplier: 2.0,
       visualKey: 'lightning_frozen_discharge',
     },
   ],

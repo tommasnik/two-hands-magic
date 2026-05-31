@@ -139,6 +139,15 @@ export interface SkillModule {
   visualKey: string
 
   /**
+   * Cooldown after a cast (measured from touch-up). While the cooldown is active
+   * this skill cannot be cast again. The cooldown is shared per SkillType — the same
+   * skill on both hands shares one timer. 0 = no cooldown (skill is always castable).
+   * CommandProcessor reads this from the registry; GameStateMachine emits a SKILL_READY
+   * event when the cooldown expires. Unit: ms.
+   */
+  cooldownMs: number
+
+  /**
    * Optional post-hit callback.
    * Called by GameStateMachine._applyHit() after damage is dealt, only when
    * the enemy survived (hp > 0). Allows skill-specific status effects without

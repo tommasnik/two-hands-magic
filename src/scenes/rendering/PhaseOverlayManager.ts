@@ -5,6 +5,10 @@ import {
   UPGRADE_NODES,
   UPGRADE_PATH_TITLES,
   UPGRADE_TREE_COLUMNS,
+  FLOAT_TEXT_COLOR_CRIT,
+  FLOAT_TEXT_COLOR_HIT,
+  FLOAT_TEXT_COLOR_GRAZE,
+  FLOAT_TEXT_COLOR_MISS,
 } from '../../game/constants'
 import { getUpgradeNodeStatus, getXpProgress } from '../../game/upgrades'
 import type { UpgradeNodeId, GlobalUpgradeState, SkillFightStats, GlobalSnapshot, FightStatsSnapshot } from '../../types'
@@ -188,11 +192,17 @@ export class PhaseOverlayManager {
     const durationSec = snap.durationMs / 1000
     const fmt1 = (n: number) => n.toFixed(1)
 
-    // Collect active skill entries in stable order
+    // Collect active skill entries in fixed display order: ice → white → fire → lightning
+    const SKILL_ORDER = ['ice_crystal', 'white_shot', 'fireball', 'lightning_blast']
     const skillEntries: Array<{ skillType: string; stats: SkillFightStats; color: string }> =
       Object.entries(snap.skills)
         .filter((entry): entry is [string, SkillFightStats] => entry[1] !== undefined)
         .map(([st, stats]) => ({ skillType: st, stats, color: getSkillColor(st) }))
+        .sort((a, b) => {
+          const ai = SKILL_ORDER.indexOf(a.skillType)
+          const bi = SKILL_ORDER.indexOf(b.skillType)
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+        })
 
     const totalDmg = skillEntries.reduce((acc, e) => acc + e.stats.totalDamage, 0)
     const totalDps = durationSec > 0 ? totalDmg / durationSec : 0
@@ -210,9 +220,9 @@ export class PhaseOverlayManager {
       }
       const barHtml = total === 0
         ? '<div class="fo-bar-seg" style="width:100%;background:#333;"></div>'
-        : seg(CRIT, '#FFD700') + seg(HIT, '#FF8C00') + seg(GRAZE, '#4A9EFF') + seg(MISS, '#555')
+        : seg(CRIT, FLOAT_TEXT_COLOR_CRIT) + seg(HIT, FLOAT_TEXT_COLOR_HIT) + seg(GRAZE, FLOAT_TEXT_COLOR_GRAZE) + seg(MISS, FLOAT_TEXT_COLOR_MISS)
 
-      const hitLine = `<span style="color:#FFD700">${CRIT}c</span> <span style="color:#FF8C00">${HIT}h</span> <span style="color:#4A9EFF">${GRAZE}g</span> <span style="color:#666">${MISS}m</span>`
+      const hitLine = `<span style="color:${FLOAT_TEXT_COLOR_CRIT}">${CRIT}</span> <span style="color:${FLOAT_TEXT_COLOR_HIT}">${HIT}</span> <span style="color:${FLOAT_TEXT_COLOR_GRAZE}">${GRAZE}</span> <span style="color:${FLOAT_TEXT_COLOR_MISS}">${MISS}</span>`
 
       return `
 <div class="fo-skill">

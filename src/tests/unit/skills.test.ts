@@ -71,6 +71,7 @@ describe('SkillRegistry — basic API', () => {
       grazeMultiplier: 0.5,
       projectileSpeedCm: 10,
       castTimePeriodMs: 1000,
+      cooldownMs: 0,
       visualKey: 'dup',
     }
     expect(() => SkillRegistry.register(duplicate)).toThrow(
@@ -287,12 +288,12 @@ describe('SkillModule — lightning_blast', () => {
     expect(SkillRegistry.get('lightning_blast').onHit).toBeUndefined()
   })
 
-  it('interactions list contains a frozen→discharge rule with damageMultiplier 2.0', () => {
+  it('interactions list contains a frozen→discharge rule that swaps the visual only', () => {
     const interactions = SkillRegistry.get('lightning_blast').interactions ?? []
     const rule = interactions.find(r => r.whenEnemyHas === 'frozen')
     expect(rule).toBeDefined()
-    expect(rule!.damageMultiplier).toBe(2.0)
-    expect(rule!.visualKey).toBe('lightning_frozen_discharge')
+    expect(rule?.damageMultiplier).toBeUndefined()
+    expect(rule?.visualKey).toBe('lightning_frozen_discharge')
   })
 })
 

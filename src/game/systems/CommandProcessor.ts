@@ -11,12 +11,19 @@ import type { CombatSystem } from './CombatSystem'
 import { initSkillFightStats } from './CombatSystem'
 import type { Enemy } from '../entities/Enemy'
 import { computeReticle } from './AimSystem'
+import { SkillRegistry } from '../skills/registry'
 import type { HitResult, SkillType, GlobalUpgradeState } from '../../types'
 
 export interface CommandProcessorContext {
   layout: ActiveTouchPointPos[]
   slotStates: Record<string, { active: boolean; dragOffsetX: number; touchStartMs: number }>
   lastTouchUpMs: Record<string, number | null>
+  /**
+   * Per-SkillType cooldown end times (absolute elapsedMs). A skill is on cooldown
+   * while its entry > elapsedMs. Mutated in-place: set on a successful cast.
+   * Owned by GameStateMachine (same object reference).
+   */
+  skillCooldownUntil: Partial<Record<SkillType, number>>
   elapsedMs: number
   globalUpgrades: GlobalUpgradeState
   combat: CombatSystem
@@ -32,6 +39,12 @@ export interface CommandProcessorContext {
   ) => void
 }
 
+/** True while the given skill is still cooling down at the current elapsed time. */
+function isOnCooldown(ctx: CommandProcessorContext, skillType: SkillType): boolean {
+  const until = ctx.skillCooldownUntil[skillType]
+  return until !== undefined && until > ctx.elapsedMs
+}
+
 /**
  * Process a batch of InputCommands:
  *  - 'aim'  → update slot active/drag state, record touchGap
@@ -44,6 +57,11 @@ export function processCommands(
   ctx: CommandProcessorContext,
 ): void {
   for (const cmd of commands) {
+    // Cooldown gate: a skill that is still cooling down cannot be aimed or fired.
+    // The touch point is inert (dimmed in the HUD) until the cooldown expires.
+    const cmdSlot = ctx.layout.find((s) => s.id === cmd.touchPointId)
+    if (cmdSlot && isOnCooldown(ctx, cmdSlot.skillType)) continue
+
     if (cmd.type === 'aim') {
       const ts = ctx.slotStates[cmd.touchPointId]
       if (ts) {
@@ -87,6 +105,9 @@ export function processCommands(
         const chainBonus = ctx.combat.computeChainBonus(slot.id, ctx.elapsedMs, ctx.globalUpgrades)
         ctx.combat.lastCastBySlot[slot.id] = ctx.elapsedMs
         const skillType = slot.skillType
+        // Start the cooldown from this cast (touch-up). Shared per SkillType.
+        const cooldownMs = SkillRegistry.get(skillType).cooldownMs
+        if (cooldownMs > 0) ctx.skillCooldownUntil[skillType] = ctx.elapsedMs + cooldownMs
         if (skillType === 'lightning_blast') {
           const hitResult = ctx.enemy.getHitResult(
             { x: reticle.x, y: reticle.y },

@@ -19,3 +19,11 @@ export const ICE_CRYSTAL_FREEZE_CRIT_MS = 2000
 
 /** Freeze duration applied on HIT (torso zone). Unit: ms. Affects: enemy frozen state duration. */
 export const ICE_CRYSTAL_FREEZE_HIT_MS = 1000
+
+/**
+ * Cooldown after firing ice_crystal. Matches the maximum freeze the crystal can
+ * inflict (CRIT freeze) so the skill recharges exactly as the longest freeze ends —
+ * you can re-freeze the instant the previous freeze could have expired.
+ * Unit: ms. Affects: how soon ice_crystal can be cast again after touch-up.
+ */
+export const ICE_CRYSTAL_COOLDOWN_MS = ICE_CRYSTAL_FREEZE_CRIT_MS

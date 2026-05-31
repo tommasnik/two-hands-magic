@@ -18,8 +18,9 @@ export type SkillType = 'fireball' | 'slow_shot' | 'fast_shot' | 'white_shot' | 
 /**
  * Visual effect type emitted by a skill on hit.
  * Consumed by EffectsManager to create ActiveEffects in the renderer layer.
+ * 'skill_ready' is the cooldown-ready flash spawned at a touch point (not a hit).
  */
-export type SkillEffectType = 'lightning_discharge' | 'ice_crystal'
+export type SkillEffectType = 'lightning_discharge' | 'ice_crystal' | 'skill_ready'
 
 /**
  * Ephemeral event emitted by GameStateMachine.update() per frame.
@@ -28,9 +29,13 @@ export type SkillEffectType = 'lightning_discharge' | 'ice_crystal'
  *
  * Two projectiles hitting in the same delta time both emit an ENEMY_HIT event —
  * neither overwrites the other.
+ *
+ * SKILL_READY fires once when a skill's cooldown expires (cooldown is per SkillType).
+ * Consumed by EffectsManager to spawn the cooldown-ready flash on the skill's touch points.
  */
 export type GameEvent =
   | { type: 'ENEMY_HIT'; skillType: SkillType; result: HitResult; position: { x: number; y: number } | null; damage: number }
+  | { type: 'SKILL_READY'; skillType: SkillType }
 
 /** Named body-part zone on an enemy, or 'none' for a complete miss. */
 export type HitZoneName = 'head' | 'torso' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg' | 'none'
@@ -717,6 +722,14 @@ export interface FightSnapshot {
    * 0 = not frozen. Set by ice_crystal CRIT/HIT hits in GameStateMachine.
    */
   enemyFrozenUntilMs: number
+  /**
+   * Per-SkillType cooldown end times — absolute elapsedMs at which each skill
+   * becomes castable again. Cooldown is shared per SkillType (same skill on both
+   * hands shares one timer). A skill is on cooldown while its value > elapsedMs.
+   * Skills not present (or with value <= elapsedMs) are ready to cast.
+   * Drives the dimmed touch-point appearance during cooldown.
+   */
+  skillCooldownUntil: Partial<Record<SkillType, number>>
 }
 
 /**

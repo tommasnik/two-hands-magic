@@ -8,6 +8,7 @@ import {
   FIREBALL_SKILL_DAMAGE_MAX,
   FIREBALL_SPEED_CM,
   FIREBALL_ROTATION_PERIOD_MS,
+  FIREBALL_COOLDOWN_MS,
   NEW_SKILL_GREEN_ZONE_MULTIPLIER,
 } from '../../constants/skills'
 import { SkillRegistry } from '../registry'
@@ -19,6 +20,7 @@ export const fireballModule: SkillModule = {
   grazeMultiplier: NEW_SKILL_GREEN_ZONE_MULTIPLIER,
   projectileSpeedCm: FIREBALL_SPEED_CM,
   castTimePeriodMs: FIREBALL_ROTATION_PERIOD_MS,
+  cooldownMs: FIREBALL_COOLDOWN_MS,
   visualKey: 'fireball',
 }
 

@@ -11,6 +11,7 @@ import {
   ICE_CRYSTAL_ROTATION_PERIOD_MS,
   ICE_CRYSTAL_FREEZE_CRIT_MS,
   ICE_CRYSTAL_FREEZE_HIT_MS,
+  ICE_CRYSTAL_COOLDOWN_MS,
 } from '../../constants/skills'
 import { GRAZE_DAMAGE_MULTIPLIER } from '../../constants/combat'
 import { SkillRegistry } from '../registry'
@@ -38,6 +39,7 @@ export const iceCrystalModule: SkillModule = {
   grazeMultiplier: GRAZE_DAMAGE_MULTIPLIER,
   projectileSpeedCm: ICE_CRYSTAL_SPEED_CM,
   castTimePeriodMs: ICE_CRYSTAL_ROTATION_PERIOD_MS,
+  cooldownMs: ICE_CRYSTAL_COOLDOWN_MS,
   visualKey: 'ice_crystal',
   onHit,
   interactions: [

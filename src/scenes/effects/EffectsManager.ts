@@ -8,6 +8,8 @@
 
 import type { GameEvent, GameStateResult, HitResult, SkillEffectType } from '../../types'
 import { SkillRegistry } from '../../game/skills/registry'
+import { SKILL_READY_FLASH_MS } from '../../game/constants'
+import { getSkillColor } from '../rendering/SkillRenderer'
 
 export interface ActiveEffect {
   /** Unique monotonic id — used by SkillRenderer to key per-effect visual state. */
@@ -17,9 +19,12 @@ export interface ActiveEffect {
   startMs: number
   /** How long the effect lasts. Unit: ms. */
   durationMs: number
-  /** Screen-space position of the hit, or null for instant/positional skills. */
+  /** Screen-space position of the hit / touch point, or null for instant skills. */
   position: { x: number; y: number } | null
-  hitResult: HitResult
+  /** Hit result for hit-driven effects. Absent for non-hit effects (e.g. skill_ready). */
+  hitResult?: HitResult
+  /** CSS colour for effects that render in the skill's colour (e.g. skill_ready ring). */
+  color?: string
 }
 
 export class EffectsManager {
@@ -36,21 +41,36 @@ export class EffectsManager {
     // Remove effects whose window has passed.
     this._activeEffects = this._activeEffects.filter(e => elapsedMs < e.startMs + e.durationMs)
 
-    // Add one ActiveEffect per ENEMY_HIT event that has a hitEffect descriptor.
     for (const event of events) {
-      if (event.type !== 'ENEMY_HIT') continue
-      const module = SkillRegistry.has(event.skillType) ? SkillRegistry.get(event.skillType) : undefined
-      if (!module?.hitEffect) continue
-      const durationMs = module.hitEffect.durationByResult[event.result]
-      if (durationMs <= 0) continue
-      this._activeEffects.push({
-        id: this._nextId++,
-        type: module.hitEffect.type,
-        startMs: elapsedMs,
-        durationMs,
-        position: event.position,
-        hitResult: event.result,
-      })
+      if (event.type === 'ENEMY_HIT') {
+        // One ActiveEffect per ENEMY_HIT that has a hitEffect descriptor.
+        const module = SkillRegistry.has(event.skillType) ? SkillRegistry.get(event.skillType) : undefined
+        if (!module?.hitEffect) continue
+        const durationMs = module.hitEffect.durationByResult[event.result]
+        if (durationMs <= 0) continue
+        this._activeEffects.push({
+          id: this._nextId++,
+          type: module.hitEffect.type,
+          startMs: elapsedMs,
+          durationMs,
+          position: event.position,
+          hitResult: event.result,
+        })
+      } else if (event.type === 'SKILL_READY') {
+        // Spawn a ready flash on every touch point that hosts this skill.
+        // (Cooldown is shared per SkillType, so both hands flash together.)
+        for (const slot of state.fight.activeSlots) {
+          if (slot.skillType !== event.skillType) continue
+          this._activeEffects.push({
+            id: this._nextId++,
+            type: 'skill_ready',
+            startMs: elapsedMs,
+            durationMs: SKILL_READY_FLASH_MS,
+            position: { x: slot.x, y: slot.y },
+            color: getSkillColor(slot.skillType, slot.side),
+          })
+        }
+      }
     }
   }
 

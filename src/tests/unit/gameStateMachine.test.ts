@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { GameEvent, SkillType } from '../../types'
 import { GameStateMachine } from '../../game/GameStateMachine'
 import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 import {
@@ -2664,7 +2665,10 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     const lbX = Math.round(lb.x), lbY = Math.round(lb.y)
     gsm.update(16, [makeDown(0, lbX, lbY)])
     const events = gsm.update(16, [makeUp(0, lbX, lbY)])
-    const hitEvent = events.find(e => e.type === 'ENEMY_HIT' && e.skillType === 'lightning_blast')
+    const hitEvent = events.find(
+      (e): e is Extract<GameEvent, { type: 'ENEMY_HIT' }> =>
+        e.type === 'ENEMY_HIT' && e.skillType === 'lightning_blast',
+    )
     expect(hitEvent).toBeDefined()
     expect(hitEvent?.position).not.toBeNull()
   })
@@ -2757,5 +2761,106 @@ describe('GameStateMachine — ice_crystal freeze-end transition', () => {
     expect(getFlat(gsm).enemyFrozenUntilMs).toBeLessThanOrEqual(getFlat(gsm).elapsedMs)
     // Game continues normally after freeze ends
     expect(getFlat(gsm).phase).toBe('battle')
+  })
+})
+
+describe('Skill cooldown', () => {
+  /** Fire the skill on the given slot (touch-down then touch-up). Returns the touch-up events. */
+  function fire(gsm: GameStateMachine, slotId: string): GameEvent[] {
+    const slot = gsm.getTouchPointPositions().find(p => p.id === slotId)!
+    const x = Math.round(slot.x), y = Math.round(slot.y)
+    gsm.update(MAX_DELTA_MS, [makeDown(0, x, y)])
+    return gsm.update(MAX_DELTA_MS, [makeUp(0, x, y)])
+  }
+
+  /** Advance the clock by ~ms (capped per-tick), collecting all emitted events. */
+  function advance(gsm: GameStateMachine, ms: number): GameEvent[] {
+    const events: GameEvent[] = []
+    for (let t = 0; t < ms; t += MAX_DELTA_MS) {
+      events.push(...gsm.update(MAX_DELTA_MS, []))
+    }
+    return events
+  }
+
+  function fireCount(gsm: GameStateMachine, skillType: string): number {
+    return getFlat(gsm).fightStats.skills[skillType as SkillType]?.fireCount ?? 0
+  }
+
+  it('firing a skill with a cooldown records skillCooldownUntil in the future', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'fireball', side: 'left', slotIndex: 0 },
+      { skillType: 'white_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    fire(gsm, 'left_0')
+    const st = getFlat(gsm)
+    expect(st.skillCooldownUntil['fireball']).toBeGreaterThan(st.elapsedMs)
+  })
+
+  it('blocks a second cast while the skill is still on cooldown', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'fireball', side: 'left', slotIndex: 0 },
+      { skillType: 'white_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    fire(gsm, 'left_0')
+    expect(fireCount(gsm, 'fireball')).toBe(1)
+    // FIREBALL_COOLDOWN_MS = 1000; a re-cast well within the window is ignored.
+    advance(gsm, 200)
+    fire(gsm, 'left_0')
+    expect(fireCount(gsm, 'fireball')).toBe(1)
+  })
+
+  it('emits SKILL_READY exactly once when the cooldown expires and clears the entry', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'fireball', side: 'left', slotIndex: 0 },
+      { skillType: 'white_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    fire(gsm, 'left_0')
+    const events = advance(gsm, 1200) // past FIREBALL_COOLDOWN_MS
+    const ready = events.filter(e => e.type === 'SKILL_READY' && e.skillType === 'fireball')
+    expect(ready).toHaveLength(1)
+    expect(getFlat(gsm).skillCooldownUntil['fireball']).toBeUndefined()
+  })
+
+  it('allows re-casting once the cooldown has expired', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'fireball', side: 'left', slotIndex: 0 },
+      { skillType: 'white_shot', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    fire(gsm, 'left_0')
+    advance(gsm, 1200)
+    fire(gsm, 'left_0')
+    expect(fireCount(gsm, 'fireball')).toBe(2)
+  })
+
+  it('never blocks a zero-cooldown skill and emits no SKILL_READY for it', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'white_shot', side: 'left', slotIndex: 0 },
+      { skillType: 'fireball', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    fire(gsm, 'left_0')
+    const events = advance(gsm, 200)
+    fire(gsm, 'left_0')
+    expect(fireCount(gsm, 'white_shot')).toBe(2)
+    expect(getFlat(gsm).skillCooldownUntil['white_shot']).toBeUndefined()
+    expect(events.some(e => e.type === 'SKILL_READY' && e.skillType === 'white_shot')).toBe(false)
+  })
+
+  it('shares the cooldown per SkillType across both hands', () => {
+    const gsm = new GameStateMachine([
+      { skillType: 'fireball', side: 'left', slotIndex: 0 },
+      { skillType: 'fireball', side: 'right', slotIndex: 0 },
+    ])
+    gsm.startBattle()
+    fire(gsm, 'left_0')
+    expect(fireCount(gsm, 'fireball')).toBe(1)
+    // Right hand holds the same skill → also blocked while the shared cooldown runs.
+    advance(gsm, 200)
+    fire(gsm, 'right_0')
+    expect(fireCount(gsm, 'fireball')).toBe(1)
   })
 })

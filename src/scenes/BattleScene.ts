@@ -79,6 +79,9 @@ export class BattleScene extends Phaser.Scene {
     this._phaseOverlay.init()
     initMaskDetector(this.textures)
 
+    // Loading finished — reveal the start overlay now that everything is ready
+    document.getElementById('start-overlay')?.classList.remove('hidden')
+
     // Wire start button
     document.getElementById('start-btn')?.addEventListener('click', () => {
       document.getElementById('start-overlay')?.classList.add('hidden')

@@ -17,6 +17,7 @@ export const fastShotModule: SkillModule = {
   grazeMultiplier: GRAZE_DAMAGE_MULTIPLIER,
   projectileSpeedCm: PROJECTILE_SPEED_CM,
   castTimePeriodMs: FAST_SKILL_ROTATION_PERIOD_MS,
+  cooldownMs: 0, // legacy skill — no cooldown
   visualKey: 'fast_shot',
 }
 

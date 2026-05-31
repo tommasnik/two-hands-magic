@@ -19,3 +19,9 @@ export const LIGHTNING_BLAST_DURATION_HIT_MS = 300
 
 /** Lightning Blast visual discharge duration on GRAZE (limb zone). Unit: ms. Affects: lightning_blast render duration. */
 export const LIGHTNING_BLAST_DURATION_GRAZE_MS = 150
+
+/**
+ * Cooldown after firing lightning_blast. Instant-hit skill gated behind a 0.5 s recharge.
+ * Unit: ms. Affects: how soon lightning_blast can be cast again after touch-up.
+ */
+export const LIGHTNING_BLAST_COOLDOWN_MS = 500

@@ -305,6 +305,47 @@
       }
       #fight-overview-btn:active { transform: scale(0.97); }
 
+      #loading-screen {
+        position: fixed; inset: 0;
+        z-index: 500;
+        background: #05000f;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+      #loading-screen.hidden { display: none; }
+      #loading-title {
+        font-size: 18px;
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        background: linear-gradient(135deg, #00f0ff, #ff00aa);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 8px;
+      }
+      #loading-track {
+        width: 260px;
+        height: 16px;
+        background: #222233;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      #loading-fill {
+        height: 100%;
+        width: 0%;
+        background: #00f0ff;
+        border-radius: 4px;
+        transition: width 0.1s linear;
+      }
+      #loading-label {
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: #888888;
+      }
+
       #landscape-overlay {
         display: none;
         position: fixed; inset: 0;
@@ -468,6 +509,11 @@
     </style>
   </head>
   <body>
+    <div id="loading-screen">
+      <div id="loading-title">TWO HANDS MAGIC</div>
+      <div id="loading-track"><div id="loading-fill"></div></div>
+      <div id="loading-label">Loading…</div>
+    </div>
     <div id="cmRef"></div>
     <div id="landscape-overlay"><p>Rotujte zařízení do portrétu</p></div>
     <div class="hud">
@@ -477,7 +523,7 @@
         <div class="hud-hp-fill" id="hud-hp-fill"></div>
       </div>
     </div>
-    <div class="overlay" id="start-overlay">
+    <div class="overlay hidden" id="start-overlay">
       <div class="title">TWO HANDS MAGIC</div>
       <div class="subtitle">PROTOTYPE · PORTRAIT · 2 FINGERS</div>
       <div class="instructions">

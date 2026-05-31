@@ -7,6 +7,7 @@ import {
   WHITE_SHOT_SKILL_DAMAGE_MIN,
   WHITE_SHOT_SKILL_DAMAGE_MAX,
   WHITE_SHOT_ROTATION_PERIOD_MS,
+  WHITE_SHOT_COOLDOWN_MS,
   NEW_SKILL_GREEN_ZONE_MULTIPLIER,
 } from '../../constants/skills'
 import { PROJECTILE_SPEED_CM } from '../../constants/combat'
@@ -19,6 +20,7 @@ export const whiteShotModule: SkillModule = {
   grazeMultiplier: NEW_SKILL_GREEN_ZONE_MULTIPLIER,
   projectileSpeedCm: PROJECTILE_SPEED_CM,
   castTimePeriodMs: WHITE_SHOT_ROTATION_PERIOD_MS,
+  cooldownMs: WHITE_SHOT_COOLDOWN_MS,
   visualKey: 'white_shot',
 }
 
