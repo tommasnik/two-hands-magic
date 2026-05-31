@@ -27,6 +27,9 @@ import {
   ICE_CRYSTAL_FREEZE_CRIT_MS,
   ICE_CRYSTAL_FREEZE_HIT_MS,
   LIGHTNING_BLAST_DAMAGE_MAX,
+  LIGHTNING_ARC_TICK_INTERVAL_MS,
+  LIGHTNING_ARC_TICK_DAMAGE_RATIO,
+  LIGHTNING_BLAST_DAMAGE_MIN,
 } from '../../game/constants'
 import { computeTouchPointPositions, generateTouchPointLayout, createInitialLayout } from '../../game/entities/touchPoints'
 import type { InputEvent } from '../../types'
@@ -2862,5 +2865,114 @@ describe('Skill cooldown', () => {
     advance(gsm, 200)
     fire(gsm, 'right_0')
     expect(fireCount(gsm, 'fireball')).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Lightning + Frozen interaction — DoT arc damage (TASK-76)
+// ---------------------------------------------------------------------------
+
+const LIGHTNING_ARC_TICK_DAMAGE = Math.round(
+  ((LIGHTNING_BLAST_DAMAGE_MIN + LIGHTNING_BLAST_DAMAGE_MAX) / 2) * LIGHTNING_ARC_TICK_DAMAGE_RATIO,
+)
+
+/** Advance gsm by ms, collecting all emitted events. */
+function advanceMs(gsm: GameStateMachine, ms: number): GameEvent[] {
+  const events: GameEvent[] = []
+  for (let t = 0; t < ms; t += MAX_DELTA_MS) {
+    events.push(...gsm.update(MAX_DELTA_MS, []))
+  }
+  return events
+}
+
+describe('GameStateMachine — lightning + frozen arc DoT (TASK-76)', () => {
+  it('lightning_blast hitting a frozen enemy drains HP on each DoT tick', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    const hpBeforeLightning = getFlat(gsm).enemyHp
+    gsm._applyHitForTesting('HIT', 'lightning_blast')
+    const hpAfterLightning = getFlat(gsm).enemyHp
+    advanceMs(gsm, LIGHTNING_ARC_TICK_INTERVAL_MS)
+    const hpAfterOneTick = getFlat(gsm).enemyHp
+    expect(hpAfterOneTick).toBeLessThan(hpAfterLightning)
+    expect(hpAfterLightning - hpAfterOneTick).toBe(LIGHTNING_ARC_TICK_DAMAGE)
+    expect(hpBeforeLightning).toBeGreaterThan(hpAfterLightning)
+  })
+
+  it('no arc DoT when lightning_blast hits a non-frozen enemy', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('HIT', 'lightning_blast')
+    const hpAfterLightning = getFlat(gsm).enemyHp
+    advanceMs(gsm, LIGHTNING_ARC_TICK_INTERVAL_MS * 5)
+    expect(getFlat(gsm).enemyHp).toBe(hpAfterLightning)
+  })
+
+  it('arc DoT stops when freeze expires (same remainingMs on both effects)', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('HIT', 'ice_crystal')
+    gsm._applyHitForTesting('HIT', 'lightning_blast')
+    const hpAfterLightning = getFlat(gsm).enemyHp
+    advanceMs(gsm, ICE_CRYSTAL_FREEZE_HIT_MS + 200)
+    const hpAfterFreeze = getFlat(gsm).enemyHp
+    expect(hpAfterFreeze).toBeLessThan(hpAfterLightning)
+    advanceMs(gsm, 1000)
+    expect(getFlat(gsm).enemyHp).toBe(hpAfterFreeze)
+  })
+
+  it('DOT_TICK events are emitted on each tick', () => {
+    const gsm = new GameStateMachine()
+    gsm.startBattle()
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    gsm._applyHitForTesting('HIT', 'lightning_blast')
+    const events = advanceMs(gsm, LIGHTNING_ARC_TICK_INTERVAL_MS * 3)
+    const dotTicks = events.filter(e => e.type === 'DOT_TICK')
+    expect(dotTicks.length).toBeGreaterThanOrEqual(1)
+    const firstTick = dotTicks[0]
+    if (firstTick && firstTick.type === 'DOT_TICK') {
+      expect(firstTick.kind).toBe('lightning_arc')
+      expect(firstTick.damage).toBe(LIGHTNING_ARC_TICK_DAMAGE)
+    }
+  })
+
+  it('enemy dies from an arc DoT tick — phase transitions to fight_overview', () => {
+    // Seeded rng (always 0) → deterministic damage:
+    //   lightning HIT direct = LIGHTNING_BLAST_DAMAGE_MIN (9)
+    //   arc DoT tick = LIGHTNING_ARC_TICK_DAMAGE (3)
+    const gsm = new GameStateMachine(undefined, () => 0)
+    gsm.startBattle()
+    const LIGHTNING_HIT_DIRECT = LIGHTNING_BLAST_DAMAGE_MIN
+
+    // CRIT freeze gives a long (2000ms) window for the DoT to keep ticking.
+    gsm._applyHitForTesting('CRIT', 'ice_crystal')
+    // First lightning hit starts the arc DoT (enemy still has plenty of HP).
+    gsm._applyHitForTesting('HIT', 'lightning_blast')
+
+    // Drain via further lightning HITs, but never deal a *killing* direct blow:
+    // only hit while HP is safely above the direct-hit damage. Re-hitting keeps
+    // freeze active and refreshes the DoT; no time passes so no tick fires yet.
+    while (getFlat(gsm).enemyHp > LIGHTNING_HIT_DIRECT && getFlat(gsm).phase === 'battle') {
+      gsm._applyHitForTesting('HIT', 'lightning_blast')
+    }
+    // Enemy is alive with HP in (0, LIGHTNING_HIT_DIRECT]; DoT + freeze active.
+    expect(getFlat(gsm).phase).toBe('battle')
+    expect(getFlat(gsm).enemyHp).toBeGreaterThan(0)
+
+    // Advance time: only the DoT can now reduce HP. A tick must deliver the kill.
+    let killedByDot = false
+    let iterations = 0
+    while (getFlat(gsm).phase === 'battle' && iterations < 20) {
+      const events = advanceMs(gsm, LIGHTNING_ARC_TICK_INTERVAL_MS)
+      if (getFlat(gsm).enemyHp === 0 && events.some(e => e.type === 'DOT_TICK')) {
+        killedByDot = true
+      }
+      iterations++
+    }
+
+    expect(getFlat(gsm).enemyHp).toBe(0)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
+    expect(killedByDot).toBe(true)
   })
 })

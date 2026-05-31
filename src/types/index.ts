@@ -19,8 +19,9 @@ export type SkillType = 'fireball' | 'slow_shot' | 'fast_shot' | 'white_shot' | 
  * Visual effect type emitted by a skill on hit.
  * Consumed by EffectsManager to create ActiveEffects in the renderer layer.
  * 'skill_ready' is the cooldown-ready flash spawned at a touch point (not a hit).
+ * 'lightning_arc' is a short arc bolt rendered on each DoT tick of the lightning+frozen interaction.
  */
-export type SkillEffectType = 'lightning_discharge' | 'ice_crystal' | 'skill_ready'
+export type SkillEffectType = 'lightning_discharge' | 'ice_crystal' | 'skill_ready' | 'lightning_arc'
 
 /**
  * Ephemeral event emitted by GameStateMachine.update() per frame.
@@ -36,6 +37,7 @@ export type SkillEffectType = 'lightning_discharge' | 'ice_crystal' | 'skill_rea
 export type GameEvent =
   | { type: 'ENEMY_HIT'; skillType: SkillType; result: HitResult; position: { x: number; y: number } | null; damage: number }
   | { type: 'SKILL_READY'; skillType: SkillType }
+  | { type: 'DOT_TICK'; kind: string; damage: number; position: { x: number; y: number } | null }
 
 /** Named body-part zone on an enemy, or 'none' for a complete miss. */
 export type HitZoneName = 'head' | 'torso' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg' | 'none'

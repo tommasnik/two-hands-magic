@@ -207,6 +207,8 @@ export class SkillRenderer {
     for (const effect of effects) {
       if (effect.type === 'lightning_discharge') {
         this._drawLightningDischarge(ctx, effect, elapsedMs)
+      } else if (effect.type === 'lightning_arc') {
+        this._drawLightningArc(ctx, effect, elapsedMs)
       } else if (effect.type === 'skill_ready') {
         this._drawSkillReady(ctx, effect, elapsedMs)
       }
@@ -306,6 +308,66 @@ export class SkillRenderer {
     ctx.strokeStyle = '#ffffff'
     ctx.lineWidth = 1
     ctx.shadowBlur = 0
+    drawPath(); ctx.stroke()
+
+    ctx.restore()
+  }
+
+  /**
+   * Draws a short blue-white arc bolt at the effect position (enemy centre) — one per DoT tick.
+   * A single jagged path (pre-generated on first render) fades out over 150 ms.
+   */
+  private _drawLightningArc(ctx: CanvasRenderingContext2D, effect: ActiveEffect, elapsedMs: number): void {
+    const pos = effect.position
+    if (!pos) return
+
+    if (!this._lightningPaths.has(effect.id)) {
+      const angle = Math.random() * Math.PI * 2
+      const length = 60 + Math.random() * 40
+      const tx = pos.x + Math.cos(angle) * length
+      const ty = pos.y + Math.sin(angle) * length
+      const n = 3
+      const dx = tx - pos.x
+      const dy = ty - pos.y
+      const px = -dy / Math.max(Math.hypot(dx, dy), 1)
+      const py =  dx / Math.max(Math.hypot(dx, dy), 1)
+      const pts: { x: number; y: number }[] = [{ x: pos.x, y: pos.y }]
+      for (let i = 1; i < n; i++) {
+        const t = i / n
+        const offset = (Math.random() - 0.5) * 30
+        pts.push({ x: pos.x + dx * t + px * offset, y: pos.y + dy * t + py * offset })
+      }
+      pts.push({ x: tx, y: ty })
+      this._lightningPaths.set(effect.id, { paths: [pts] })
+    }
+
+    const entry = this._lightningPaths.get(effect.id)
+    if (!entry) return
+    const segments = entry.paths[0]
+    if (!segments) return
+    const elapsed = elapsedMs - effect.startMs
+    const alpha = Math.max(0, 1 - elapsed / effect.durationMs)
+
+    const drawPath = (): void => {
+      ctx.beginPath()
+      ctx.moveTo(segments[0].x, segments[0].y)
+      for (let i = 1; i < segments.length; i++) ctx.lineTo(segments[i].x, segments[i].y)
+    }
+
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    ctx.globalAlpha = 0.3 * alpha
+    ctx.strokeStyle = '#aaddff'
+    ctx.lineWidth = 5
+    ctx.shadowBlur = 14; ctx.shadowColor = '#88aaff'
+    drawPath(); ctx.stroke()
+
+    ctx.globalAlpha = alpha
+    ctx.strokeStyle = '#cceeff'
+    ctx.lineWidth = 2
+    ctx.shadowBlur = 8; ctx.shadowColor = '#ffffff'
     drawPath(); ctx.stroke()
 
     ctx.restore()

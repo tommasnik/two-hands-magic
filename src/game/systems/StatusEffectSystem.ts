@@ -46,20 +46,38 @@ export class StatusEffectSystem {
   /**
    * Advance all active status timers by dt milliseconds.
    * Removes effects whose remainingMs has reached 0 or below.
+   * For DoT effects (tickDamage + tickIntervalMs set), fires onDotTick for each
+   * tick interval that elapsed within dtMs.
    *
-   * @param dtMs   - frame delta in ms
-   * @param enemy  - enemy state slice (mutated in place)
+   * @param dtMs      - frame delta in ms
+   * @param enemy     - enemy state slice (mutated in place)
+   * @param onDotTick - optional callback invoked once per DoT tick; receives the
+   *                    effect plus its (guaranteed-defined) per-tick damage
    */
-  tick(dtMs: number, enemy: EnemyStateSlice): void {
-    for (let i = enemy.activeStatusEffects.length - 1; i >= 0; i--) {
-      // Non-null assertion safe: we iterate by valid index
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      enemy.activeStatusEffects[i]!.remainingMs -= dtMs
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      if (enemy.activeStatusEffects[i]!.remainingMs <= 0) {
-        enemy.activeStatusEffects.splice(i, 1)
+  tick(dtMs: number, enemy: EnemyStateSlice, onDotTick?: (effect: StatusEffect, tickDamage: number) => void): void {
+    for (const effect of enemy.activeStatusEffects) {
+      // Capture how long the effect was alive this frame before decrement.
+      const prevRemaining = effect.remainingMs
+      effect.remainingMs -= dtMs
+
+      const { tickDamage, tickIntervalMs } = effect
+      if (onDotTick !== undefined && tickDamage !== undefined && tickIntervalMs !== undefined) {
+        // Only count time while the effect was alive (not past its expiry) so a
+        // DoT never ticks beyond the status's own lifetime.
+        let accumulated = (effect.msSinceLastTick ?? 0) + Math.min(dtMs, prevRemaining)
+        while (accumulated >= tickIntervalMs) {
+          accumulated -= tickIntervalMs
+          onDotTick(effect, tickDamage)
+        }
+        effect.msSinceLastTick = accumulated
       }
     }
+
+    // Remove expired effects in place — keep the same array reference so callers
+    // holding a slice onto this list (GameStateMachine) see the mutation.
+    const survivors = enemy.activeStatusEffects.filter(e => e.remainingMs > 0)
+    enemy.activeStatusEffects.length = 0
+    enemy.activeStatusEffects.push(...survivors)
   }
 
   /**

@@ -11,14 +11,21 @@ import {
   LIGHTNING_BLAST_DURATION_HIT_MS,
   LIGHTNING_BLAST_DURATION_GRAZE_MS,
   LIGHTNING_BLAST_COOLDOWN_MS,
+  LIGHTNING_ARC_TICK_INTERVAL_MS,
+  LIGHTNING_ARC_TICK_DAMAGE_RATIO,
+  ICE_CRYSTAL_FREEZE_CRIT_MS,
 } from '../../constants/skills'
 import { PROJECTILE_SPEED_CM, GRAZE_DAMAGE_MULTIPLIER } from '../../constants/combat'
 import { SkillRegistry } from '../registry'
 
+const LIGHTNING_ARC_TICK_DAMAGE = Math.round(
+  ((LIGHTNING_BLAST_DAMAGE_MIN + LIGHTNING_BLAST_DAMAGE_MAX) / 2) * LIGHTNING_ARC_TICK_DAMAGE_RATIO,
+)
+
 /**
  * lightning_blast interaction rules:
- * - frozen enemy + lightning → multi-hit discharge (defined here as data;
- *   InteractionSystem in TASK-64 will execute it).
+ * - frozen enemy + lightning → arc DoT discharge: applies 'lightning_arc' status
+ *   that ticks damage every LIGHTNING_ARC_TICK_INTERVAL_MS for the freeze duration.
  */
 export const lightningBlastModule: SkillModule = {
   type: 'lightning_blast',
@@ -36,6 +43,15 @@ export const lightningBlastModule: SkillModule = {
     {
       whenEnemyHas: 'frozen',
       visualKey: 'lightning_frozen_discharge',
+      additionalStatus: {
+        kind: 'lightning_arc',
+        // remainingMs is overridden at hit-time to match the frozen effect's remaining duration
+        remainingMs: ICE_CRYSTAL_FREEZE_CRIT_MS,
+        tickIntervalMs: LIGHTNING_ARC_TICK_INTERVAL_MS,
+        tickDamage: LIGHTNING_ARC_TICK_DAMAGE,
+        msSinceLastTick: 0,
+        visualKey: 'lightning_arc',
+      },
     },
   ],
   hitEffect: {

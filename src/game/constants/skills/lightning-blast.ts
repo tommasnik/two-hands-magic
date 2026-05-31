@@ -25,3 +25,12 @@ export const LIGHTNING_BLAST_DURATION_GRAZE_MS = 150
  * Unit: ms. Affects: how soon lightning_blast can be cast again after touch-up.
  */
 export const LIGHTNING_BLAST_COOLDOWN_MS = 500
+
+/** Interval between arc DoT damage ticks when lightning hits a frozen enemy. Unit: ms. Affects: lightning_arc DoT granularity. */
+export const LIGHTNING_ARC_TICK_INTERVAL_MS = 200
+
+/** Fraction of average base lightning damage dealt per arc tick. Unit: dimensionless. Affects: lightning_arc DoT output. */
+export const LIGHTNING_ARC_TICK_DAMAGE_RATIO = 0.25
+
+/** Duration of the arc visual effect spawned on each DoT tick. Unit: ms. Affects: lightning_arc render lifetime. */
+export const LIGHTNING_ARC_VISUAL_DURATION_MS = 150

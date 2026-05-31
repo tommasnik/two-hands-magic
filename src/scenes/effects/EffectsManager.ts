@@ -8,7 +8,7 @@
 
 import type { GameEvent, GameStateResult, HitResult, SkillEffectType } from '../../types'
 import { SkillRegistry } from '../../game/skills/registry'
-import { SKILL_READY_FLASH_MS } from '../../game/constants'
+import { SKILL_READY_FLASH_MS, LIGHTNING_ARC_VISUAL_DURATION_MS } from '../../game/constants'
 import { getSkillColor } from '../rendering/SkillRenderer'
 
 export interface ActiveEffect {
@@ -55,6 +55,14 @@ export class EffectsManager {
           durationMs,
           position: event.position,
           hitResult: event.result,
+        })
+      } else if (event.type === 'DOT_TICK' && event.kind === 'lightning_arc') {
+        this._activeEffects.push({
+          id: this._nextId++,
+          type: 'lightning_arc',
+          startMs: elapsedMs,
+          durationMs: LIGHTNING_ARC_VISUAL_DURATION_MS,
+          position: event.position,
         })
       } else if (event.type === 'SKILL_READY') {
         // Spawn a ready flash on every touch point that hosts this skill.

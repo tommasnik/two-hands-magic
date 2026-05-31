@@ -130,6 +130,108 @@ describe('StatusEffectSystem.isActive()', () => {
   })
 })
 
+describe('StatusEffectSystem — DoT tick mechanics (lightning_arc)', () => {
+  it('fires onDotTick callback once after one tick interval', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 1000, tickIntervalMs: 200, tickDamage: 5, msSinceLastTick: 0 })
+    const ticks: number[] = []
+    sys.tick(250, enemy, (e) => { ticks.push(e.tickDamage ?? 0) })
+    expect(ticks).toHaveLength(1)
+    expect(ticks[0]).toBe(5)
+  })
+
+  it('fires two ticks when dt spans two intervals', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 1000, tickIntervalMs: 200, tickDamage: 3, msSinceLastTick: 0 })
+    const ticks: number[] = []
+    sys.tick(450, enemy, (e) => { ticks.push(e.tickDamage ?? 0) })
+    expect(ticks).toHaveLength(2)
+  })
+
+  it('accumulates msSinceLastTick across multiple small dt calls', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 1000, tickIntervalMs: 200, tickDamage: 5, msSinceLastTick: 0 })
+    const ticks: number[] = []
+    const cb = (e: StatusEffect): void => { ticks.push(e.tickDamage ?? 0) }
+    sys.tick(100, enemy, cb)
+    expect(ticks).toHaveLength(0)           // 100ms accumulated
+    sys.tick(100, enemy, cb)
+    expect(ticks).toHaveLength(1)           // 200ms → 1 tick, reset to 0
+    sys.tick(100, enemy, cb)
+    expect(ticks).toHaveLength(1)           // 100ms since last tick
+    sys.tick(100, enemy, cb)
+    expect(ticks).toHaveLength(2)           // 200ms → 2nd tick
+  })
+
+  it('total damage after N ticks equals N × tickDamage', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    const tickDamage = 3
+    const remainingMs = 1000
+    const tickIntervalMs = 200
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs, tickIntervalMs, tickDamage, msSinceLastTick: 0 })
+    let totalDmg = 0
+    sys.tick(remainingMs, enemy, (e) => { totalDmg += e.tickDamage ?? 0 })
+    const expectedTicks = Math.floor(remainingMs / tickIntervalMs)
+    expect(totalDmg).toBe(expectedTicks * tickDamage)
+  })
+
+  it('DoT stops when effect expires (same remainingMs as frozen)', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'frozen', remainingMs: 500, frozen: true })
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 500, tickIntervalMs: 200, tickDamage: 5, msSinceLastTick: 0 })
+    const ticks: number[] = []
+    const cb = (e: StatusEffect): void => { ticks.push(e.tickDamage ?? 0) }
+    // advance past both effects' lifetime
+    sys.tick(600, enemy, cb)
+    expect(sys.isActive(enemy, 'frozen')).toBe(false)
+    expect(sys.isActive(enemy, 'lightning_arc')).toBe(false)
+    // ticks fired: floor(500/200) = 2
+    expect(ticks).toHaveLength(2)
+  })
+
+  it('does not fire onDotTick for effects without tickDamage', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'frozen', remainingMs: 2000, frozen: true })
+    const ticks: number[] = []
+    sys.tick(500, enemy, (e) => { ticks.push(e.tickDamage ?? 0) })
+    expect(ticks).toHaveLength(0)
+  })
+
+  it('no callback call when onDotTick is omitted (plain tick)', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 1000, tickIntervalMs: 200, tickDamage: 5, msSinceLastTick: 0 })
+    // must not throw when no callback provided
+    expect(() => sys.tick(250, enemy)).not.toThrow()
+    expect(enemy.activeStatusEffects[0]?.remainingMs).toBe(750)
+  })
+
+  it('initialises msSinceLastTick to 0 when omitted on a DoT effect', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    // No msSinceLastTick supplied — system must default it to 0.
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 1000, tickIntervalMs: 200, tickDamage: 5 })
+    const ticks: number[] = []
+    sys.tick(200, enemy, (e) => { ticks.push(e.tickDamage ?? 0) })
+    expect(ticks).toHaveLength(1)
+  })
+
+  it('does not tick when tickDamage is set but tickIntervalMs is missing', () => {
+    const sys = new StatusEffectSystem()
+    const enemy = makeEnemy()
+    sys.apply(enemy, { kind: 'lightning_arc', remainingMs: 1000, tickDamage: 5, msSinceLastTick: 0 })
+    const ticks: number[] = []
+    sys.tick(500, enemy, (e) => { ticks.push(e.tickDamage ?? 0) })
+    expect(ticks).toHaveLength(0)
+  })
+})
+
 describe('StatusEffectSystem — frozen status integration with EnemyBehaviorRunner gate', () => {
   it('frozen effect carries frozen:true flag for runner gate check', () => {
     const sys = new StatusEffectSystem()

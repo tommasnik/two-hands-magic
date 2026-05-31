@@ -124,7 +124,13 @@ export class GameStateMachine {
     for (const evt of this._fight.projectiles.update(cappedDt, this.enemy, this._fight.upgrades.critZoneTolerance)) {
       this._applyHit(evt.result, evt.skillType, evt.position, evt.chainBonus, evt.projectileRadius, evt.side)
     }
-    this.enemy.updateAnimation(cappedDt); this._fight.statusEffects.tick(cappedDt, this._enemyStateSlice())
+    this.enemy.updateAnimation(cappedDt)
+    this._fight.statusEffects.tick(cappedDt, this._enemyStateSlice(), (effect, tickDamage) => {
+      this._pendingEvents.push({ type: 'DOT_TICK', kind: effect.kind, damage: tickDamage, position: { x: this.enemy.x, y: this.enemy.y } })
+      this._fight.enemyHp = Math.max(0, this._fight.enemyHp - tickDamage)
+      this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this._fight.enemyHp })
+      this._handleEnemyKilled()
+    })
     if (this._phaseManager.currentPhase === 'battle' && this._fight.runner) this._tickBehaviorRunner(cappedDt)
     if (this._phaseManager.currentPhase === 'battle') {
       for (const hit of this._fight.delivery.update(cappedDt)) {
@@ -255,10 +261,19 @@ export class GameStateMachine {
     this._fight.enemyHp = Math.max(0, this._fight.enemyHp - damage)
     if (stunnedUntilMs > 0) this._fight.enemyStunnedUntilMs = stunnedUntilMs
     this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this._fight.enemyHp })
-    if (enemyDied && this._phaseManager.currentPhase === 'fight_overview') {
-      this._fight.combat.snapshotFightStats(); this._global.progression.applyKill()
-      if (this._global.currentLevel >= ENEMY_POOL.length) this._global.progression.pendingLevelUp = false
-    }
+    if (enemyDied) this._handleEnemyKilled()
+  }
+
+  /**
+   * Shared enemy-death bookkeeping: snapshot fight stats, apply the kill to
+   * progression, and clear pendingLevelUp on the final level. Invoked from any
+   * code path that can drop enemy HP to 0 (direct hits and DoT ticks alike).
+   * Only acts once the PhaseManager has transitioned to fight_overview.
+   */
+  private _handleEnemyKilled(): void {
+    if (this._phaseManager.currentPhase !== 'fight_overview') return
+    this._fight.combat.snapshotFightStats(); this._global.progression.applyKill()
+    if (this._global.currentLevel >= ENEMY_POOL.length) this._global.progression.pendingLevelUp = false
   }
 
   private _applyPlayerHit(damage: number): void {

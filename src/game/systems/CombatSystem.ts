@@ -140,7 +140,11 @@ export class CombatSystem {
     if (result !== 'MISS' && SkillRegistry.has(skillType)) {
       const skill = SkillRegistry.get(skillType)
       const base: HitResolution = { result, damageMultiplier: 1.0, visualKey: null }
-      interactionMultiplier = resolveHit(skill, ctx.enemyStateSlice, base).damageMultiplier
+      const resolution = resolveHit(skill, ctx.enemyStateSlice, base)
+      interactionMultiplier = resolution.damageMultiplier
+      if (resolution.additionalStatus) {
+        this._statusEffectSystem.apply(ctx.enemyStateSlice, resolution.additionalStatus)
+      }
     }
 
     // Calculate damage

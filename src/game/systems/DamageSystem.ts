@@ -5,7 +5,7 @@
 
 import type { HitResult, SkillType } from '../../types'
 import type { PlayerStats } from './PlayerProgression'
-import type { EnemyStateSlice, SkillModule } from '../skills/types'
+import type { EnemyStateSlice, SkillModule, StatusEffect } from '../skills/types'
 import { SkillRegistry } from '../skills/registry'
 import {
   CRIT_DAMAGE_MULTIPLIER,
@@ -38,6 +38,13 @@ export interface HitResolution {
    * Null = use the skill's default visual.
    */
   visualKey: string | null
+  /**
+   * Additional status effect to apply to the enemy when the interaction triggers.
+   * remainingMs is resolved from the matched enemy status at hit time (not the
+   * static rule value) so the DoT duration matches the remaining freeze window.
+   * Undefined when no interaction triggered or the rule has no additionalStatus.
+   */
+  additionalStatus?: StatusEffect
 }
 
 // ============================================================
@@ -68,16 +75,29 @@ export function resolveHit(
 ): HitResolution {
   if (!skill.interactions || skill.interactions.length === 0) return baseResolution
 
-  const rule = skill.interactions.find(
-    r => enemy.activeStatusEffects.some(e => e.kind === r.whenEnemyHas && e.remainingMs > 0),
-  )
-  if (!rule) return baseResolution
+  // Find the first rule whose trigger status is active, capturing the matched
+  // effect in the same pass so its remaining duration can size any DoT we apply.
+  for (const rule of skill.interactions) {
+    const matched = enemy.activeStatusEffects.find(
+      e => e.kind === rule.whenEnemyHas && e.remainingMs > 0,
+    )
+    if (!matched) continue
 
-  return {
-    ...baseResolution,
-    damageMultiplier: baseResolution.damageMultiplier * (rule.damageMultiplier ?? 1.0),
-    visualKey: rule.visualKey ?? baseResolution.visualKey,
+    // The DoT runs for exactly the matched effect's remaining duration (e.g.
+    // lightning_arc lives as long as the frozen effect it discharges through).
+    const additionalStatus: StatusEffect | undefined = rule.additionalStatus
+      ? { ...rule.additionalStatus, remainingMs: matched.remainingMs, msSinceLastTick: 0 }
+      : undefined
+
+    return {
+      ...baseResolution,
+      damageMultiplier: baseResolution.damageMultiplier * (rule.damageMultiplier ?? 1.0),
+      visualKey: rule.visualKey ?? baseResolution.visualKey,
+      additionalStatus,
+    }
   }
+
+  return baseResolution
 }
 
 function rollBaseDamage(skillType: SkillType, rng: () => number): number {

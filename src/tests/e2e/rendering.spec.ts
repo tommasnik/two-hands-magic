@@ -49,11 +49,11 @@ test('enemy torso centre Y is in upper 40% of canvas', async ({ page }) => {
   )
 
   const result = await page.evaluate(() => {
-    const game = (window as unknown as Record<string, { getState: () => { enemy: { y: number }; } }>)['__game']
+    const game = (window as unknown as Record<string, { getState: () => { fight: { enemy: { y: number } } } }>)['__game']
     const state = game.getState()
     const GAME_HEIGHT = 844
     const threshold = GAME_HEIGHT * 0.4
-    return { enemyY: state.enemy.y, threshold, gameHeight: GAME_HEIGHT }
+    return { enemyY: state.fight.enemy.y, threshold, gameHeight: GAME_HEIGHT }
   })
 
   // Enemy torso centre must be in upper 40% (y < GAME_HEIGHT * 0.4)

@@ -40,6 +40,19 @@ export interface StatusEffect {
    * Pure data — not consumed by any game system; renderer reads it.
    */
   visualKey?: string
+  /**
+   * For DoT effects: interval between damage ticks. Unit: ms.
+   * When set together with tickDamage, StatusEffectSystem fires a tick callback
+   * each time msSinceLastTick accumulates past this threshold.
+   */
+  tickIntervalMs?: number
+  /** For DoT effects: damage dealt per tick. Unit: HP. */
+  tickDamage?: number
+  /**
+   * For DoT effects: ms elapsed since the last tick (internal counter).
+   * Initialise to 0 when applying the status; StatusEffectSystem increments it.
+   */
+  msSinceLastTick?: number
 }
 
 /**

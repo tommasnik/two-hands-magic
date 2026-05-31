@@ -1,9 +1,10 @@
 ---
 id: TASK-76
 title: 'Skill interakce: lightning + frozen — kontinuální arc dmg po krystalu'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-05-31 14:48'
+updated_date: '2026-05-31 17:15'
 labels:
   - skill-interaction
   - combat
@@ -98,14 +99,32 @@ Testy v `src/tests/game-design/` musí pokrývat:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Nová konstanta LIGHTNING_ARC_TICK_INTERVAL_MS = 200 a LIGHTNING_ARC_TICK_DAMAGE_RATIO v constants/skills/lightning-blast.ts
-- [ ] #2 StatusEffect interface rozšířen o volitelná pole: tickIntervalMs, tickDamage, msSinceLastTick
-- [ ] #3 StatusEffectSystem.tick() emituje DOT_TICK event (nebo volá callback) kdykoli msSinceLastTick >= tickIntervalMs
-- [ ] #4 lightning_blast InteractionRule obsahuje additionalStatus s kind='lightning_arc', remainingMs shodné s freeze duration, tickIntervalMs a tickDamage odvozené z konstant
-- [ ] #5 GameStateMachine aplikuje tickDamage na enemy HP při každém tiku (enemy může zemřít na DoT)
-- [ ] #6 EffectsManager zobrazí krátký arc vizuál (~150 ms) při každém DOT_TICK eventu pro kind='lightning_arc'
-- [ ] #7 Pokud enemy zemře na DoT, bojová sekvence proběhne normálně (enemy smrt = standardní flow)
-- [ ] #8 Pokud freeze vyprší, lightning_arc DoT se zastaví zároveň (obě mají stejné remainingMs)
-- [ ] #9 Unit testy pokrývají: tick counting, správné totalDmg po N tickách, ukončení DoT s freeze
-- [ ] #10 Game design test pokrývá power user i casual player scénář (žádná hardcoded čísla — vše z konstant)
+- [x] #1 Nová konstanta LIGHTNING_ARC_TICK_INTERVAL_MS = 200 a LIGHTNING_ARC_TICK_DAMAGE_RATIO v constants/skills/lightning-blast.ts
+- [x] #2 StatusEffect interface rozšířen o volitelná pole: tickIntervalMs, tickDamage, msSinceLastTick
+- [x] #3 StatusEffectSystem.tick() emituje DOT_TICK event (nebo volá callback) kdykoli msSinceLastTick >= tickIntervalMs
+- [x] #4 lightning_blast InteractionRule obsahuje additionalStatus s kind='lightning_arc', remainingMs shodné s freeze duration, tickIntervalMs a tickDamage odvozené z konstant
+- [x] #5 GameStateMachine aplikuje tickDamage na enemy HP při každém tiku (enemy může zemřít na DoT)
+- [x] #6 EffectsManager zobrazí krátký arc vizuál (~150 ms) při každém DOT_TICK eventu pro kind='lightning_arc'
+- [x] #7 Pokud enemy zemře na DoT, bojová sekvence proběhne normálně (enemy smrt = standardní flow)
+- [x] #8 Pokud freeze vyprší, lightning_arc DoT se zastaví zároveň (obě mají stejné remainingMs)
+- [x] #9 Unit testy pokrývají: tick counting, správné totalDmg po N tickách, ukončení DoT s freeze
+- [x] #10 Game design test pokrývá power user i casual player scénář (žádná hardcoded čísla — vše z konstant)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+DoT model přes nový status kind 'lightning_arc'.
+
+Tok: lightning_blast trefí frozen enemy → resolveHit() (DamageSystem) najde InteractionRule s additionalStatus, naplní remainingMs z aktuálního frozen efektu (DoT běží přesně po dobu zbývajícího freeze) a msSinceLastTick=0 → CombatSystem.processHit() aplikuje status přes StatusEffectSystem.apply(). StatusEffectSystem.tick() dostává onDotTick callback (effect, tickDamage) a tikuje každých tickIntervalMs (počítá jen aktivní čas: min(dt, prevRemaining), takže DoT nikdy netiká za hranicí freeze). GSM callback emituje DOT_TICK GameEvent, odečte HP a volá nově extrahovaný _handleEnemyKilled() (sdílený s _applyHit) → smrt z DoT = standardní fight_overview flow.
+
+Render: EffectsManager mapuje DOT_TICK kind='lightning_arc' na ActiveEffect type 'lightning_arc' (150ms), SkillRenderer._drawLightningArc kreslí krátký modro-bílý oblouk s alpha fade.
+
+Konstanty (constants/skills/lightning-blast.ts): LIGHTNING_ARC_TICK_INTERVAL_MS=200, LIGHTNING_ARC_TICK_DAMAGE_RATIO=0.25 (→ tickDamage = round(avg(min,max)*ratio) = 3), LIGHTNING_ARC_VISUAL_DURATION_MS=150.
+
+Pozn.: lightning frozen interaction nikdy neměla 2× damageMultiplier v reálném modulu (jen visualKey), takže nebylo co odstraňovat.
+
+Refactory pro 100% coverage na dotčených souborech: resolveHit() přepsán na for-loop (eliminace nedosažitelné defensive větve), StatusEffectSystem.tick() používá for-of + in-place filter (zachování reference pole), kill bookkeeping extrahováno do _handleEnemyKilled(). Coverage GameStateMachine/DamageSystem/StatusEffectSystem = 100%.
+
+Mimo scope: pre-existing coverage gap v CommandProcessor.ts (75-77, 94-96) byl rozbitý už na HEAD (commit 00f9a47). Opraven také pre-existing e2e test rendering.spec.ts (state.enemy.y → state.fight.enemy.y, migrace z 98fc943).
+<!-- SECTION:NOTES:END -->
