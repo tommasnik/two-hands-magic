@@ -8,6 +8,7 @@ import type { ActiveTouchPointPos } from '../entities/touchPoints'
 import type { GameCommand } from './InputManager'
 import type { ProjectileSystem } from './ProjectileSystem'
 import type { CombatSystem } from './CombatSystem'
+import { initSkillFightStats } from './CombatSystem'
 import type { Enemy } from '../entities/Enemy'
 import { computeReticle } from './AimSystem'
 import type { HitResult, SkillType, GlobalUpgradeState } from '../../types'
@@ -51,7 +52,12 @@ export function processCommands(
           if (slot) {
             const lastUp = ctx.lastTouchUpMs[cmd.touchPointId]
             if (lastUp !== null && lastUp !== undefined) {
-              ctx.combat.fightStats[slot.side].touchGaps.push(ctx.elapsedMs - lastUp)
+              let touchStats = ctx.combat.fightStats.skills[slot.skillType]
+              if (!touchStats) {
+                touchStats = initSkillFightStats(slot.skillType)
+                ctx.combat.fightStats.skills[slot.skillType] = touchStats
+              }
+              touchStats.touchGaps.push(ctx.elapsedMs - lastUp)
             }
           }
         }
@@ -65,7 +71,12 @@ export function processCommands(
       const slot = ctx.layout.find((s) => s.id === cmd.touchPointId)
       if (slot && ts) {
         ctx.lastTouchUpMs[cmd.touchPointId] = ctx.elapsedMs
-        ctx.combat.fightStats[slot.side].fireCount++
+        let fireStats = ctx.combat.fightStats.skills[slot.skillType]
+        if (!fireStats) {
+          fireStats = initSkillFightStats(slot.skillType)
+          ctx.combat.fightStats.skills[slot.skillType] = fireStats
+        }
+        fireStats.fireCount++
         const touchStartMs = ts.touchStartMs
         const effectivePeriodMs = slot.rotationPeriodMs * ctx.globalUpgrades.castTimeMultiplier
         const reticle = computeReticle(

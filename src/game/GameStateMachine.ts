@@ -1,7 +1,7 @@
 // GameStateMachine — pure TypeScript, no Phaser dependency.
 // Orchestrates all game systems and tracks state transitions.
 
-import type { GameStateResult, GameEvent, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
+import type { GameStateResult, GameEvent, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, SkillFightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
 import { InputManager } from './systems/InputManager'; import type { TouchPointEntry } from './systems/InputManager'
 import { computeEnemyPosition } from './systems/BehaviorSystem'
 import type { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
@@ -178,11 +178,11 @@ export class GameStateMachine {
 
   // private helpers
   private _initFightStats(): FightStats {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const leftSkill = this._layout.find((s) => s.side === 'left')!.skillType
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const rightSkill = this._layout.find((s) => s.side === 'right')!.skillType
-    return { left: initSkillFightStats(leftSkill), right: initSkillFightStats(rightSkill), durationMs: 0 }
+    const skills: Partial<Record<SkillType, SkillFightStats>> = {}
+    for (const slot of this._layout) {
+      if (!skills[slot.skillType]) skills[slot.skillType] = initSkillFightStats(slot.skillType)
+    }
+    return { skills, durationMs: 0 }
   }
 
   /**

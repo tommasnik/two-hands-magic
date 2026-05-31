@@ -26,7 +26,7 @@ import type { HitResult, HitZoneName } from '../../types'
 import type { StatusEffect } from '../skills/types'
 import { resolveSpriteKey, resolveHitZoneMap } from '../resolvers'
 import { StatusEffectSystem } from './StatusEffectSystem'
-import { CombatSystem } from './CombatSystem'
+import { CombatSystem, cloneSkillStats } from './CombatSystem'
 import { EnemyBehaviorRunner } from './EnemyBehaviorRunner'
 import { ProjectileSystem } from './ProjectileSystem'
 import { DeliverySystem } from './DeliverySystem'
@@ -151,22 +151,9 @@ export class FightState {
    */
   buildResult(fightStats: FightStats, playerSurvived: boolean): FightResult {
     const statsSnapshot: FightStatsSnapshot = {
-      left: {
-        ...fightStats.left,
-        hitsByResult: { ...fightStats.left.hitsByResult },
-        touchGaps: [...fightStats.left.touchGaps],
-      },
-      right: {
-        ...fightStats.right,
-        hitsByResult: { ...fightStats.right.hitsByResult },
-        touchGaps: [...fightStats.right.touchGaps],
-      },
+      skills: cloneSkillStats(fightStats.skills),
       durationMs: fightStats.durationMs,
     }
-    return {
-      xpGained: playerSurvived ? 1 : 0,
-      statsSnapshot,
-      playerSurvived,
-    }
+    return { xpGained: playerSurvived ? 1 : 0, statsSnapshot, playerSurvived }
   }
 }

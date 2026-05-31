@@ -447,14 +447,13 @@ export interface SkillFightStats {
 }
 
 /**
- * Fight statistics for the current battle, broken down by slot side.
+ * Fight statistics for the current battle, indexed by SkillType.
+ * One entry per unique skill active in the layout. Populated lazily on first hit.
  * Reset at the start of each new fight (nextLevel / restartGame).
  */
 export interface FightStats {
-  /** Statistics for the left skill slot. */
-  left: SkillFightStats
-  /** Statistics for the right skill slot. */
-  right: SkillFightStats
+  /** Per-skill statistics. Key = SkillType; value present for every skill in the active layout. */
+  skills: Partial<Record<SkillType, SkillFightStats>>
   /** Total elapsed duration of the fight so far. Unit: ms. */
   durationMs: number
 }

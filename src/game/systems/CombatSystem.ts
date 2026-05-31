@@ -129,7 +129,7 @@ export class CombatSystem {
     position: { x: number; y: number } | null,
     chainBonus: number,
     projectileRadius: number,
-    side: 'left' | 'right',
+    _side: 'left' | 'right',
     ctx: HitContext,
   ): HitProcessResult {
     // Update score counters
@@ -152,8 +152,12 @@ export class CombatSystem {
     const newEnemyHp = Math.max(0, ctx.enemyHp - damage)
     const enemyDied = newEnemyHp === 0
 
-    // Update per-slot fight stats
-    const slotStats = this.fightStats[side]
+    // Update per-skill fight stats (lazy init for skills not in initial layout)
+    let slotStats = this.fightStats.skills[skillType]
+    if (!slotStats) {
+      slotStats = initSkillFightStats(skillType)
+      this.fightStats.skills[skillType] = slotStats
+    }
     slotStats.hitsByResult[result]++
     slotStats.totalDamage += damage
 
@@ -213,16 +217,7 @@ export class CombatSystem {
    */
   snapshotFightStats(): void {
     this.fightStatsSnapshot = {
-      left: {
-        ...this.fightStats.left,
-        hitsByResult: { ...this.fightStats.left.hitsByResult },
-        touchGaps: [...this.fightStats.left.touchGaps],
-      },
-      right: {
-        ...this.fightStats.right,
-        hitsByResult: { ...this.fightStats.right.hitsByResult },
-        touchGaps: [...this.fightStats.right.touchGaps],
-      },
+      skills: cloneSkillStats(this.fightStats.skills),
       durationMs: this.fightStats.durationMs,
     }
   }
@@ -240,11 +235,7 @@ export class CombatSystem {
    * Returns a new object with no shared references — safe for JSON.stringify.
    */
   serializeFightStats(stats: FightStats): FightStats {
-    return {
-      left: { ...stats.left, hitsByResult: { ...stats.left.hitsByResult }, touchGaps: [...stats.left.touchGaps] },
-      right: { ...stats.right, hitsByResult: { ...stats.right.hitsByResult }, touchGaps: [...stats.right.touchGaps] },
-      durationMs: stats.durationMs,
-    }
+    return { skills: cloneSkillStats(stats.skills), durationMs: stats.durationMs }
   }
 
   // ------------------------------------------------------------------
@@ -286,4 +277,19 @@ export function initSkillFightStats(skillType: SkillType): SkillFightStats {
     totalDamage: 0,
     touchGaps: [],
   }
+}
+
+/**
+ * Deep-clone the skills map — no shared references.
+ * SkillType keys are runtime string values from a known union; the cast is safe.
+ */
+export function cloneSkillStats(
+  src: Partial<Record<SkillType, SkillFightStats>>,
+): Partial<Record<SkillType, SkillFightStats>> {
+  const dst: Partial<Record<SkillType, SkillFightStats>> = {}
+  for (const key of Object.keys(src) as SkillType[]) {
+    const v = src[key]
+    if (v) dst[key] = { ...v, hitsByResult: { ...v.hitsByResult }, touchGaps: [...v.touchGaps] }
+  }
+  return dst
 }

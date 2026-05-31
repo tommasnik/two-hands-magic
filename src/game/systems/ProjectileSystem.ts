@@ -40,8 +40,8 @@ export interface ProjectileHitEvent {
   projectileRadius: number
   /**
    * Which screen side fired this projectile.
-   * Baked at fire time so GameStateMachine can route hit stats to the correct
-   * SkillFightStats entry without keeping a projectile-id→side map.
+   * Forwarded to processHit for context (e.g. future side-specific logic).
+   * Stats are now routed by skillType, not side.
    */
   side: 'left' | 'right'
 }

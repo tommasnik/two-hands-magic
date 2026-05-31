@@ -18,12 +18,12 @@ interface FireParticle {
  * Single source of truth for skill display colors.
  * Used by slot rings, lasers, projectile trails, and fight overview.
  */
-export function getSkillColor(skillType: string, side: 'left' | 'right'): string {
+export function getSkillColor(skillType: string, side?: 'left' | 'right'): string {
   switch (skillType) {
     case 'white_shot':    return '#ffffff'
     case 'fireball':      return '#ff6a00'
-    case 'slow_shot':     return side === 'left' ? '#5cff3a' : '#3a8cff'
-    case 'fast_shot':     return side === 'left' ? '#ff9410' : '#ff2a3c'
+    case 'slow_shot':     return side === 'right' ? '#3a8cff' : '#5cff3a'
+    case 'fast_shot':     return side === 'right' ? '#ff2a3c' : '#ff9410'
     case 'ice_crystal':   return '#88ccff'
     case 'lightning_blast': return '#ffe066'
     default:              return '#b833ff'

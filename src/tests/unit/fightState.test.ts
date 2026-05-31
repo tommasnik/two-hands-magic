@@ -34,8 +34,10 @@ const DEF_WITH_GRAPH: EnemyDef = {
 }
 
 const DUMMY_FIGHT_STATS: FightStats = {
-  left: { skillType: 'slow_shot', fireCount: 3, hitsByResult: { CRIT: 1, HIT: 1, GRAZE: 0, MISS: 1 }, totalDamage: 10, touchGaps: [100, 200] },
-  right: { skillType: 'fast_shot', fireCount: 2, hitsByResult: { CRIT: 0, HIT: 2, GRAZE: 0, MISS: 0 }, totalDamage: 5, touchGaps: [50] },
+  skills: {
+    slow_shot: { skillType: 'slow_shot', fireCount: 3, hitsByResult: { CRIT: 1, HIT: 1, GRAZE: 0, MISS: 1 }, totalDamage: 10, touchGaps: [100, 200] },
+    fast_shot: { skillType: 'fast_shot', fireCount: 2, hitsByResult: { CRIT: 0, HIT: 2, GRAZE: 0, MISS: 0 }, totalDamage: 5, touchGaps: [50] },
+  },
   durationMs: 3000,
 }
 
@@ -73,11 +75,11 @@ describe('FightState.buildResult()', () => {
     const result = fs.buildResult(DUMMY_FIGHT_STATS, true)
     const snap = result.statsSnapshot
     expect(snap.durationMs).toBe(DUMMY_FIGHT_STATS.durationMs)
-    expect(snap.left.totalDamage).toBe(DUMMY_FIGHT_STATS.left.totalDamage)
-    expect(snap.right.hitsByResult).toEqual(DUMMY_FIGHT_STATS.right.hitsByResult)
+    expect(snap.skills['slow_shot']!.totalDamage).toBe(DUMMY_FIGHT_STATS.skills['slow_shot']!.totalDamage)
+    expect(snap.skills['fast_shot']!.hitsByResult).toEqual(DUMMY_FIGHT_STATS.skills['fast_shot']!.hitsByResult)
     // Verify deep copy — mutation of original does not affect snapshot
-    DUMMY_FIGHT_STATS.left.totalDamage = 999
-    expect(snap.left.totalDamage).toBe(10)
-    DUMMY_FIGHT_STATS.left.totalDamage = 10 // restore
+    DUMMY_FIGHT_STATS.skills['slow_shot']!.totalDamage = 999
+    expect(snap.skills['slow_shot']!.totalDamage).toBe(10)
+    DUMMY_FIGHT_STATS.skills['slow_shot']!.totalDamage = 10 // restore
   })
 })

@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { CombatSystem, initSkillFightStats } from '../../game/systems/CombatSystem'
+import type { FightStats } from '../../types'
 import { StatusEffectSystem } from '../../game/systems/StatusEffectSystem'
 import { Enemy } from '../../game/entities/Enemy'
 import { GAME_WIDTH, ENEMY_DEFAULT_Y, DEFAULT_GLOBAL_UPGRADE_STATE } from '../../game/constants'
@@ -85,7 +86,7 @@ describe('CombatSystem — initial state', () => {
 describe('CombatSystem — score tracking via processHit', () => {
   it('CRIT increments score.total and score.crits', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('fireball'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStats = { skills: { fireball: initSkillFightStats('fireball'), white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     cs.processHit('CRIT', 'fireball', null, 0, 0, 'left', makeCtx())
     expect(cs.score.crits).toBe(1)
     expect(cs.score.total).toBeGreaterThan(0)
@@ -93,21 +94,21 @@ describe('CombatSystem — score tracking via processHit', () => {
 
   it('HIT increments score.hits', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('fireball'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStats = { skills: { fireball: initSkillFightStats('fireball'), white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     cs.processHit('HIT', 'fireball', null, 0, 0, 'left', makeCtx())
     expect(cs.score.hits).toBe(1)
   })
 
   it('GRAZE increments score.grazes', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('fireball'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStats = { skills: { fireball: initSkillFightStats('fireball'), white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     cs.processHit('GRAZE', 'fireball', null, 0, 0, 'left', makeCtx())
     expect(cs.score.grazes).toBe(1)
   })
 
   it('MISS increments score.misses and returns 0 damage', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('fireball'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStats = { skills: { fireball: initSkillFightStats('fireball'), white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     const { damage } = cs.processHit('MISS', 'fireball', null, 0, 0, 'left', makeCtx())
     expect(cs.score.misses).toBe(1)
     expect(damage).toBe(0)
@@ -121,14 +122,14 @@ describe('CombatSystem — score tracking via processHit', () => {
 describe('CombatSystem — processHit result', () => {
   it('returns damage > 0 for CRIT', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('white_shot'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStats = { skills: { white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     const { damage } = cs.processHit('CRIT', 'white_shot', null, 0, 0, 'left', makeCtx())
     expect(damage).toBeGreaterThan(0)
   })
 
   it('enemyDied is true when damage >= enemyHp', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('fireball'), right: initSkillFightStats('fireball'), durationMs: 0 }
+    cs.fightStats = { skills: { fireball: initSkillFightStats('fireball') }, durationMs: 0 }
     // Give enemy just 1 HP so any CRIT kills it
     const ctx = makeCtx({ enemyHp: 1 })
     const { enemyDied } = cs.processHit('CRIT', 'fireball', null, 0, 0, 'left', ctx)
@@ -137,7 +138,7 @@ describe('CombatSystem — processHit result', () => {
 
   it('enemyDied is false when enemy survives', () => {
     const cs = makeCombatSystem()
-    cs.fightStats = { left: initSkillFightStats('white_shot'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStats = { skills: { white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     const ctx = makeCtx({ enemyHp: 10000 }) // lots of HP
     const { enemyDied } = cs.processHit('CRIT', 'white_shot', null, 0, 0, 'left', ctx)
     expect(enemyDied).toBe(false)
@@ -184,18 +185,20 @@ describe('CombatSystem — snapshotFightStats', () => {
   it('creates a deep clone of current fightStats', () => {
     const cs = makeCombatSystem()
     cs.fightStats = {
-      left: initSkillFightStats('fireball'),
-      right: initSkillFightStats('white_shot'),
+      skills: {
+        fireball: initSkillFightStats('fireball'),
+        white_shot: initSkillFightStats('white_shot'),
+      },
       durationMs: 500,
     }
-    cs.fightStats.left.fireCount = 3
+    cs.fightStats.skills['fireball']!.fireCount = 3
     cs.snapshotFightStats()
     expect(cs.fightStatsSnapshot).not.toBeNull()
-    expect(cs.fightStatsSnapshot!.left.fireCount).toBe(3)
+    expect(cs.fightStatsSnapshot!.skills['fireball']!.fireCount).toBe(3)
     expect(cs.fightStatsSnapshot!.durationMs).toBe(500)
     // Verify deep clone — mutating fightStats does not affect snapshot
-    cs.fightStats.left.fireCount = 99
-    expect(cs.fightStatsSnapshot!.left.fireCount).toBe(3)
+    cs.fightStats.skills['fireball']!.fireCount = 99
+    expect(cs.fightStatsSnapshot!.skills['fireball']!.fireCount).toBe(3)
   })
 })
 
@@ -207,7 +210,7 @@ describe('CombatSystem — resetForLevel', () => {
   it('clears lastCastBySlot and fightStatsSnapshot', () => {
     const cs = makeCombatSystem()
     cs.lastCastBySlot['left_0'] = 1000
-    cs.fightStatsSnapshot = { left: initSkillFightStats('fireball'), right: initSkillFightStats('white_shot'), durationMs: 0 }
+    cs.fightStatsSnapshot = { skills: { fireball: initSkillFightStats('fireball'), white_shot: initSkillFightStats('white_shot') }, durationMs: 0 }
     cs.resetForLevel()
     expect(cs.lastCastBySlot).toEqual({})
     expect(cs.fightStatsSnapshot).toBeNull()
@@ -221,17 +224,19 @@ describe('CombatSystem — resetForLevel', () => {
 describe('CombatSystem — serializeFightStats', () => {
   it('returns a deep clone of fightStats', () => {
     const cs = makeCombatSystem()
-    const stats = {
-      left: initSkillFightStats('fireball'),
-      right: initSkillFightStats('white_shot'),
+    const stats: FightStats = {
+      skills: {
+        fireball: initSkillFightStats('fireball'),
+        white_shot: initSkillFightStats('white_shot'),
+      },
       durationMs: 1000,
     }
-    stats.left.touchGaps.push(150)
+    stats.skills['fireball']!.touchGaps.push(150)
     const serialized = cs.serializeFightStats(stats)
     expect(serialized).not.toBe(stats) // different object
-    expect(serialized.left.touchGaps).toEqual([150])
+    expect(serialized.skills['fireball']!.touchGaps).toEqual([150])
     // Mutating original does not affect copy
-    stats.left.touchGaps.push(200)
-    expect(serialized.left.touchGaps).toHaveLength(1)
+    stats.skills['fireball']!.touchGaps.push(200)
+    expect(serialized.skills['fireball']!.touchGaps).toHaveLength(1)
   })
 })

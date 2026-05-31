@@ -343,32 +343,24 @@
         width: 100%; max-width: 340px;
         background: rgba(255,255,255,0.05);
         border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 8px;
-        padding: 12px 14px;
-        margin-bottom: 12px;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 7px;
       }
-      .fo-skill-name { font: bold 13px "Courier New"; color: #ffe066; margin-bottom: 8px; letter-spacing: 1px; }
+      .fo-skill-header {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-bottom: 5px; gap: 6px;
+      }
+      .fo-skill-name { font: bold 11px "Courier New"; letter-spacing: 0.08em; flex-shrink: 0; }
+      .fo-skill-meta { font: 10px "Courier New"; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-      .fo-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+      .fo-bar-row { display: flex; align-items: center; gap: 6px; }
       .fo-bar {
-        flex: 1; height: 18px; border-radius: 4px;
+        flex: 1; height: 14px; border-radius: 3px;
         background: #222; overflow: hidden; display: flex;
       }
       .fo-bar-seg { height: 100%; transition: width 0.3s; }
-      .fo-shots { font: 12px "Courier New"; color: #aaa; white-space: nowrap; }
-
-      .fo-legend { display: flex; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-      .fo-dot {
-        font: 11px "Courier New"; color: #ccc;
-        display: flex; align-items: center; gap: 4px;
-      }
-      .fo-dot::before {
-        content: ""; display: inline-block;
-        width: 8px; height: 8px; border-radius: 50%;
-        background: inherit;
-      }
-
-      .fo-stats { font: 12px "Courier New"; color: #bbb; }
+      .fo-hit-counts { font: 10px "Courier New"; white-space: nowrap; flex-shrink: 0; }
 
       /* XP section inside fight overview */
       .fo-xp-section {

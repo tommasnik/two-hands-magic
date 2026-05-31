@@ -188,59 +188,55 @@ export class PhaseOverlayManager {
     const durationSec = snap.durationMs / 1000
     const fmt1 = (n: number) => n.toFixed(1)
 
-    const totalDmg = snap.left.totalDamage + snap.right.totalDamage
-    const leftDps = durationSec > 0 ? snap.left.totalDamage / durationSec : 0
-    const rightDps = durationSec > 0 ? snap.right.totalDamage / durationSec : 0
+    // Collect active skill entries in stable order
+    const skillEntries: Array<{ skillType: string; stats: SkillFightStats; color: string }> =
+      Object.entries(snap.skills)
+        .filter((entry): entry is [string, SkillFightStats] => entry[1] !== undefined)
+        .map(([st, stats]) => ({ skillType: st, stats, color: getSkillColor(st) }))
+
+    const totalDmg = skillEntries.reduce((acc, e) => acc + e.stats.totalDamage, 0)
     const totalDps = durationSec > 0 ? totalDmg / durationSec : 0
-    const leftPct = totalDmg > 0 ? Math.round(snap.left.totalDamage / totalDmg * 100) : 50
-    const rightPct = 100 - leftPct
 
-    const leftColor = getSkillColor(snap.left.skillType, 'left')
-    const rightColor = getSkillColor(snap.right.skillType, 'right')
-
-    const renderSkillBar = (stats: SkillFightStats, label: string, dps: number, nameColor: string): string => {
+    const renderSkillBar = (skillType: string, stats: SkillFightStats, color: string): string => {
       const { CRIT, HIT, GRAZE, MISS } = stats.hitsByResult
       const total = CRIT + HIT + GRAZE + MISS
+      const dps = durationSec > 0 ? stats.totalDamage / durationSec : 0
+      const label = skillType.replace(/_/g, ' ').toUpperCase()
 
-      let barHtml: string
-      if (total === 0) {
-        barHtml = '<div class="fo-bar-seg" style="width:100%;background:#333;"></div>'
-      } else {
-        const seg = (count: number, color: string): string => {
-          if (count === 0) return ''
-          const w = (count / total * 100).toFixed(1)
-          return `<div class="fo-bar-seg" style="width:${w}%;background:${color};"></div>`
-        }
-        barHtml = seg(CRIT, '#FFD700') + seg(HIT, '#FF8C00') + seg(GRAZE, '#4A9EFF') + seg(MISS, '#555')
+      const seg = (count: number, c: string): string => {
+        if (count === 0) return ''
+        const w = (count / total * 100).toFixed(1)
+        return `<div class="fo-bar-seg" style="width:${w}%;background:${c};"></div>`
       }
+      const barHtml = total === 0
+        ? '<div class="fo-bar-seg" style="width:100%;background:#333;"></div>'
+        : seg(CRIT, '#FFD700') + seg(HIT, '#FF8C00') + seg(GRAZE, '#4A9EFF') + seg(MISS, '#555')
 
-      let avgIdle: string
-      if (stats.touchGaps.length >= 2) {
-        const sum = stats.touchGaps.reduce((a, b) => a + b, 0)
-        avgIdle = (sum / stats.touchGaps.length / 1000).toFixed(1) + 's'
-      } else {
-        avgIdle = '—'
-      }
+      const hitLine = `<span style="color:#FFD700">${CRIT}c</span> <span style="color:#FF8C00">${HIT}h</span> <span style="color:#4A9EFF">${GRAZE}g</span> <span style="color:#666">${MISS}m</span>`
 
       return `
 <div class="fo-skill">
-  <div class="fo-skill-name" style="color:${nameColor}">${label}</div>
+  <div class="fo-skill-header">
+    <span class="fo-skill-name" style="color:${color}">${label}</span>
+    <span class="fo-skill-meta">${fmt1(dps)} DPS &nbsp;·&nbsp; ${stats.totalDamage} dmg &nbsp;·&nbsp; ${stats.fireCount} shots</span>
+  </div>
   <div class="fo-bar-row">
     <div class="fo-bar">${barHtml}</div>
-    <span class="fo-shots">${stats.fireCount} shots</span>
+    <span class="fo-hit-counts">${hitLine}</span>
   </div>
-  <div class="fo-legend">
-    <span class="fo-dot" style="background:#FFD700">crit</span>
-    <span class="fo-dot" style="background:#FF8C00">hit</span>
-    <span class="fo-dot" style="background:#4A9EFF">graze</span>
-    <span class="fo-dot" style="background:#555">miss</span>
-  </div>
-  <div class="fo-stats">${fmt1(dps)} DPS &nbsp;|&nbsp; ${stats.totalDamage} dmg &nbsp;|&nbsp; idle: ${avgIdle}</div>
 </div>`
     }
 
-    const leftLabel = snap.left.skillType.replace(/_/g, ' ').toUpperCase()
-    const rightLabel = snap.right.skillType.replace(/_/g, ' ').toUpperCase()
+    // Damage split bar: one segment per skill
+    const splitSegs = skillEntries.map(e => {
+      const pct = totalDmg > 0 ? (e.stats.totalDamage / totalDmg * 100).toFixed(1) : '0'
+      return `<div class="fo-dmg-seg" style="width:${pct}%;background:${e.color};"></div>`
+    }).join('')
+    const splitLegend = skillEntries.map(e => {
+      const pct = totalDmg > 0 ? Math.round(e.stats.totalDamage / totalDmg * 100) : 0
+      const label = e.skillType.replace(/_/g, ' ').toUpperCase()
+      return `<span style="color:${e.color}">${label} ${e.stats.totalDamage} (${pct}%)</span>`
+    }).join('')
 
     const xpAfter = getXpProgress(game.playerLevel, game.playerXp)
     const xpBefore = game.pendingLevelUp
@@ -258,18 +254,11 @@ export class PhaseOverlayManager {
   <span class="fo-title">FIGHT OVERVIEW</span>
   <span class="fo-meta">${this._lastEnemyName} &bull; ${fmt1(durationSec)}s &bull; ${fmt1(totalDps)} DPS</span>
 </div>
-${renderSkillBar(snap.left, leftLabel, leftDps, leftColor)}
-${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
+${skillEntries.map(e => renderSkillBar(e.skillType, e.stats, e.color)).join('')}
 <div class="fo-dmg-split-wrap">
   <div class="fo-dmg-split-title">DAMAGE SPLIT</div>
-  <div class="fo-dmg-split">
-    <div class="fo-dmg-seg" style="width:${leftPct}%;background:${leftColor};"></div>
-    <div class="fo-dmg-seg" style="width:${rightPct}%;background:${rightColor};"></div>
-  </div>
-  <div class="fo-dmg-split-legend">
-    <span style="color:${leftColor}">${leftLabel} ${snap.left.totalDamage} (${leftPct}%)</span>
-    <span style="color:${rightColor}">${rightLabel} ${snap.right.totalDamage} (${rightPct}%)</span>
-  </div>
+  <div class="fo-dmg-split">${splitSegs}</div>
+  <div class="fo-dmg-split-legend">${splitLegend}</div>
 </div>
 <div class="fo-xp-section">
   <div class="fo-xp-row">

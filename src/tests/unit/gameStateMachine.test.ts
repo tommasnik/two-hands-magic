@@ -2187,25 +2187,29 @@ describe('GameStateMachine — global upgrades wiring', () => {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
-  it('AC #1 — fightStats is present in GameState with left/right/durationMs structure', () => {
+  it('AC #1 — fightStats is present in GameState with skills/durationMs structure', () => {
     const gsm = new GameStateMachine()
     const state = getFlat(gsm)
     expect(state.fightStats).toBeDefined()
-    expect(state.fightStats.left).toBeDefined()
-    expect(state.fightStats.right).toBeDefined()
+    expect(state.fightStats.skills).toBeDefined()
     expect(typeof state.fightStats.durationMs).toBe('number')
+    // Default 2+2 layout: white_shot, ice_crystal, fireball, lightning_blast
+    expect(state.fightStats.skills['white_shot']).toBeDefined()
+    expect(state.fightStats.skills['fireball']).toBeDefined()
+    expect(state.fightStats.skills['ice_crystal']).toBeDefined()
+    expect(state.fightStats.skills['lightning_blast']).toBeDefined()
   })
 
   it('AC #2 — fightStats is readonly-safe: mutating returned copy does not affect internal state', () => {
     const gsm = new GameStateMachine()
     const state = getFlat(gsm)
-    state.fightStats.left.fireCount = 9999
-    state.fightStats.left.hitsByResult.CRIT = 9999
-    state.fightStats.left.touchGaps.push(9999)
+    state.fightStats.skills['white_shot']!.fireCount = 9999
+    state.fightStats.skills['white_shot']!.hitsByResult.CRIT = 9999
+    state.fightStats.skills['white_shot']!.touchGaps.push(9999)
     // Re-read should not reflect the mutations
-    expect(getFlat(gsm).fightStats.left.fireCount).toBe(0)
-    expect(getFlat(gsm).fightStats.left.hitsByResult.CRIT).toBe(0)
-    expect(getFlat(gsm).fightStats.left.touchGaps).toHaveLength(0)
+    expect(getFlat(gsm).fightStats.skills['white_shot']!.fireCount).toBe(0)
+    expect(getFlat(gsm).fightStats.skills['white_shot']!.hitsByResult.CRIT).toBe(0)
+    expect(getFlat(gsm).fightStats.skills['white_shot']!.touchGaps).toHaveLength(0)
   })
 
   it('AC #3 — hitsByResult increments correctly for each hit result via _applyHitForTesting', () => {
@@ -2219,15 +2223,15 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm._applyHitForTesting('CRIT',  'fast_shot', 0, 0, 'right')
     gsm._applyHitForTesting('HIT',   'fast_shot', 0, 0, 'right')
 
-    const { left, right } = getFlat(gsm).fightStats
-    expect(left.hitsByResult.CRIT).toBe(1)
-    expect(left.hitsByResult.HIT).toBe(1)
-    expect(left.hitsByResult.GRAZE).toBe(1)
-    expect(left.hitsByResult.MISS).toBe(1)
-    expect(right.hitsByResult.CRIT).toBe(1)
-    expect(right.hitsByResult.HIT).toBe(1)
-    expect(right.hitsByResult.GRAZE).toBe(0)
-    expect(right.hitsByResult.MISS).toBe(0)
+    const { skills } = getFlat(gsm).fightStats
+    expect(skills['slow_shot']!.hitsByResult.CRIT).toBe(1)
+    expect(skills['slow_shot']!.hitsByResult.HIT).toBe(1)
+    expect(skills['slow_shot']!.hitsByResult.GRAZE).toBe(1)
+    expect(skills['slow_shot']!.hitsByResult.MISS).toBe(1)
+    expect(skills['fast_shot']!.hitsByResult.CRIT).toBe(1)
+    expect(skills['fast_shot']!.hitsByResult.HIT).toBe(1)
+    expect(skills['fast_shot']!.hitsByResult.GRAZE).toBe(0)
+    expect(skills['fast_shot']!.hitsByResult.MISS).toBe(0)
   })
 
   it('AC #4 — totalDamage matches sum of actual damage values dealt', () => {
@@ -2241,9 +2245,9 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm._applyHitForTesting('MISS', 'slow_shot', 0, 0, 'left')
 
     const expected = SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER * 2 // MISS adds 0
-    expect(getFlat(gsm).fightStats.left.totalDamage).toBe(expected)
-    // Right side untouched
-    expect(getFlat(gsm).fightStats.right.totalDamage).toBe(0)
+    expect(getFlat(gsm).fightStats.skills['slow_shot']!.totalDamage).toBe(expected)
+    // fast_shot not used — should not be present (or zero)
+    expect(getFlat(gsm).fightStats.skills['fast_shot']?.totalDamage ?? 0).toBe(0)
   })
 
   it('AC #5 — touchGaps accumulates gaps between consecutive touch interactions on the same slot', () => {
@@ -2258,14 +2262,14 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm.update(16, [makeUp(0, Math.round(leftPos.x), Math.round(leftPos.y))])
     // Gap: no second down yet — touchGaps should be empty
 
-    expect(getFlat(gsm).fightStats.left.touchGaps).toHaveLength(0)
+    expect(getFlat(gsm).fightStats.skills['white_shot']!.touchGaps).toHaveLength(0)
 
     // Advance 100ms, then touch down again — gap = 100ms
     let r = 100
     while (r > 0) { const s = Math.min(r, MAX_DELTA_MS); gsm.update(s, []); r -= s }
     gsm.update(16, [makeDown(0, Math.round(leftPos.x), Math.round(leftPos.y))])
 
-    const gaps = getFlat(gsm).fightStats.left.touchGaps
+    const gaps = getFlat(gsm).fightStats.skills['white_shot']!.touchGaps
     expect(gaps).toHaveLength(1)
     expect(gaps[0]).toBeGreaterThan(0)
   })
@@ -2278,8 +2282,8 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
     gsm._applyHitForTesting('HIT', 'fast_shot', 0, 0, 'right')
 
-    expect(getFlat(gsm).fightStats.left.hitsByResult.CRIT).toBe(1)
-    expect(getFlat(gsm).fightStats.right.hitsByResult.HIT).toBe(1)
+    expect(getFlat(gsm).fightStats.skills['slow_shot']!.hitsByResult.CRIT).toBe(1)
+    expect(getFlat(gsm).fightStats.skills['fast_shot']!.hitsByResult.HIT).toBe(1)
 
     // Kill enemy to enter fight_overview
     while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
@@ -2287,16 +2291,17 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
 
-    const { left, right, durationMs } = getFlat(gsm).fightStats
-    expect(left.hitsByResult.CRIT).toBe(0)
-    expect(left.hitsByResult.HIT).toBe(0)
-    expect(right.hitsByResult.HIT).toBe(0)
-    expect(left.totalDamage).toBe(0)
-    expect(right.totalDamage).toBe(0)
-    expect(left.fireCount).toBe(0)
-    expect(right.fireCount).toBe(0)
-    expect(left.touchGaps).toHaveLength(0)
-    expect(right.touchGaps).toHaveLength(0)
+    const { skills, durationMs } = getFlat(gsm).fightStats
+    // After reset, layout skills are fresh (white_shot, ice_crystal, fireball, lightning_blast)
+    expect(skills['white_shot']!.hitsByResult.CRIT).toBe(0)
+    expect(skills['white_shot']!.hitsByResult.HIT).toBe(0)
+    expect(skills['fireball']!.hitsByResult.HIT).toBe(0)
+    expect(skills['white_shot']!.totalDamage).toBe(0)
+    expect(skills['fireball']!.totalDamage).toBe(0)
+    expect(skills['white_shot']!.fireCount).toBe(0)
+    expect(skills['fireball']!.fireCount).toBe(0)
+    expect(skills['white_shot']!.touchGaps).toHaveLength(0)
+    expect(skills['fireball']!.touchGaps).toHaveLength(0)
     expect(durationMs).toBe(0)
   })
 
@@ -2316,13 +2321,13 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
 
     gsm.restartGame()
 
-    const { left, right, durationMs } = getFlat(gsm).fightStats
-    expect(left.hitsByResult.CRIT).toBe(0)
-    expect(right.hitsByResult.CRIT).toBe(0)
-    expect(left.totalDamage).toBe(0)
-    expect(right.totalDamage).toBe(0)
-    expect(left.fireCount).toBe(0)
-    expect(right.fireCount).toBe(0)
+    const { skills, durationMs } = getFlat(gsm).fightStats
+    expect(skills['white_shot']!.hitsByResult.CRIT).toBe(0)
+    expect(skills['fireball']!.hitsByResult.CRIT).toBe(0)
+    expect(skills['white_shot']!.totalDamage).toBe(0)
+    expect(skills['fireball']!.totalDamage).toBe(0)
+    expect(skills['white_shot']!.fireCount).toBe(0)
+    expect(skills['fireball']!.fireCount).toBe(0)
     expect(durationMs).toBe(0)
   })
 
@@ -2342,8 +2347,9 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm.update(16, [makeDown(1, Math.round(rightPos.x), Math.round(rightPos.y))])
     gsm.update(16, [makeUp(1, Math.round(rightPos.x), Math.round(rightPos.y))])
 
-    expect(getFlat(gsm).fightStats.left.fireCount).toBe(2)
-    expect(getFlat(gsm).fightStats.right.fireCount).toBe(1)
+    // left_0 = white_shot, right_0 = fireball in DEFAULT_SKILL_CONFIG
+    expect(getFlat(gsm).fightStats.skills['white_shot']!.fireCount).toBe(2)
+    expect(getFlat(gsm).fightStats.skills['fireball']!.fireCount).toBe(1)
   })
 
   it('AC #7 — durationMs tracks elapsed battle time (capped per frame)', () => {
@@ -2356,15 +2362,17 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     expect(getFlat(gsm).fightStats.durationMs).toBe(MAX_DELTA_MS * 2)
   })
 
-  it('skillType in SkillFightStats reflects the slot skill at initialisation', () => {
-    // Default config: left=white_shot, right=fireball
+  it('fightStats.skills contains an entry for each skill in the default 2+2 layout', () => {
     const gsm = new GameStateMachine()
-    const { left, right } = getFlat(gsm).fightStats
-    expect(left.skillType).toBe('white_shot')
-    expect(right.skillType).toBe('fireball')
+    const { skills } = getFlat(gsm).fightStats
+    // DEFAULT_SKILL_CONFIG: white_shot + ice_crystal left, fireball + lightning_blast right
+    expect(skills['white_shot']?.skillType).toBe('white_shot')
+    expect(skills['ice_crystal']?.skillType).toBe('ice_crystal')
+    expect(skills['fireball']?.skillType).toBe('fireball')
+    expect(skills['lightning_blast']?.skillType).toBe('lightning_blast')
   })
 
-  it('right slot hits do not bleed into left slot stats', () => {
+  it('fast_shot hits do not bleed into other skill stats', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
 
@@ -2372,10 +2380,10 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
       gsm._applyHitForTesting('HIT', 'fast_shot', 0, 0, 'right')
     }
 
-    const { left, right } = getFlat(gsm).fightStats
-    expect(right.hitsByResult.HIT).toBe(5)
-    expect(left.hitsByResult.HIT).toBe(0)
-    expect(left.totalDamage).toBe(0)
+    const { skills } = getFlat(gsm).fightStats
+    expect(skills['fast_shot']!.hitsByResult.HIT).toBe(5)
+    expect(skills['white_shot']?.hitsByResult.HIT ?? 0).toBe(0)
+    expect(skills['fireball']?.hitsByResult.HIT ?? 0).toBe(0)
   })
 })
 
@@ -2474,8 +2482,8 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
     const snapshot = getFlat(gsm).fightStatsSnapshot
     expect(snapshot).not.toBeNull()
     // The snapshot should reflect the crits applied before/during the kill
-    expect(snapshot!.left.hitsByResult.CRIT).toBeGreaterThanOrEqual(2)
-    expect(snapshot!.left.totalDamage).toBeGreaterThan(0)
+    expect(snapshot!.skills['slow_shot']!.hitsByResult.CRIT).toBeGreaterThanOrEqual(2)
+    expect(snapshot!.skills['slow_shot']!.totalDamage).toBeGreaterThan(0)
   })
 })
 
