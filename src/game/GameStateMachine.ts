@@ -1,16 +1,17 @@
 // GameStateMachine — pure TypeScript, no Phaser dependency.
 // Orchestrates all game systems and tracks state transitions.
 
-import type { GameState, InputEvent, HitResult, SkillType, PlayerHitEvent, GlobalUpgradeState, UpgradeNodeId, FightStats, HitZoneEntry, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
+import type { GameState, InputEvent, HitResult, SkillType, PlayerHitEvent, UpgradeNodeId, FightStats, HitZoneEntry, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
 import { InputManager } from './systems/InputManager'; import type { TouchPointEntry } from './systems/InputManager'
 import { ProjectileSystem } from './systems/ProjectileSystem'
 import { computeEnemyPosition } from './systems/BehaviorSystem'
 import { DeliverySystem } from './systems/DeliverySystem'
 import { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
-import { applyUpgradeNode, getAvailableNodes } from './upgrades'; import type { MaskHitDetector } from './systems/MaskHitDetector'
+import type { MaskHitDetector } from './systems/MaskHitDetector'
+import { PlayerProgression } from './systems/PlayerProgression'
 import { Enemy } from './entities/Enemy'; import { Player } from './entities/Player'
 import { generateTouchPointLayout } from './entities/touchPoints'; import type { ActiveTouchPointPos } from './entities/touchPoints'
-import { MAX_DELTA_MS, GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM, ENEMY_DEFAULT_Y, DEFAULT_SKILL_CONFIG, PLAYER_MAX_HP, PLAYER_START_LEVEL, PLAYER_MAX_LEVEL, XP_LEVEL_THRESHOLDS, DEFAULT_GLOBAL_UPGRADE_STATE, ENEMY_POOL } from './constants'
+import { MAX_DELTA_MS, GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM, ENEMY_DEFAULT_Y, DEFAULT_SKILL_CONFIG, PLAYER_MAX_HP, ENEMY_POOL } from './constants'
 import type { SkillSlotConfig } from './constants'; import type { EnemyStateSlice, StatusEffect } from './skills/types'
 import { StatusEffectSystem } from './systems/StatusEffectSystem'; import { PhaseManager } from './systems/PhaseManager'
 import { CombatSystem, initSkillFightStats } from './systems/CombatSystem'
@@ -40,13 +41,10 @@ export class GameStateMachine {
   private _deliverySystem = new DeliverySystem()
   private _behaviorRunner?: EnemyBehaviorRunner
   private _lastAnimNodeId: string | null = null
+  private _progression = new PlayerProgression()
   private player = new Player(PLAYER_MAX_HP)
   private lastPlayerHit: PlayerHitEvent | null = null
   private _pendingInputs: InputEvent[] = []
-  private playerXp = 0
-  private playerLevel: number = PLAYER_START_LEVEL
-  private pendingLevelUp = false
-  private _globalUpgrades: GlobalUpgradeState = { ...DEFAULT_GLOBAL_UPGRADE_STATE, unlockedNodeIds: [...DEFAULT_GLOBAL_UPGRADE_STATE.unlockedNodeIds] }
   private _enemyStunnedUntilMs = 0
   private _enemyStatusEffects: StatusEffect[] = []
   private _wasFrozenLastTick = false
@@ -81,7 +79,7 @@ export class GameStateMachine {
 
   nextLevel(): void {
     if (this._phaseManager.currentPhase !== 'fight_overview') return
-    if (this.pendingLevelUp || this.currentLevel >= ENEMY_POOL.length) return
+    if (this._progression.pendingLevelUp || this.currentLevel >= ENEMY_POOL.length) return
     this.currentLevel++
     this._enemyPoolIndex = (this._enemyPoolIndex + 1) % ENEMY_POOL.length
     this._applyLoadLevel(ENEMY_POOL[this._enemyPoolIndex])
@@ -92,7 +90,7 @@ export class GameStateMachine {
 
   restartLevel(): void {
     if (this._phaseManager.currentPhase !== 'game_over') return
-    this.pendingLevelUp = false
+    this._progression.pendingLevelUp = false
     this._applyLoadLevel(ENEMY_POOL[this._enemyPoolIndex])
     this.projectileSystem.reset(); this._phaseManager.forceTransition('battle')
   }
@@ -102,8 +100,7 @@ export class GameStateMachine {
     this.currentLevel = 1; this._enemyPoolIndex = 0
     this._combat.score = { total: 0, crits: 0, hits: 0, grazes: 0, misses: 0 }
     this.elapsedMs = 0; this._combat.lastHit = null
-    this.playerXp = 0; this.playerLevel = PLAYER_START_LEVEL; this.pendingLevelUp = false
-    this._globalUpgrades = { ...DEFAULT_GLOBAL_UPGRADE_STATE, unlockedNodeIds: [...DEFAULT_GLOBAL_UPGRADE_STATE.unlockedNodeIds] }
+    this._progression.reset()
     this._applyLoadLevel(ENEMY_POOL[0]); this.projectileSystem.reset()
     this._combat.fightStats = this._initFightStats(); this._combat.fightStatsSnapshot = null
     this._lastTouchUpMs = {}; this._phaseManager.forceTransition('battle')
@@ -115,13 +112,7 @@ export class GameStateMachine {
   }
 
   confirmLevelUpUpgrade(nodeId?: UpgradeNodeId): void {
-    if (!this.pendingLevelUp) return
-    if (nodeId !== undefined) {
-      const available = getAvailableNodes(this._globalUpgrades)
-      if (!available.some((n) => n.id === nodeId)) throw new Error(`Upgrade node not available: ${nodeId}`)
-      this._globalUpgrades = applyUpgradeNode(this._globalUpgrades, nodeId)
-    }
-    this.pendingLevelUp = false
+    this._progression.confirmUpgrade(nodeId)
   }
 
   setMaskDetector(detector: MaskHitDetector): void { this._maskDetector = detector }
@@ -133,7 +124,7 @@ export class GameStateMachine {
     const allInputs = [...this._pendingInputs, ...inputs]; this._pendingInputs = []
     const lightning = processCommands(this.inputManager.update(allInputs), {
       layout: this._layout, slotStates: this._slotStates, lastTouchUpMs: this._lastTouchUpMs,
-      elapsedMs: this.elapsedMs, globalUpgrades: this._globalUpgrades,
+      elapsedMs: this.elapsedMs, globalUpgrades: this._progression.upgrades,
       combat: this._combat, projectileSystem: this.projectileSystem, enemy: this.enemy,
       applyHit: (r, sk, pos, cb, pr, side) => this._applyHit(r, sk, pos, cb, pr, side),
     })
@@ -144,7 +135,7 @@ export class GameStateMachine {
     }
     const newPos = computeEnemyPosition(this._enemyOriginX, this._enemyOriginY, this.elapsedMs, this._enemyBehavior)
     this.enemy.x = newPos.x; this.enemy.y = newPos.y
-    for (const evt of this.projectileSystem.update(cappedDt, this.enemy, this._globalUpgrades.critZoneTolerance)) {
+    for (const evt of this.projectileSystem.update(cappedDt, this.enemy, this._progression.upgrades.critZoneTolerance)) {
       this._applyHit(evt.result, evt.skillType, evt.position, evt.chainBonus, evt.projectileRadius, evt.side)
     }
     this.enemy.updateAnimation(cappedDt); this._statusEffectSystem.tick(cappedDt, this._enemyStateSlice())
@@ -182,8 +173,8 @@ export class GameStateMachine {
       lightningDischargeResult: this._lightningDischargeResult,
       lightningDischargeTarget: this._lightningDischargeTarget,
       currentLevel: this.currentLevel, lastPlayerHit: this.lastPlayerHit,
-      playerXp: this.playerXp, playerLevel: this.playerLevel,
-      pendingLevelUp: this.pendingLevelUp, globalUpgrades: this._globalUpgrades,
+      playerXp: this._progression.playerXp, playerLevel: this._progression.playerLevel,
+      pendingLevelUp: this._progression.pendingLevelUp, globalUpgrades: this._progression.upgrades,
       enemyStatusEffects: this._enemyStatusEffects,
     })
   }
@@ -198,10 +189,9 @@ export class GameStateMachine {
     this._lightningDischargeResult = result; this._lightningDischargeTarget = { x: GAME_WIDTH / 2, y: 0 }
   }
   _applyUpgradeForTesting(nodeId: UpgradeNodeId): void {
-    if (this._globalUpgrades.unlockedNodeIds.includes(nodeId)) return
-    this._globalUpgrades = applyUpgradeNode(this._globalUpgrades, nodeId)
+    this._progression.applyUpgradeForTesting(nodeId)
   }
-  _setPlayerLevelForTesting(level: number): void { this.playerLevel = level }
+  _setPlayerLevelForTesting(level: number): void { this._progression.setLevelForTesting(level) }
   _initBehaviorGraphForTesting(graph: BehaviorGraph | undefined): void { this._initBehaviorRunner(graph); this._deliverySystem.reset() }
   _applyPlayerHitForTesting(damage: number): void { this._applyPlayerHit(damage) }
 
@@ -254,22 +244,15 @@ export class GameStateMachine {
   private _applyHit(result: HitResult, skillType: SkillType, position: { x: number; y: number } | null, chainBonus = 0, projectileRadius = 0, side: 'left' | 'right' = 'left'): void {
     const { damage, enemyDied, stunnedUntilMs } = this._combat.processHit(
       result, skillType, position, chainBonus, projectileRadius, side,
-      { elapsedMs: this.elapsedMs, enemyHp: this.enemyHp, enemy: this.enemy, globalUpgrades: this._globalUpgrades, enemyStateSlice: this._enemyStateSlice(), rng: this._rng },
+      { elapsedMs: this.elapsedMs, enemyHp: this.enemyHp, enemy: this.enemy, globalUpgrades: this._progression.upgrades, enemyStateSlice: this._enemyStateSlice(), rng: this._rng },
     )
     this.enemyHp = Math.max(0, this.enemyHp - damage)
     if (stunnedUntilMs > 0) this._enemyStunnedUntilMs = stunnedUntilMs
     this._phaseManager.evaluate({ hp: this.player.hp }, { hp: this.enemyHp })
     if (enemyDied && this._phaseManager.currentPhase === 'fight_overview') {
-      this._combat.snapshotFightStats(); this._onEnemyKilled()
-      if (this.currentLevel >= ENEMY_POOL.length) this.pendingLevelUp = false
+      this._combat.snapshotFightStats(); this._progression.applyKill()
+      if (this.currentLevel >= ENEMY_POOL.length) this._progression.pendingLevelUp = false
     }
-  }
-
-  private _onEnemyKilled(): void {
-    this.playerXp += 1
-    if (this.playerLevel >= PLAYER_MAX_LEVEL) return
-    const nextLevel = this.playerLevel + 1; const threshold = XP_LEVEL_THRESHOLDS[nextLevel]
-    if (threshold !== undefined && this.playerXp >= threshold) { this.playerLevel = nextLevel; this.pendingLevelUp = true }
   }
 
   private _applyPlayerHit(damage: number): void {

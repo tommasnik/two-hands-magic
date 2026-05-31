@@ -567,6 +567,17 @@ export interface UpgradeNodeDef {
 }
 
 /**
+ * Snapshot of player progression values passed to each new fight.
+ * Created by PlayerProgression.snapshotForFight() — a deep copy, not a reference.
+ */
+export interface FightInitSnapshot {
+  /** Deep copy of the global upgrade state at fight start. */
+  upgrades: GlobalUpgradeState
+  /** Maximum player HP derived from upgrades at fight start. Unit: HP. */
+  playerMaxHp: number
+}
+
+/**
  * Complete game state snapshot.
  * Must be fully serializable via JSON.stringify — no class instances, no functions.
  */
