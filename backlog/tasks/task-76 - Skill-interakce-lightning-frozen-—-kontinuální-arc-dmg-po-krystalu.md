@@ -1,7 +1,7 @@
 ---
 id: TASK-76
 title: 'Skill interakce: lightning + frozen — kontinuální arc dmg po krystalu'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 14:48'
 updated_date: '2026-05-31 17:15'
