@@ -12,6 +12,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import { characterRegistry } from '../../game/CharacterRegistry'
 import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 import { MAX_DELTA_MS, PLAYER_MAX_HP } from '../../game/constants'
@@ -50,6 +51,12 @@ beforeAll(() => {
     },
   })
 })
+
+/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
+function getFlat(gsm: GameStateMachine): GameState {
+  const { fight, game } = gsm.getState()
+  return { ...fight, ...game }
+}
 
 /** Advance the machine by `ms` in MAX_DELTA_MS chunks (mirrors the test bridge). */
 function advance(gsm: GameStateMachine, ms: number): void {
@@ -107,29 +114,29 @@ function orbGraph(damage: number, speedCmS: number): BehaviorGraph {
 describe('GameStateMachine — manifest-driven enemy loading', () => {
   it('loads a masked enemy when a detector is available', () => {
     const gsm = startWithDetector()
-    expect(gsm.getState().phase).toBe('battle')
-    expect(gsm.getState().enemyManifestId).toBe('stone-giant')
+    expect(getFlat(gsm).phase).toBe('battle')
+    expect(getFlat(gsm).enemyManifestId).toBe('stone-giant')
   })
 
   it('uses the EnemyDef displayWidth override when present (stone-giant)', () => {
     const gsm = startWithDetector()
-    expect(gsm.getState().enemyDisplayWidth).toBe(400)
+    expect(getFlat(gsm).enemyDisplayWidth).toBe(400)
   })
 
   it('falls back to the manifest displayWidth when the EnemyDef omits it (ember-wisp)', () => {
     const gsm = startWithDetector()
     // ENEMY_POOL: [0] stone-giant … [4] ember-wisp. ember-wisp's EnemyDef omits
     // displayWidth, so the render width must come from its registered manifest.
-    while (gsm.getState().enemyManifestId !== 'ember-wisp') {
+    while (getFlat(gsm).enemyManifestId !== 'ember-wisp') {
       advanceToNextEnemy(gsm)
     }
-    expect(gsm.getState().enemyDisplayWidth).toBe(256)
+    expect(getFlat(gsm).enemyDisplayWidth).toBe(256)
   })
 })
 
 /** Kill the current enemy and advance to the next level, clearing any level-up gate. */
 function advanceToNextEnemy(gsm: GameStateMachine): void {
-  while (gsm.getState().enemyHp > 0) {
+  while (getFlat(gsm).enemyHp > 0) {
     gsm._applyHitForTesting('CRIT', 'slow_shot')
   }
   gsm.confirmLevelUpUpgrade() // no-op when no level-up is pending
@@ -146,17 +153,17 @@ describe('GameStateMachine — behaviour runner spawns deliveries (AC#1)', () =>
     advance(gsm, 200) // let it attack at least once
     // Now clear the runner — the enemy should no longer spawn deliveries.
     gsm._initBehaviorGraphForTesting(undefined)
-    const hpAfterClear = gsm.getState().player.hp
+    const hpAfterClear = getFlat(gsm).player.hp
     advance(gsm, 4000)
-    expect(gsm.getState().activeDeliveries).toEqual([])
-    expect(gsm.getState().player.hp).toBe(hpAfterClear) // no further damage
+    expect(getFlat(gsm).activeDeliveries).toEqual([])
+    expect(getFlat(gsm).player.hp).toBe(hpAfterClear) // no further damage
   })
 
   it('emits an orb on the attack release frame and exposes it via activeDeliveries', () => {
     const gsm = startWithDetector(orbGraph(10, 2)) // slow orb → stays in flight
     // idle dwell (50ms) + one attack frame → orb spawned, still travelling.
     advance(gsm, 200)
-    const deliveries = gsm.getState().activeDeliveries
+    const deliveries = getFlat(gsm).activeDeliveries
     expect(deliveries.length).toBeGreaterThan(0)
     expect(deliveries[0].kind).toBe('orb')
     expect(deliveries[0].visualKey).toBe('test_orb')
@@ -165,14 +172,14 @@ describe('GameStateMachine — behaviour runner spawns deliveries (AC#1)', () =>
   it('a fast orb connects and deals damage to the player', () => {
     const gsm = startWithDetector(orbGraph(10, 500)) // fast orb → connects quickly
     advance(gsm, 1000)
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.player.hp).toBeLessThan(state.player.maxHp)
   })
 
   it('a lethal delivery connect drives the game to game_over', () => {
     const gsm = startWithDetector(orbGraph(PLAYER_MAX_HP + 100, 500))
     advance(gsm, 1000)
-    expect(gsm.getState().phase).toBe('game_over')
+    expect(getFlat(gsm).phase).toBe('game_over')
   })
 })
 
@@ -184,13 +191,13 @@ describe('GameStateMachine — enemy animation follows the active node (AC#2)', 
   it('plays the start node animation and keeps it while the node is active', () => {
     const gsm = startWithDetector(orbGraph(10, 500))
     gsm.update(30, []) // inside the 50ms idle dwell window
-    expect(gsm.getState().enemyAnimKey).toBe('idle')
+    expect(getFlat(gsm).enemyAnimKey).toBe('idle')
   })
 
   it('switches to the attack animation when the runner enters the attack node', () => {
     const gsm = startWithDetector(orbGraph(10, 2))
     advance(gsm, 120) // past idle dwell → attack node active
-    expect(gsm.getState().enemyAnimKey).toBe('attack')
+    expect(getFlat(gsm).enemyAnimKey).toBe('attack')
   })
 
   it('a holdFrame start node freezes the configured frame', () => {
@@ -208,8 +215,8 @@ describe('GameStateMachine — enemy animation follows the active node (AC#2)', 
     }
     const gsm = startWithDetector(holdGraph)
     gsm.update(MAX_DELTA_MS, [])
-    expect(gsm.getState().enemyAnimKey).toBe('attack')
-    expect(gsm.getState().enemyFrameIndex).toBe(1)
+    expect(getFlat(gsm).enemyAnimKey).toBe('attack')
+    expect(getFlat(gsm).enemyFrameIndex).toBe(1)
   })
 })
 
@@ -224,29 +231,29 @@ describe('GameStateMachine — stun freezes the runner (AC#3)', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm._applyHitForTesting('CRIT', 'slow_shot') // rng=0 → stun roll succeeds
-    return gsm.getState().enemy.stunnedUntilMs
+    return getFlat(gsm).enemy.stunnedUntilMs
   }
 
   it('does not spawn new deliveries while stunned', () => {
     const gsm = startWithDetector(orbGraph(10, 2))
     const stunUntil = applyStun(gsm)
-    expect(stunUntil).toBeGreaterThan(gsm.getState().elapsedMs)
+    expect(stunUntil).toBeGreaterThan(getFlat(gsm).elapsedMs)
     // Advance well past the 50ms idle dwell but stay inside the stun window.
     advance(gsm, 200)
-    expect(gsm.getState().elapsedMs).toBeLessThan(stunUntil)
-    expect(gsm.getState().activeDeliveries).toEqual([])
-    expect(gsm.getState().player.hp).toBe(gsm.getState().player.maxHp)
+    expect(getFlat(gsm).elapsedMs).toBeLessThan(stunUntil)
+    expect(getFlat(gsm).activeDeliveries).toEqual([])
+    expect(getFlat(gsm).player.hp).toBe(getFlat(gsm).player.maxHp)
   })
 
   it('lets an already-in-flight delivery connect even while stunned', () => {
     const gsm = startWithDetector(orbGraph(10, 2)) // slow orb
     // Let the orb spawn first (idle dwell + one attack frame).
     advance(gsm, 200)
-    expect(gsm.getState().activeDeliveries.length).toBeGreaterThan(0)
+    expect(getFlat(gsm).activeDeliveries.length).toBeGreaterThan(0)
     // Now stun the enemy: the runner freezes, but the orb keeps travelling.
     const stunUntil = applyStun(gsm)
-    expect(stunUntil).toBeGreaterThan(gsm.getState().elapsedMs)
+    expect(stunUntil).toBeGreaterThan(getFlat(gsm).elapsedMs)
     advance(gsm, 6000) // long enough for the slow orb to land
-    expect(gsm.getState().player.hp).toBeLessThan(gsm.getState().player.maxHp)
+    expect(getFlat(gsm).player.hp).toBeLessThan(getFlat(gsm).player.maxHp)
   })
 })

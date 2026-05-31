@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import {
   SLOW_SKILL_DAMAGE,
   CRIT_DAMAGE_MULTIPLIER,
@@ -26,6 +27,12 @@ import type { UpgradeNodeId, GlobalUpgradeState } from '../../types'
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
+function getFlat(gsm: GameStateMachine): GameState {
+  const { fight, game } = gsm.getState()
+  return { ...fight, ...game }
+}
 
 /** Slow-shot CRIT damage at the baseline (no upgrades). */
 const BASE_SLOW_CRIT = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
@@ -61,7 +68,7 @@ function fieldAfter(field: keyof GlobalUpgradeState, ...ids: UpgradeNodeId[]): n
  */
 function critsToKill(gsm: GameStateMachine): number {
   let hits = 0
-  while (gsm.getState().enemyHp > 0) {
+  while (getFlat(gsm).enemyHp > 0) {
     gsm._applyHitForTesting('CRIT', 'slow_shot')
     hits++
   }
@@ -76,17 +83,17 @@ describe('Game Design: upgrades regression (no nodes unlocked)', () => {
   it('default upgrades — slow_shot CRIT deals SLOW_SKILL_DAMAGE × CRIT_DAMAGE_MULTIPLIER', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(before - gsm.getState().enemyHp).toBe(BASE_SLOW_CRIT)
+    expect(before - getFlat(gsm).enemyHp).toBe(BASE_SLOW_CRIT)
   })
 
   it('default upgrades — slow_shot HIT deals SLOW_SKILL_DAMAGE × HIT_DAMAGE_MULTIPLIER', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('HIT', 'slow_shot')
-    expect(before - gsm.getState().enemyHp).toBe(BASE_SLOW_HIT)
+    expect(before - getFlat(gsm).enemyHp).toBe(BASE_SLOW_HIT)
   })
 
   it('default upgrades — first pool enemy takes BASELINE_CRITS_TO_KILL slow_shot CRITs', () => {
@@ -96,7 +103,7 @@ describe('Game Design: upgrades regression (no nodes unlocked)', () => {
   })
 
   it('default upgrades — getState.globalUpgrades matches DEFAULT_GLOBAL_UPGRADE_STATE', () => {
-    const state = new GameStateMachine().getState()
+    const state = getFlat(new GameStateMachine())
     expect(state.globalUpgrades.critDamageMultiplier).toBe(CRIT_DAMAGE_MULTIPLIER)
     expect(state.globalUpgrades.critZoneTolerance).toBe(0)
     expect(state.globalUpgrades.critStunChance).toBe(0)
@@ -174,9 +181,9 @@ describe('Game Design: crit stun', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm.update(50, [])
-    const elapsed = gsm.getState().elapsedMs
+    const elapsed = getFlat(gsm).elapsedMs
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    const after = gsm.getState()
+    const after = getFlat(gsm)
     const dur = after.globalUpgrades.critStunDurationMs
     expect(after.enemy.stunnedUntilMs).toBe(elapsed + dur)
   })
@@ -188,7 +195,7 @@ describe('Game Design: crit stun', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().enemy.stunnedUntilMs).toBe(0)
+    expect(getFlat(gsm).enemy.stunnedUntilMs).toBe(0)
   })
 
   it('crit_stun_2 has higher chance and longer duration than crit_stun_1', () => {
@@ -209,10 +216,10 @@ describe('Game Design: quick chain bonus', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const bonus = gsm.getState().globalUpgrades.quickChainBonus
-    const hpBefore = gsm.getState().enemyHp
+    const bonus = getFlat(gsm).globalUpgrades.quickChainBonus
+    const hpBefore = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('HIT', 'slow_shot', bonus)
-    expect(hpBefore - gsm.getState().enemyHp).toBe(Math.round(SLOW_SKILL_DAMAGE * (1 + bonus)))
+    expect(hpBefore - getFlat(gsm).enemyHp).toBe(Math.round(SLOW_SKILL_DAMAGE * (1 + bonus)))
   })
 
   it('chainBonus = 0 (single-slot rapid fire, or no chain upgrade) leaves base damage unchanged', () => {
@@ -220,9 +227,9 @@ describe('Game Design: quick chain bonus', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const hpBefore = gsm.getState().enemyHp
+    const hpBefore = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('HIT', 'slow_shot', 0)
-    expect(hpBefore - gsm.getState().enemyHp).toBe(SLOW_SKILL_DAMAGE)
+    expect(hpBefore - getFlat(gsm).enemyHp).toBe(SLOW_SKILL_DAMAGE)
   })
 
   it('the bonus is decided at fire time — projectile flight duration cannot eat the chain window', () => {
@@ -233,7 +240,7 @@ describe('Game Design: quick chain bonus', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const u = gsm.getState().globalUpgrades
+    const u = getFlat(gsm).globalUpgrades
     // The fire-time window is upgrades.quickChainWindowMs, regardless of how
     // long the projectile flies. Confirmed by the chainBonus exposed on the
     // upgrade state.
@@ -256,10 +263,10 @@ describe('Game Design: quick chain bonus', () => {
 describe('Game Design: cast time multiplier', () => {
   it('AC #5 — cast_time_1 sets activeSlots.rotationPeriodMs to 90 % of the base rotation', () => {
     const gsm = new GameStateMachine()
-    const baseLeft = gsm.getState().activeSlots.find((s) => s.id === 'left_0')!.rotationPeriodMs
+    const baseLeft = getFlat(gsm).activeSlots.find((s) => s.id === 'left_0')!.rotationPeriodMs
     expect(baseLeft).toBe(WHITE_SHOT_ROTATION_PERIOD_MS)
     gsm._applyUpgradeForTesting('cast_time_1')
-    const after = gsm.getState().activeSlots.find((s) => s.id === 'left_0')!.rotationPeriodMs
+    const after = getFlat(gsm).activeSlots.find((s) => s.id === 'left_0')!.rotationPeriodMs
     expect(after).toBeCloseTo(WHITE_SHOT_ROTATION_PERIOD_MS * 0.90, 6)
   })
 
@@ -273,10 +280,10 @@ describe('Game Design: cast time multiplier', () => {
 
   it('right-side slot also picks up the same cast time multiplier', () => {
     const gsm = new GameStateMachine()
-    const baseRight = gsm.getState().activeSlots.find((s) => s.id === 'right_0')!.rotationPeriodMs
+    const baseRight = getFlat(gsm).activeSlots.find((s) => s.id === 'right_0')!.rotationPeriodMs
     expect(baseRight).toBe(FIREBALL_ROTATION_PERIOD_MS)
     gsm._applyUpgradeForTesting('cast_time_1')
-    const after = gsm.getState().activeSlots.find((s) => s.id === 'right_0')!.rotationPeriodMs
+    const after = getFlat(gsm).activeSlots.find((s) => s.id === 'right_0')!.rotationPeriodMs
     expect(after).toBeCloseTo(FIREBALL_ROTATION_PERIOD_MS * 0.90, 6)
   })
 })

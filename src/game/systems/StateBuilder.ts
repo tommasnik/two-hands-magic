@@ -3,7 +3,7 @@
 // from raw GSM fields. No Phaser dependency.
 // ============================================================
 
-import type { GameState, ActiveSlotState, HitZoneEntryPx } from '../../types'
+import type { GameStateResult, FightSnapshot, GlobalSnapshot, ActiveSlotState, HitZoneEntryPx } from '../../types'
 import type { ActiveTouchPointPos } from '../entities/touchPoints'
 import { scaleHitZoneMap } from './HitZoneSystem'
 import {
@@ -48,10 +48,10 @@ export interface StateBuilderInput {
 }
 
 /**
- * Build the full serializable GameState snapshot from GSM internals.
+ * Build the structured GameStateResult snapshot from GSM internals.
  * Pure function — all inputs are value types or read-only references.
  */
-export function buildGameState(s: StateBuilderInput): GameState {
+export function buildGameStateResult(s: StateBuilderInput): GameStateResult {
   // Build activeSlots from layout + slot states.
   const activeSlots: ActiveSlotState[] = s.layout.map(slot => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -92,8 +92,7 @@ export function buildGameState(s: StateBuilderInput): GameState {
     ? s.elapsedMs + frozen.remainingMs
     : 0
 
-  return {
-    phase: s.phaseManager.currentPhase,
+  const fight: FightSnapshot = {
     score: { ...s.combat.score },
     enemy: { x: s.enemy.x, y: s.enemy.y, stunnedUntilMs: s.enemyStunnedUntilMs },
     activeProjectiles: s.projectileSystem.getProjectiles().map((p) => ({ ...p })),
@@ -112,15 +111,11 @@ export function buildGameState(s: StateBuilderInput): GameState {
     lightningDischargeTarget: s.lightningDischargeTarget ? { ...s.lightningDischargeTarget } : null,
     enemyAnimKey: s.enemy.currentAnimKey,
     enemyFrameIndex: s.enemy.currentFrameIndex,
-    currentLevel: s.currentLevel,
     touchPointsPerSide: { left: leftCount, right: rightCount },
     enemyHitZonesPx,
     player: { hp: s.player.hp, maxHp: s.player.maxHp },
     activeDeliveries: s.deliverySystem.getActive(),
     lastPlayerHit: s.lastPlayerHit ? { ...s.lastPlayerHit } : null,
-    playerXp: s.playerXp,
-    playerLevel: s.playerLevel,
-    pendingLevelUp: s.pendingLevelUp,
     globalUpgrades: {
       ...s.globalUpgrades,
       unlockedNodeIds: [...s.globalUpgrades.unlockedNodeIds],
@@ -131,4 +126,15 @@ export function buildGameState(s: StateBuilderInput): GameState {
       ? s.combat.serializeFightStats(s.combat.fightStatsSnapshot)
       : null,
   }
+
+  const game: GlobalSnapshot = {
+    phase: s.phaseManager.currentPhase,
+    currentLevel: s.currentLevel,
+    playerXp: s.playerXp,
+    playerLevel: s.playerLevel,
+    pendingLevelUp: s.pendingLevelUp,
+  }
+
+  return { fight, game }
 }
+

@@ -19,6 +19,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import { createInitialLayout } from '../../game/entities/touchPoints'
 import { calculateDamage } from '../../game/systems/DamageSystem'
 import {
@@ -65,6 +66,12 @@ const LEFT_0_X  = Math.round(_LEFT_0.x)
 const LEFT_0_Y  = Math.round(_LEFT_0.y)
 const RIGHT_0_X = Math.round(_RIGHT_0.x)
 const RIGHT_0_Y = Math.round(_RIGHT_0.y)
+
+/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
+function getFlat(machine: GameStateMachine): GameState {
+  const { fight, game } = machine.getState()
+  return { ...fight, ...game }
+}
 
 // ---------------------------------------------------------------------------
 // Helper: run a sequence of actions against a GameStateMachine
@@ -211,7 +218,7 @@ describe('TASK-38 — White Shot kill scenario (power user)', () => {
       machine._applyHitForTesting('CRIT', 'white_shot')
     }
 
-    const state = machine.getState()
+    const state = getFlat(machine)
     expect(state.enemyHp).toBeLessThanOrEqual(0)
     expect(['fight_overview']).toContain(state.phase)
   })
@@ -247,7 +254,7 @@ describe('TASK-38 — White Shot kill scenario (power user)', () => {
       { type: 'wait',        payload: { ms: 400 } }, // flight time
     ])
 
-    const state = machine.getState()
+    const state = getFlat(machine)
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     expect(totalHits).toBeGreaterThanOrEqual(1)
     expect(state.lastHit).not.toBeNull()
@@ -277,7 +284,7 @@ describe('TASK-38 — Fireball kill scenario (power user)', () => {
       machine._applyHitForTesting('CRIT', 'fireball')
     }
 
-    const state = machine.getState()
+    const state = getFlat(machine)
     expect(state.enemyHp).toBeLessThanOrEqual(0)
     expect(['fight_overview']).toContain(state.phase)
   })
@@ -321,7 +328,7 @@ describe('TASK-38 — Fireball kill scenario (power user)', () => {
       { type: 'wait',        payload: { ms: 500 } }, // flight time (fireball is slower)
     ])
 
-    const state = machine.getState()
+    const state = getFlat(machine)
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     expect(totalHits).toBeGreaterThanOrEqual(1)
     expect(state.lastHit).not.toBeNull()

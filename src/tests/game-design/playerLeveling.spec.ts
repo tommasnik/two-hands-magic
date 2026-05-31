@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import {
   XP_LEVEL_THRESHOLDS,
   PLAYER_START_LEVEL,
@@ -25,17 +26,23 @@ import {
 /** Damage of a single SLOW_SHOT CRIT — the strongest single shot in the kit. */
 const SLOW_CRIT = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
 
+/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
+function getFlat(gsm: GameStateMachine): GameState {
+  const { fight, game } = gsm.getState()
+  return { ...fight, ...game }
+}
+
 /**
  * Drive `gsm` through one full enemy kill using direct CRIT hits.
  * Confirms any pending level-up so the test can chain kills back-to-back.
  * After kill the phase is 'fight_overview'; advances to next level if not the last.
  */
 function killCurrentEnemyAndAdvance(gsm: GameStateMachine): void {
-  while (gsm.getState().enemyHp > 0) {
+  while (getFlat(gsm).enemyHp > 0) {
     gsm._applyHitForTesting('CRIT', 'slow_shot')
   }
-  const phase = gsm.getState().phase
-  if (phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
+  const phase = getFlat(gsm).phase
+  if (phase === 'fight_overview' && getFlat(gsm).currentLevel < ENEMY_POOL.length) {
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
   }
@@ -43,7 +50,7 @@ function killCurrentEnemyAndAdvance(gsm: GameStateMachine): void {
 
 /** Returns true when all levels are done (fight_overview at last level). */
 function isRunComplete(gsm: GameStateMachine): boolean {
-  const state = gsm.getState()
+  const state = getFlat(gsm)
   return state.phase === 'fight_overview' && state.currentLevel >= ENEMY_POOL.length
 }
 
@@ -62,12 +69,12 @@ describe('Game Design: Player XP & leveling pace', () => {
       gsm.startBattle()
       for (let i = 0; i < threshold - 1; i++) killCurrentEnemyAndAdvance(gsm)
       // At this point the player must still be below targetLevel
-      expect(gsm.getState().playerLevel).toBe(targetLevel - 1)
-      expect(gsm.getState().playerXp).toBe(threshold - 1)
+      expect(getFlat(gsm).playerLevel).toBe(targetLevel - 1)
+      expect(getFlat(gsm).playerXp).toBe(threshold - 1)
       // One more kill → exactly +1 level
       killCurrentEnemyAndAdvance(gsm)
-      expect(gsm.getState().playerLevel).toBe(targetLevel)
-      expect(gsm.getState().playerXp).toBe(threshold)
+      expect(getFlat(gsm).playerLevel).toBe(targetLevel)
+      expect(getFlat(gsm).playerXp).toBe(threshold)
     }
   })
 
@@ -77,7 +84,7 @@ describe('Game Design: Player XP & leveling pace', () => {
     while (!isRunComplete(gsm)) {
       killCurrentEnemyAndAdvance(gsm)
     }
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.playerLevel).toBe(PLAYER_MAX_LEVEL)
     expect(state.playerXp).toBe(ENEMY_POOL.length)
   })
@@ -86,10 +93,10 @@ describe('Game Design: Player XP & leveling pace', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     let levelUps = 0
-    let prevLevel = gsm.getState().playerLevel
+    let prevLevel = getFlat(gsm).playerLevel
     while (!isRunComplete(gsm)) {
       killCurrentEnemyAndAdvance(gsm)
-      const newLevel = gsm.getState().playerLevel
+      const newLevel = getFlat(gsm).playerLevel
       if (newLevel > prevLevel) levelUps += newLevel - prevLevel
       prevLevel = newLevel
     }
@@ -100,21 +107,21 @@ describe('Game Design: Player XP & leveling pace', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     // Kill enemy 1 → pendingLevelUp becomes true (threshold for level 2 = 1 kill)
-    while (gsm.getState().enemyHp > 0) {
+    while (getFlat(gsm).enemyHp > 0) {
       gsm._applyHitForTesting('CRIT', 'slow_shot')
     }
-    expect(gsm.getState().pendingLevelUp).toBe(true)
-    const blockedLevel = gsm.getState().currentLevel
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
+    const blockedLevel = getFlat(gsm).currentLevel
     // Simulate a battle tick — phase must stay fight_overview, currentLevel unchanged
     gsm.update(MAX_DELTA_MS, [])
     gsm.nextLevel() // explicit attempt is blocked by pendingLevelUp
-    expect(gsm.getState().phase).toBe('fight_overview')
-    expect(gsm.getState().currentLevel).toBe(blockedLevel)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
+    expect(getFlat(gsm).currentLevel).toBe(blockedLevel)
     // Release the gate — game continues
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    expect(gsm.getState().phase).toBe('battle')
-    expect(gsm.getState().currentLevel).toBe(blockedLevel + 1)
+    expect(getFlat(gsm).phase).toBe('battle')
+    expect(getFlat(gsm).currentLevel).toBe(blockedLevel + 1)
   })
 
   it('design intent: every mid-run level-up surfaces a pick — final one auto-clears at fight_overview', () => {
@@ -126,22 +133,22 @@ describe('Game Design: Player XP & leveling pace', () => {
     gsm.startBattle()
     let confirms = 0
     while (!isRunComplete(gsm)) {
-      while (gsm.getState().enemyHp > 0) {
+      while (getFlat(gsm).enemyHp > 0) {
         gsm._applyHitForTesting('CRIT', 'slow_shot')
       }
-      if (gsm.getState().pendingLevelUp) {
+      if (getFlat(gsm).pendingLevelUp) {
         confirms++
         gsm.confirmLevelUpUpgrade()
       }
-      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
+      if (getFlat(gsm).phase === 'fight_overview' && getFlat(gsm).currentLevel < ENEMY_POOL.length) {
         gsm.nextLevel()
       }
     }
     // One less than total level-ups: the last-level-coincident level-up is auto-cleared
     expect(confirms).toBe(PLAYER_MAX_LEVEL - PLAYER_START_LEVEL - 1)
     // The final state still reflects the full level promotion
-    expect(gsm.getState().playerLevel).toBe(PLAYER_MAX_LEVEL)
-    expect(gsm.getState().pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).playerLevel).toBe(PLAYER_MAX_LEVEL)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
   })
 })
 
@@ -156,17 +163,17 @@ describe('Game Design: power user vs casual player leveling pace', () => {
     gsm.startBattle()
     let kills = 0
     while (!isRunComplete(gsm)) {
-      while (gsm.getState().enemyHp > 0) {
+      while (getFlat(gsm).enemyHp > 0) {
         gsm._applyHitForTesting('CRIT', 'slow_shot')
       }
       kills++
-      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
+      if (getFlat(gsm).phase === 'fight_overview' && getFlat(gsm).currentLevel < ENEMY_POOL.length) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
     }
     expect(kills).toBe(ENEMY_POOL.length)
-    expect(gsm.getState().playerLevel).toBe(PLAYER_MAX_LEVEL)
+    expect(getFlat(gsm).playerLevel).toBe(PLAYER_MAX_LEVEL)
     void SLOW_CRIT // referenced to document the budget unit used by power users
   })
 
@@ -177,11 +184,11 @@ describe('Game Design: power user vs casual player leveling pace', () => {
     // after their first kill — the leveling pace is robust to skill.
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    while (gsm.getState().enemyHp > 0) {
+    while (getFlat(gsm).enemyHp > 0) {
       // Mix of HIT + GRAZE — slower, but the kill still counts.
       gsm._applyHitForTesting('HIT', 'slow_shot')
     }
-    expect(gsm.getState().playerLevel).toBe(PLAYER_START_LEVEL + 1)
-    expect(gsm.getState().playerXp).toBe(XP_LEVEL_THRESHOLDS[PLAYER_START_LEVEL + 1])
+    expect(getFlat(gsm).playerLevel).toBe(PLAYER_START_LEVEL + 1)
+    expect(getFlat(gsm).playerXp).toBe(XP_LEVEL_THRESHOLDS[PLAYER_START_LEVEL + 1])
   })
 })

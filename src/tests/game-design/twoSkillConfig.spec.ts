@@ -12,6 +12,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import { createInitialLayout } from '../../game/entities/touchPoints'
 import {
   GAME_WIDTH,
@@ -57,6 +58,11 @@ type Action =
   | { type: 'injectInput'; payload: InputEvent }
   | { type: 'wait'; payload: { ms: number } }
 
+function getFlat(machine: GameStateMachine): GameState {
+  const { fight, game } = machine.getState()
+  return { ...fight, ...game }
+}
+
 function runActions(machine: GameStateMachine, actions: Action[]): void {
   for (const action of actions) {
     if (action.type === 'injectInput') {
@@ -97,7 +103,7 @@ describe('Game Design: Two-Skill Config (TASK-35 → updated for 4-slot in TASK-
       { type: 'wait',        payload: { ms: 400 } },
     ])
 
-    const state = machine.getState()
+    const state = getFlat(machine)
     // The projectile should have arrived — any hit result is valid
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     expect(totalHits).toBeGreaterThanOrEqual(1)
@@ -118,7 +124,7 @@ describe('Game Design: Two-Skill Config (TASK-35 → updated for 4-slot in TASK-
       { type: 'wait',        payload: { ms: 300 } },
     ])
 
-    const state = machine.getState()
+    const state = getFlat(machine)
     // The projectile should have arrived — any hit result is valid
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     expect(totalHits).toBeGreaterThanOrEqual(1)
@@ -140,7 +146,7 @@ describe('Game Design: Two-Skill Config (TASK-35 → updated for 4-slot in TASK-
       { type: 'wait',        payload: { ms: 400 } },
     ])
 
-    const afterFirst = machine.getState()
+    const afterFirst = getFlat(machine)
     const hitsAfterFirst = afterFirst.score.crits + afterFirst.score.hits + afterFirst.score.grazes + afterFirst.score.misses
     expect(hitsAfterFirst).toBeGreaterThanOrEqual(1)
 
@@ -154,7 +160,7 @@ describe('Game Design: Two-Skill Config (TASK-35 → updated for 4-slot in TASK-
       { type: 'wait',        payload: { ms: 300 } },
     ])
 
-    const afterSecond = machine.getState()
+    const afterSecond = getFlat(machine)
     const hitsAfterSecond = afterSecond.score.crits + afterSecond.score.hits + afterSecond.score.grazes + afterSecond.score.misses
     // Both shots hit — total should be 2
     expect(hitsAfterSecond).toBeGreaterThanOrEqual(2)
@@ -177,7 +183,7 @@ describe('Game Design: Two-Skill Config (TASK-35 → updated for 4-slot in TASK-
     expect(right0.y).toBeCloseTo(RIGHT_0_Y, 0)
 
     // touchPointsPerSide reflects the layout (2 per side)
-    const state = machine.getState()
+    const state = getFlat(machine)
     expect(state.touchPointsPerSide).toEqual({ left: 2, right: 2 })
   })
 })

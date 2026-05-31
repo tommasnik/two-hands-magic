@@ -6,6 +6,7 @@
 import { GameStateMachine } from '../../game/GameStateMachine'
 import { MAX_DELTA_MS } from '../../game/constants'
 import type { GameDesignSpec, Action, Assertion } from './types'
+import type { GameState, GameStateResult } from '../../types'
 
 export interface RunResult {
   profileName: 'powerUser' | 'casualPlayer'
@@ -67,9 +68,10 @@ async function runProfile(
   let prevEnemyHp = -1   // will be set on the first update call
 
   /**
-   * Update per-step metrics from a freshly returned GameState.
+   * Update per-step metrics from a freshly returned GameStateResult.
    */
-  function collectStateMetrics(state: ReturnType<typeof machine.update>): void {
+  function collectStateMetrics(result: GameStateResult): void {
+    const state: GameState = { ...result.fight, ...result.game }
     // Initialise prevEnemyHp on the very first call
     if (prevEnemyHp === -1) prevEnemyHp = state.enemyHp
 
@@ -145,8 +147,8 @@ async function runProfile(
   }
 
   // Record total encounter time from the final machine state
-  const finalState = machine.getState()
-  metrics.totalEncounterTime = finalState.elapsedMs
+  const { fight: finalFight } = machine.getState()
+  metrics.totalEncounterTime = finalFight.elapsedMs
 
   // Evaluate assertions
   const failures: string[] = []

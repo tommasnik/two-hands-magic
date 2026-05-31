@@ -1,7 +1,7 @@
 // GameStateMachine — pure TypeScript, no Phaser dependency.
 // Orchestrates all game systems and tracks state transitions.
 
-import type { GameState, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
+import type { GameStateResult, InputEvent, HitResult, SkillType, UpgradeNodeId, FightStats, EnemyBehaviorDef, EnemyDef, BehaviorGraph } from '../types'
 import { InputManager } from './systems/InputManager'; import type { TouchPointEntry } from './systems/InputManager'
 import { computeEnemyPosition } from './systems/BehaviorSystem'
 import type { EnemyBehaviorRunner } from './systems/EnemyBehaviorRunner'
@@ -12,7 +12,7 @@ import { MAX_DELTA_MS, GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM, ENEMY_DEFAULT_Y, 
 import type { SkillSlotConfig } from './constants'; import type { EnemyStateSlice } from './skills/types'
 import { PhaseManager } from './systems/PhaseManager'
 import { initSkillFightStats } from './systems/CombatSystem'
-import { buildGameState } from './systems/StateBuilder'; import { loadLevel } from './systems/LevelLoader'; import { processCommands } from './systems/CommandProcessor'
+import { buildGameStateResult } from './systems/StateBuilder'; import { loadLevel } from './systems/LevelLoader'; import { processCommands } from './systems/CommandProcessor'
 import { resolveBehavior, PLAYER_CENTRE, LIGHTNING_DURATIONS } from './resolvers'
 export { resolveBehavior }; import { resolveSpriteKey, resolveHitZoneMap } from './resolvers'
 export { resolveSpriteKey, resolveHitZoneMap }; import './skills/index'
@@ -103,7 +103,7 @@ export class GameStateMachine {
 
   setMaskDetector(detector: MaskHitDetector): void { this._maskDetector = detector }
 
-  update(dt: number, inputs: InputEvent[]): GameState {
+  update(dt: number, inputs: InputEvent[]): GameStateResult {
     if (this._phaseManager.currentPhase !== 'battle') return this.getState()
     const cappedDt = Math.min(dt, MAX_DELTA_MS)
     this.elapsedMs += cappedDt; this._fight.combat.fightStats.durationMs += cappedDt
@@ -147,8 +147,8 @@ export class GameStateMachine {
 
   getTouchPointPositions(): ActiveTouchPointPos[] { return this._layout.map(p => ({ ...p })) }
 
-  getState(): GameState {
-    return buildGameState({
+  getState(): GameStateResult {
+    return buildGameStateResult({
       phaseManager: this._phaseManager, combat: this._fight.combat, enemy: this.enemy, player: this.player,
       projectileSystem: this._fight.projectiles, deliverySystem: this._fight.delivery,
       layout: this._layout, slotStates: this._slotStates, elapsedMs: this.elapsedMs,

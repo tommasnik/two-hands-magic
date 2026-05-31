@@ -115,14 +115,14 @@ export class BattleScene extends Phaser.Scene {
 
     // Collect inputs → update game state
     const inputs = this.pendingInputs.splice(0)
-    const state = gameMachine.update(cappedDelta, inputs)
+    const { fight, game } = gameMachine.update(cappedDelta, inputs)
 
     // Advance renderers that need per-frame state (animations, timers)
     const dtS = cappedDelta / 1000
-    this._enemyRenderer.update(dtS, state)
-    this._skillRenderer.update(dtS, state.activeProjectiles)
-    this._hudRenderer.update(cappedDelta, state)
-    this._phaseOverlay.update(state, cappedDelta)
+    this._enemyRenderer.update(dtS, { ...fight, ...game })
+    this._skillRenderer.update(dtS, fight.activeProjectiles)
+    this._hudRenderer.update(cappedDelta, { ...fight, ...game })
+    this._phaseOverlay.update({ ...fight, ...game }, cappedDelta)
   }
 
   // -----------------------------------------------------------------------
@@ -130,7 +130,8 @@ export class BattleScene extends Phaser.Scene {
   // -----------------------------------------------------------------------
 
   private onRender(): void {
-    const state = gameMachine.getState()
+    const { fight, game } = gameMachine.getState()
+    const state = { ...fight, ...game }
     const ctx = this.ctx
     const now = performance.now()
 
@@ -143,7 +144,7 @@ export class BattleScene extends Phaser.Scene {
     this._skillRenderer.drawFireParticles(ctx)
 
     // Projectiles
-    for (const proj of state.activeProjectiles) {
+    for (const proj of fight.activeProjectiles) {
       if (!proj.alive) continue
       const px = proj.origin.x + (proj.target.x - proj.origin.x) * proj.progress
       const py = proj.origin.y + (proj.target.y - proj.origin.y) * proj.progress
@@ -155,7 +156,7 @@ export class BattleScene extends Phaser.Scene {
     this._skillRenderer.drawLightningDischarge(ctx, state)
 
     // Incoming enemy attack deliveries
-    this._deliveryRenderer.render(state.activeDeliveries, {
+    this._deliveryRenderer.render(fight.activeDeliveries, {
       scene: this,
       ctx,
       nowMs: now,

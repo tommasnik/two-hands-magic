@@ -57,8 +57,8 @@ export class PhaseOverlayManager {
     this._buildUpgradeTreeDom()
 
     document.getElementById('fight-overview-btn')?.addEventListener('click', () => {
-      const state = gameMachine.getState()
-      if (state.pendingLevelUp) {
+      const { game } = gameMachine.getState()
+      if (game.pendingLevelUp) {
         this._showUpgradeAfterFightOverview = true
         if (this._fightOverviewOverlay) this._fightOverviewOverlay.classList.add('hidden')
         this._upgradePickerVisible = false
@@ -127,21 +127,22 @@ export class PhaseOverlayManager {
 
       if (phase === 'fight_overview' && this._phaseTimerMs >= 1000) {
         this._phaseTimerMs = null
-        const state = gameMachine.getState()
+        const { fight, game } = gameMachine.getState()
+        const flatState = { ...fight, ...game }
         if (this._victoryToast) this._victoryToast.classList.add('hidden')
         if (this._fightOverviewOverlay) {
-          const isLastLevel = state.currentLevel >= ENEMY_POOL.length
+          const isLastLevel = game.currentLevel >= ENEMY_POOL.length
           const btn = document.getElementById('fight-overview-btn')
           if (btn) {
-            if (state.pendingLevelUp) btn.textContent = 'Level Up →'
+            if (game.pendingLevelUp) btn.textContent = 'Level Up →'
             else if (isLastLevel) btn.textContent = 'Play again'
             else btn.textContent = 'Next Fight →'
           }
-          this._renderFightOverviewContent(state)
+          this._renderFightOverviewContent(flatState)
           this._fightOverviewOverlay.classList.remove('hidden')
         }
       } else if (phase === 'level_complete' && this._phaseTimerMs >= LEVEL_COMPLETE_DELAY_MS) {
-        if (!gameMachine.getState().pendingLevelUp) {
+        if (!gameMachine.getState().game.pendingLevelUp) {
           this._phaseTimerMs = null
           this.deliveryRenderer.cancelFlying()
           gameMachine.nextLevel()
@@ -348,9 +349,9 @@ ${renderSkillBar(snap.right, rightLabel, rightDps, rightColor)}
   }
 
   private _onUpgradePicked(nodeId: UpgradeNodeId): void {
-    const state = gameMachine.getState()
-    if (!state.pendingLevelUp) return
-    if (getUpgradeNodeStatus(state.globalUpgrades, nodeId) !== 'available') return
+    const { fight, game } = gameMachine.getState()
+    if (!game.pendingLevelUp) return
+    if (getUpgradeNodeStatus(fight.globalUpgrades, nodeId) !== 'available') return
     gameMachine.confirmLevelUpUpgrade(nodeId)
     this.deliveryRenderer.cancelFlying()
     gameMachine.nextLevel()

@@ -14,6 +14,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import { getXpProgress } from '../../game/upgrades'
 import {
   PLAYER_START_LEVEL,
@@ -22,12 +23,18 @@ import {
   UPGRADE_NODES,
 } from '../../game/constants'
 
+/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
+function getFlat(gsm: GameStateMachine): GameState {
+  const { fight, game } = gsm.getState()
+  return { ...fight, ...game }
+}
+
 /**
  * Drain the current enemy to 0 HP using direct CRIT-on-slow_shot calls.
  * Each call applies a deterministic chunk of damage so the kill is fast.
  */
 function killEnemy(gsm: GameStateMachine): void {
-  while (gsm.getState().enemyHp > 0) {
+  while (getFlat(gsm).enemyHp > 0) {
     gsm._applyHitForTesting('CRIT', 'slow_shot')
   }
 }
@@ -37,13 +44,13 @@ describe('Upgrade flow — level-up gate blocks the battle tick', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     killEnemy(gsm)
-    expect(gsm.getState().pendingLevelUp).toBe(true)
-    expect(gsm.getState().phase).toBe('fight_overview')
-    const beforeTickElapsedMs = gsm.getState().elapsedMs
-    const beforeTickMissiles = gsm.getState().activeDeliveries.length
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
+    const beforeTickElapsedMs = getFlat(gsm).elapsedMs
+    const beforeTickMissiles = getFlat(gsm).activeDeliveries.length
     // Tick the loop a few times — phase must stay fight_overview and elapsedMs frozen.
     for (let i = 0; i < 10; i++) gsm.update(MAX_DELTA_MS, [])
-    const after = gsm.getState()
+    const after = getFlat(gsm)
     expect(after.phase).toBe('fight_overview')
     expect(after.pendingLevelUp).toBe(true)
     expect(after.elapsedMs).toBe(beforeTickElapsedMs)
@@ -56,17 +63,17 @@ describe('Upgrade flow — picking an upgrade releases the gate immediately', ()
     const gsm = new GameStateMachine()
     gsm.startBattle()
     killEnemy(gsm)
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
     // Pick a root upgrade — it must be in the available set
     const pick = UPGRADE_NODES.find((n) => n.requires.length === 0)!
     gsm.confirmLevelUpUpgrade(pick.id)
     // Same-frame: gate is released and the upgrade is reflected in the state
-    const released = gsm.getState()
+    const released = getFlat(gsm)
     expect(released.pendingLevelUp).toBe(false)
     expect(released.globalUpgrades.unlockedNodeIds).toContain(pick.id)
     // nextLevel resumes the battle without further delay
     gsm.nextLevel()
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('rejects an unavailable node id and keeps the gate closed', () => {
@@ -75,7 +82,7 @@ describe('Upgrade flow — picking an upgrade releases the gate immediately', ()
     killEnemy(gsm)
     // crit_dmg_2 requires crit_dmg_1 — at this point it is locked.
     expect(() => gsm.confirmLevelUpUpgrade('crit_dmg_2')).toThrow()
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
   })
 })
 
@@ -88,7 +95,7 @@ describe('Upgrade flow — XP bar fraction matches getXpProgress', () => {
     const targetKills = XP_LEVEL_THRESHOLDS[3] ?? 3
     for (let kill = 0; kill < targetKills; kill++) {
       killEnemy(gsm)
-      const s = gsm.getState()
+      const s = getFlat(gsm)
       const expected = getXpProgress(s.playerLevel, s.playerXp)
       // The progress is a derived value — it is 0..1 and depends only on (level, xp).
       // We compare with a fresh computation here to guard against drift between
@@ -101,7 +108,7 @@ describe('Upgrade flow — XP bar fraction matches getXpProgress', () => {
         gsm.nextLevel()
       }
     }
-    expect(gsm.getState().playerLevel).toBeGreaterThan(PLAYER_START_LEVEL)
+    expect(getFlat(gsm).playerLevel).toBeGreaterThan(PLAYER_START_LEVEL)
   })
 })
 
@@ -117,21 +124,21 @@ describe('Upgrade flow — stun condition with crit_stun_1', () => {
     gsm._applyUpgradeForTesting('crit_dmg_1')
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     expect(before.enemy.stunnedUntilMs).toBe(0)
     // Apply a CRIT — must NOT be a killing blow so the stun is recorded.
     // The stoneTroll-class HP pools at later levels would survive a single
     // CRIT; here level 1 (goblin scout) survives just fine if we cap HP loss.
     // Apply a HIT first to drop HP, then a CRIT to trigger the stun:
     gsm._applyHitForTesting('HIT', 'slow_shot')
-    if (gsm.getState().enemyHp <= 0) {
+    if (getFlat(gsm).enemyHp <= 0) {
       // Goblin scout died in one HIT — skip the assertion harmlessly.
       // (Design wants the stun visible against a live target.)
       return
     }
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    if (gsm.getState().enemyHp <= 0) return
-    const after = gsm.getState()
+    if (getFlat(gsm).enemyHp <= 0) return
+    const after = getFlat(gsm)
     // The stun upgrade fires its full duration; the RNG is forced so we
     // know the chance roll succeeded.
     expect(after.enemy.stunnedUntilMs).toBeGreaterThan(after.elapsedMs)
@@ -146,7 +153,7 @@ describe('Upgrade flow — stun condition with crit_stun_1', () => {
       gsm.update(step, [])
       remaining -= step
     }
-    const cleared = gsm.getState()
+    const cleared = getFlat(gsm)
     expect(cleared.enemy.stunnedUntilMs).toBeLessThanOrEqual(cleared.elapsedMs)
   })
 })

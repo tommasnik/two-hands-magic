@@ -597,12 +597,11 @@ export interface FightResult {
 }
 
 /**
- * Complete game state snapshot.
+ * Fight-local snapshot: everything that belongs to a single ongoing battle.
+ * Resets at the start of each new encounter.
  * Must be fully serializable via JSON.stringify — no class instances, no functions.
  */
-export interface GameState {
-  /** High-level game phase controlling which systems are active. */
-  phase: Phase
+export interface FightSnapshot {
   /** Current accumulated score. */
   score: Score
   /** Enemy position snapshot. */
@@ -637,8 +636,6 @@ export interface GameState {
    * Used by BattleScene to select the correct sprite frame for rendering.
    */
   enemyFrameIndex: number
-  /** Current level number (1-based). */
-  currentLevel: number
   /**
    * Number of active touch points per side for the current level.
    * Reflects how many skill slots are shown on-screen (1–3 per side).
@@ -663,23 +660,6 @@ export interface GameState {
    * during the current battle. Reset on battle/level restart.
    */
   lastPlayerHit: PlayerHitEvent | null
-  /**
-   * Cumulative enemy kills the player has accumulated during the current run.
-   * Resets to 0 on restartGame(); persists across levels and game-over restarts.
-   * Drives player level promotion via XP_LEVEL_THRESHOLDS.
-   */
-  playerXp: number
-  /**
-   * Current player level (1 = start, PLAYER_MAX_LEVEL = end of run).
-   * Promoted automatically when playerXp reaches the next threshold.
-   */
-  playerLevel: number
-  /**
-   * True when the player has just leveled up and the game is waiting for an
-   * upgrade pick. While true, no new battles start — the upgrade picker UI is
-   * expected to call confirmLevelUpUpgrade() to release the gate.
-   */
-  pendingLevelUp: boolean
   /**
    * Aggregated upgrade state — drives crit multiplier, crit zone tolerance,
    * cast time, projectile speed, quick chain bonus, spell area, and crit stun.
@@ -731,3 +711,51 @@ export interface GameState {
   /** Screen-space target point of the active lightning discharge. Null if none. */
   lightningDischargeTarget: { x: number; y: number } | null
 }
+
+/**
+ * Global (cross-fight) snapshot: progression and game-session data that persists
+ * across encounters.
+ * Must be fully serializable via JSON.stringify — no class instances, no functions.
+ */
+export interface GlobalSnapshot {
+  /** High-level game phase controlling which systems are active. */
+  phase: Phase
+  /** Current level number (1-based). */
+  currentLevel: number
+  /**
+   * Cumulative enemy kills the player has accumulated during the current run.
+   * Resets to 0 on restartGame(); persists across levels and game-over restarts.
+   * Drives player level promotion via XP_LEVEL_THRESHOLDS.
+   */
+  playerXp: number
+  /**
+   * Current player level (1 = start, PLAYER_MAX_LEVEL = end of run).
+   * Promoted automatically when playerXp reaches the next threshold.
+   */
+  playerLevel: number
+  /**
+   * True when the player has just leveled up and the game is waiting for an
+   * upgrade pick. While true, no new battles start — the upgrade picker UI is
+   * expected to call confirmLevelUpUpgrade() to release the gate.
+   */
+  pendingLevelUp: boolean
+}
+
+/**
+ * Structured return type for GameStateMachine.getState() and update().
+ * Separates fight-local data from global progression data.
+ */
+export interface GameStateResult {
+  /** Fight-local snapshot: enemy, projectiles, player HP, stats, effects. */
+  fight: FightSnapshot
+  /** Global snapshot: phase, level, XP, progression flags. */
+  game: GlobalSnapshot
+}
+
+/**
+ * Complete game state snapshot (flat view).
+ * @deprecated Use GameStateResult with { fight, game } destructuring instead.
+ * Kept as an alias for backward compatibility with renderers until they are updated.
+ * Will be removed after TASK-72.
+ */
+export type GameState = FightSnapshot & GlobalSnapshot

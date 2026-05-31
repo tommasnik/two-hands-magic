@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
+import type { GameState } from '../../types'
 import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 import {
   MAX_DELTA_MS,
@@ -94,9 +95,15 @@ function makeMove(
   return { pointerId, action: 'move', x, y, timestamp }
 }
 
+/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
+function getFlat(gsm: GameStateMachine): GameState {
+  const { fight, game } = gsm.getState()
+  return { ...fight, ...game }
+}
+
 /** Kills the current enemy by applying CRIT slow_shots until HP reaches 0. */
 function killCurrentEnemy(gsm: GameStateMachine): void {
-  while (gsm.getState().enemyHp > 0) {
+  while (getFlat(gsm).enemyHp > 0) {
     gsm._applyHitForTesting('CRIT', 'slow_shot')
   }
 }
@@ -108,12 +115,12 @@ function killCurrentEnemy(gsm: GameStateMachine): void {
 describe('GameStateMachine — initial state', () => {
   it('starts in loading phase', () => {
     const gsm = new GameStateMachine()
-    expect(gsm.getState().phase).toBe('loading')
+    expect(getFlat(gsm).phase).toBe('loading')
   })
 
   it('score is all zeros on creation', () => {
     const gsm = new GameStateMachine()
-    const { score } = gsm.getState()
+    const { score } = getFlat(gsm)
     expect(score.total).toBe(0)
     expect(score.crits).toBe(0)
     expect(score.hits).toBe(0)
@@ -122,15 +129,15 @@ describe('GameStateMachine — initial state', () => {
   })
 
   it('elapsedMs is 0 on creation', () => {
-    expect(new GameStateMachine().getState().elapsedMs).toBe(0)
+    expect(getFlat(new GameStateMachine()).elapsedMs).toBe(0)
   })
 
   it('lastHit is null on creation', () => {
-    expect(new GameStateMachine().getState().lastHit).toBeNull()
+    expect(getFlat(new GameStateMachine()).lastHit).toBeNull()
   })
 
   it('all active slots are initialised inactive', () => {
-    const { activeSlots } = new GameStateMachine().getState()
+    const { activeSlots } = getFlat(new GameStateMachine())
     for (const slot of activeSlots) {
       expect(slot.active).toBe(false)
       expect(slot.dragOffsetX).toBe(0)
@@ -144,14 +151,14 @@ describe('GameStateMachine — startBattle()', () => {
   it('transitions from loading to battle', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('is idempotent when already in battle', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.startBattle()
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 })
 
@@ -160,21 +167,21 @@ describe('GameStateMachine — startBattle()', () => {
 describe('GameStateMachine — update() in loading phase', () => {
   it('returns same phase when called before startBattle()', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.update(16, [])
-    expect(state.phase).toBe('loading')
+    gsm.update(16, [])
+    expect(getFlat(gsm).phase).toBe('loading')
   })
 
   it('does not advance elapsedMs while loading', () => {
     const gsm = new GameStateMachine()
     gsm.update(100, [])
-    expect(gsm.getState().elapsedMs).toBe(0)
+    expect(getFlat(gsm).elapsedMs).toBe(0)
   })
 
   it('does not change score while loading', () => {
     const gsm = new GameStateMachine()
     // Use green touch point position — doesn't matter which touch point while loading
     gsm.update(100, [makeDown(0, GREEN_X, GREEN_Y), makeUp(0, GREEN_X, GREEN_Y)])
-    const { score } = gsm.getState()
+    const { score } = getFlat(gsm)
     expect(score.total).toBe(0)
   })
 })
@@ -186,7 +193,7 @@ describe('GameStateMachine — delta time cap', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(1000, [])
-    expect(gsm.getState().elapsedMs).toBe(MAX_DELTA_MS)
+    expect(getFlat(gsm).elapsedMs).toBe(MAX_DELTA_MS)
   })
 
   it('accumulates capped deltas correctly across multiple frames', () => {
@@ -195,14 +202,14 @@ describe('GameStateMachine — delta time cap', () => {
     gsm.update(MAX_DELTA_MS, [])
     gsm.update(MAX_DELTA_MS, [])
     gsm.update(MAX_DELTA_MS, [])
-    expect(gsm.getState().elapsedMs).toBe(MAX_DELTA_MS * 3)
+    expect(getFlat(gsm).elapsedMs).toBe(MAX_DELTA_MS * 3)
   })
 
   it('does not cap small deltas', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(16, [])
-    expect(gsm.getState().elapsedMs).toBe(16)
+    expect(getFlat(gsm).elapsedMs).toBe(16)
   })
 })
 
@@ -211,16 +218,16 @@ describe('GameStateMachine — delta time cap', () => {
 describe('GameStateMachine — getState() returns deep copies', () => {
   it('mutating returned score does not affect internal state', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     state.score.total = 9999
-    expect(gsm.getState().score.total).toBe(0)
+    expect(getFlat(gsm).score.total).toBe(0)
   })
 
   it('mutating returned activeSlots does not affect internal state', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     state.activeSlots[0].active = true
-    expect(gsm.getState().activeSlots[0].active).toBe(false)
+    expect(getFlat(gsm).activeSlots[0].active).toBe(false)
   })
 
   it('mutating returned lastHit does not affect internal state', () => {
@@ -240,12 +247,12 @@ describe('GameStateMachine — getState() returns deep copies', () => {
       gsm.update(16, [])
     }
 
-    const state2 = gsm.getState()
+    const state2 = getFlat(gsm)
     if (state2.lastHit) {
       const originalResult = state2.lastHit.result
       // @ts-expect-error deliberate mutation test
       state2.lastHit.result = 'MODIFIED'
-      expect(gsm.getState().lastHit?.result).toBe(originalResult)
+      expect(getFlat(gsm).lastHit?.result).toBe(originalResult)
     }
     // Whether or not a hit happened, the test proved copy isolation
   })
@@ -253,7 +260,7 @@ describe('GameStateMachine — getState() returns deep copies', () => {
   it('getState() is JSON.stringify serializable', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(() => JSON.stringify(state)).not.toThrow()
     const parsed = JSON.parse(JSON.stringify(state))
     expect(parsed.phase).toBe('battle')
@@ -292,7 +299,7 @@ describe('GameStateMachine — full battle flow (fire → hit → score)', () =>
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     // At least one hit (CRIT, HIT, or GRAZE) should have happened
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     expect(totalHits).toBeGreaterThanOrEqual(1)
@@ -334,7 +341,7 @@ describe('GameStateMachine — full battle flow (fire → hit → score)', () =>
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     // At minimum a CRIT or other hit should have occurred
     expect(state.lastHit).not.toBeNull()
     if (state.score.crits > 0) {
@@ -360,7 +367,7 @@ describe('GameStateMachine — full battle flow (fire → hit → score)', () =>
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     // Either a MISS or another result — depends on exact reticle position
     // At minimum, lastHit should be set and misses or hits updated
     expect(state.score.crits + state.score.hits + state.score.grazes + state.score.misses).toBe(1)
@@ -407,12 +414,12 @@ describe('GameStateMachine — score tracking per HitResult', () => {
     }
 
     fireOneShot(0)
-    const afterFirst = gsm.getState()
+    const afterFirst = getFlat(gsm)
     const hitsAfterFirst = afterFirst.score.crits + afterFirst.score.hits + afterFirst.score.grazes + afterFirst.score.misses
     expect(hitsAfterFirst).toBe(1)
 
     fireOneShot(afterFirst.elapsedMs)
-    const afterSecond = gsm.getState()
+    const afterSecond = getFlat(gsm)
     const hitsAfterSecond = afterSecond.score.crits + afterSecond.score.hits + afterSecond.score.grazes + afterSecond.score.misses
     expect(hitsAfterSecond).toBe(2)
   })
@@ -422,7 +429,7 @@ describe('GameStateMachine — score tracking per HitResult', () => {
 
 describe('GameStateMachine — determinism', () => {
   it('same input sequence produces identical state in two independent instances', () => {
-    function runSequence(): ReturnType<GameStateMachine['getState']> {
+    function runSequence(): GameState {
       const gsm = new GameStateMachine()
       gsm.startBattle()
 
@@ -443,7 +450,7 @@ describe('GameStateMachine — determinism', () => {
         gsm.update(MAX_DELTA_MS, [])
       }
 
-      return gsm.getState()
+      return getFlat(gsm)
     }
 
     const state1 = runSequence()
@@ -476,8 +483,8 @@ describe('GameStateMachine — determinism', () => {
     for (let i = 0; i < 116; i++) gsm2.update(MAX_DELTA_MS, [])
 
     // gsm1 should have at least one hit logged; gsm2 none
-    expect(gsm1.getState().lastHit).not.toBeNull()
-    expect(gsm2.getState().lastHit).toBeNull()
+    expect(getFlat(gsm1).lastHit).not.toBeNull()
+    expect(getFlat(gsm2).lastHit).toBeNull()
   })
 })
 
@@ -490,7 +497,7 @@ describe('GameStateMachine — activeSlots reflect input', () => {
 
     // Touch near left_0 position (midpoint of left arc = violet position in legacy layout)
     gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
-    const leftSlot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const leftSlot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(leftSlot?.active).toBe(true)
   })
 
@@ -500,7 +507,7 @@ describe('GameStateMachine — activeSlots reflect input', () => {
 
     gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
     gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
-    const leftSlot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const leftSlot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(leftSlot?.active).toBe(false)
   })
 
@@ -510,7 +517,7 @@ describe('GameStateMachine — activeSlots reflect input', () => {
 
     gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
     gsm.update(16, [makeMove(0, LEFT_0_X + 20, LEFT_0_Y)])
-    const leftSlot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const leftSlot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(leftSlot?.dragOffsetX).toBe(20)
   })
 })
@@ -560,7 +567,7 @@ describe('GameStateMachine — GRAZE and queueInput', () => {
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     // A hit of some kind must have occurred
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     expect(totalHits).toBeGreaterThanOrEqual(1)
@@ -577,12 +584,12 @@ describe('GameStateMachine — GRAZE and queueInput', () => {
 
     // Before update: touch state should still be inactive
     // (queueInput only enqueues, doesn't apply immediately)
-    const beforeSlot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const beforeSlot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(beforeSlot?.active).toBe(false)
 
     // After update: event should be processed
     gsm.update(16, [])
-    const afterSlot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const afterSlot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(afterSlot?.active).toBe(true)
   })
 
@@ -597,7 +604,7 @@ describe('GameStateMachine — GRAZE and queueInput', () => {
     gsm.update(16, [makeDown(1, RIGHT_0_X, RIGHT_0_Y)])
 
     // Both should be active
-    const slots = gsm.getState().activeSlots
+    const slots = getFlat(gsm).activeSlots
     expect(slots.find(s => s.id === 'left_0')?.active).toBe(true)
     expect(slots.find(s => s.id === 'right_0')?.active).toBe(true)
   })
@@ -651,7 +658,7 @@ describe('GameStateMachine — _applyHit GRAZE branch via direct projectile', ()
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const { score, lastHit } = gsm.getState()
+    const { score, lastHit } = getFlat(gsm)
     expect(lastHit).not.toBeNull()
     // Verify that a GRAZE happened — score.total stays 0 for GRAZE
     if (score.grazes > 0) {
@@ -691,7 +698,7 @@ describe('GameStateMachine — _applyHit GRAZE branch via direct projectile', ()
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const { score, lastHit } = gsm.getState()
+    const { score, lastHit } = getFlat(gsm)
     expect(lastHit).not.toBeNull()
     // Any result is valid — what matters is that lastHit is not null (hit processing occurred)
     // GRAZE-specific: if we got a GRAZE, total = crits*CRIT + hits*HIT (grazes add 0)
@@ -706,7 +713,7 @@ describe('GameStateMachine — activeProjectiles', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     for (let i = 0; i < 5; i++) gsm.update(16, [])
-    expect(gsm.getState().activeProjectiles).toHaveLength(0)
+    expect(getFlat(gsm).activeProjectiles).toHaveLength(0)
   })
 
   it('projectile appears after fire command', () => {
@@ -720,7 +727,7 @@ describe('GameStateMachine — activeProjectiles', () => {
     gsm.update(16, [makeUp(0, x, y)])
 
     // Immediately after fire, before projectile arrives
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     // The projectile should either be in flight or have just arrived
     const totalHits = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     // Either it's still in flight (activeProjectiles.length > 0) or it already hit (totalHits > 0)
@@ -740,7 +747,7 @@ describe('GameStateMachine — activeProjectiles', () => {
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    expect(gsm.getState().activeProjectiles).toHaveLength(0)
+    expect(getFlat(gsm).activeProjectiles).toHaveLength(0)
   })
 })
 
@@ -749,7 +756,7 @@ describe('GameStateMachine — activeProjectiles', () => {
 describe('GameStateMachine — enemy HP and level fields in GameState', () => {
   it('getState() returns enemyHp, enemyMaxHp, enemyName, currentLevel', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(typeof state.enemyHp).toBe('number')
     expect(typeof state.enemyMaxHp).toBe('number')
     expect(typeof state.enemyName).toBe('string')
@@ -758,19 +765,19 @@ describe('GameStateMachine — enemy HP and level fields in GameState', () => {
 
   it('initial enemy HP equals enemy max HP (full health)', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.enemyHp).toBe(state.enemyMaxHp)
   })
 
   it('initial level is 1', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.currentLevel).toBe(1)
   })
 
   it('initial enemy matches ENEMY_POOL[0] definition', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.enemyName).toBe(ENEMY_POOL[0].name)
     expect(state.enemyMaxHp).toBe(ENEMY_POOL[0].maxHp)
     expect(state.enemyHp).toBe(ENEMY_POOL[0].maxHp)
@@ -779,13 +786,13 @@ describe('GameStateMachine — enemy HP and level fields in GameState', () => {
   it('phase includes fight_overview, level_complete and victory as valid values', () => {
     // Verify the type allows these phases by confirming the initial phase is not one of them
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(['loading', 'battle', 'game_over', 'level_complete', 'victory', 'fight_overview']).toContain(state.phase)
   })
 
   it('getState() returns touchPointsPerSide with left=2 and right=2 initially (task-61.4)', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.touchPointsPerSide).toEqual({ left: 2, right: 2 })
   })
 })
@@ -796,7 +803,7 @@ describe('GameStateMachine — HP tracking and damage system', () => {
   it('startBattle() initializes enemy HP from ENEMY_POOL[0]', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     const enemyDef = ENEMY_POOL[0]
     expect(state.enemyHp).toBe(enemyDef.maxHp)
     expect(state.enemyMaxHp).toBe(enemyDef.maxHp)
@@ -806,9 +813,9 @@ describe('GameStateMachine — HP tracking and damage system', () => {
   it('HIT reduces enemy HP by the correct damage amount', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('HIT', 'slow_shot')
-    const after = gsm.getState().enemyHp
+    const after = getFlat(gsm).enemyHp
     const expectedDamage = SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER
     expect(after).toBe(before - expectedDamage)
   })
@@ -816,9 +823,9 @@ describe('GameStateMachine — HP tracking and damage system', () => {
   it('CRIT reduces enemy HP by the correct crit damage amount', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    const after = gsm.getState().enemyHp
+    const after = getFlat(gsm).enemyHp
     const expectedDamage = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
     expect(after).toBe(before - expectedDamage)
   })
@@ -826,9 +833,9 @@ describe('GameStateMachine — HP tracking and damage system', () => {
   it('GRAZE reduces enemy HP by the graze damage amount', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('GRAZE', 'fast_shot')
-    const after = gsm.getState().enemyHp
+    const after = getFlat(gsm).enemyHp
     const expectedDamage = FAST_SKILL_DAMAGE * GRAZE_DAMAGE_MULTIPLIER
     expect(after).toBe(before - expectedDamage)
   })
@@ -836,9 +843,9 @@ describe('GameStateMachine — HP tracking and damage system', () => {
   it('MISS does not reduce enemy HP', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('MISS', 'slow_shot')
-    expect(gsm.getState().enemyHp).toBe(before)
+    expect(getFlat(gsm).enemyHp).toBe(before)
   })
 
   it('HP never goes below 0 — clamps to 0 on overkill', () => {
@@ -848,13 +855,13 @@ describe('GameStateMachine — HP tracking and damage system', () => {
     for (let i = 0; i < 20; i++) {
       gsm._applyHitForTesting('CRIT', 'slow_shot')
     }
-    expect(gsm.getState().enemyHp).toBe(0)
+    expect(getFlat(gsm).enemyHp).toBe(0)
   })
 
   it('HP stays at 0 — never negative after a single killing blow', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const maxHp = gsm.getState().enemyMaxHp
+    const maxHp = getFlat(gsm).enemyMaxHp
     const hitDmg = SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER
     // Bring HP low with HITs, leaving a small remainder
     const hitsToWeaken = Math.floor((maxHp - 1) / hitDmg)
@@ -863,15 +870,15 @@ describe('GameStateMachine — HP tracking and damage system', () => {
     }
     // Remaining HP <= hitDmg; CRIT (2× hitDmg) overkills
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().enemyHp).toBe(0)
-    expect(gsm.getState().enemyHp).not.toBeLessThan(0)
+    expect(getFlat(gsm).enemyHp).toBe(0)
+    expect(getFlat(gsm).enemyHp).not.toBeLessThan(0)
   })
 
   it('lastHit includes damage number dealt', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('HIT', 'slow_shot')
-    const lastHit = gsm.getState().lastHit
+    const lastHit = getFlat(gsm).lastHit
     expect(lastHit).not.toBeNull()
     expect(lastHit?.damage).toBe(SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER)
   })
@@ -880,14 +887,14 @@ describe('GameStateMachine — HP tracking and damage system', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('MISS', 'slow_shot')
-    expect(gsm.getState().lastHit?.damage).toBe(0)
+    expect(getFlat(gsm).lastHit?.damage).toBe(0)
   })
 
   it('lastHit includes hitZone field', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('HIT', 'slow_shot')
-    const lastHit = gsm.getState().lastHit
+    const lastHit = getFlat(gsm).lastHit
     expect(lastHit).not.toBeNull()
     // _applyHitForTesting passes null position → hitZone is 'none'
     expect(lastHit?.hitZone).toBe('none')
@@ -911,7 +918,7 @@ describe('GameStateMachine — HP tracking and damage system', () => {
       gsm.update(MAX_DELTA_MS, [])
     }
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.lastHit).not.toBeNull()
     // hitZone should be a valid zone name — not 'none' for a real projectile hit
     const validZones = ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'none']
@@ -939,7 +946,7 @@ describe('GameStateMachine — phase transitions on HP depletion', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     killCurrentEnemy(gsm)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
   })
 
   it('HP reaching 0 on level 3 transitions phase to fight_overview (not last level)', () => {
@@ -951,9 +958,9 @@ describe('GameStateMachine — phase transitions on HP depletion', () => {
     killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    expect(gsm.getState().currentLevel).toBe(3)
+    expect(getFlat(gsm).currentLevel).toBe(3)
     killCurrentEnemy(gsm)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
   })
 })
 
@@ -964,10 +971,10 @@ describe('GameStateMachine — nextLevel() method', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     killCurrentEnemy(gsm)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.currentLevel).toBe(2)
     expect(state.enemyName).toBe(ENEMY_POOL[1].name)
     expect(state.enemyMaxHp).toBe(ENEMY_POOL[1].maxHp)
@@ -984,7 +991,7 @@ describe('GameStateMachine — nextLevel() method', () => {
     killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.currentLevel).toBe(3)
     expect(state.enemyName).toBe(ENEMY_POOL[2].name)
     expect(state.enemyMaxHp).toBe(ENEMY_POOL[2].maxHp)
@@ -995,10 +1002,10 @@ describe('GameStateMachine — nextLevel() method', () => {
   it('nextLevel() does nothing if not in level_complete or fight_overview phase', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().currentLevel).toBe(1)
+    expect(getFlat(gsm).currentLevel).toBe(1)
     gsm.nextLevel() // Should be a no-op during battle
-    expect(gsm.getState().currentLevel).toBe(1)
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).currentLevel).toBe(1)
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('nextLevel() does nothing after last level kill — phase is fight_overview, not victory', () => {
@@ -1017,15 +1024,15 @@ describe('GameStateMachine — nextLevel() method', () => {
       }
     }
     // Last level kill → fight_overview (not victory)
-    expect(gsm.getState().phase).toBe('fight_overview')
-    expect(gsm.getState().currentLevel).toBe(ENEMY_POOL.length)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
+    expect(getFlat(gsm).currentLevel).toBe(ENEMY_POOL.length)
     // nextLevel() must NOT advance when we are on the last level — no pool entry beyond the last exists.
     // The call is accepted by the phase guard but blocked by the level bounds check:
     // currentLevel >= ENEMY_POOL.length means nextLevel would attempt a pool entry past the end (undefined) — so
     // completeFightOverview() must be used instead. Verify nextLevel is a no-op here.
     gsm.nextLevel()
     // Phase does not change — still fight_overview (nextLevel does nothing when already on last level)
-    expect(gsm.getState().currentLevel).toBe(ENEMY_POOL.length)
+    expect(getFlat(gsm).currentLevel).toBe(ENEMY_POOL.length)
   })
 
   it('nextLevel() does nothing when called from battle phase at level 3', () => {
@@ -1037,10 +1044,10 @@ describe('GameStateMachine — nextLevel() method', () => {
     killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel() // → level 3
-    expect(gsm.getState().currentLevel).toBe(3)
+    expect(getFlat(gsm).currentLevel).toBe(3)
     gsm.nextLevel()
-    expect(gsm.getState().currentLevel).toBe(3)
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).currentLevel).toBe(3)
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('enemyHp on level 2 matches ENEMY_POOL[1] HP after nextLevel()', () => {
@@ -1049,7 +1056,7 @@ describe('GameStateMachine — nextLevel() method', () => {
     killCurrentEnemy(gsm)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    expect(gsm.getState().enemyHp).toBe(ENEMY_POOL[1].maxHp)
+    expect(getFlat(gsm).enemyHp).toBe(ENEMY_POOL[1].maxHp)
   })
 })
 
@@ -1081,24 +1088,24 @@ describe('GameStateMachine — restartGame() method', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.restartGame()
-    expect(gsm.getState().phase).toBe('battle')
-    expect(gsm.getState().currentLevel).toBe(1)
+    expect(getFlat(gsm).phase).toBe('battle')
+    expect(getFlat(gsm).currentLevel).toBe(1)
   })
 
   it('restartGame() does nothing when in game_over phase', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
-    expect(gsm.getState().phase).toBe('game_over')
+    gsm._applyPlayerHitForTesting(getFlat(gsm).player.maxHp)
+    expect(getFlat(gsm).phase).toBe('game_over')
     gsm.restartGame()
-    expect(gsm.getState().phase).toBe('game_over')
+    expect(getFlat(gsm).phase).toBe('game_over')
   })
 
   it('restartGame() transitions fight_overview (last level) → battle at level 1', () => {
     const gsm = reachFightOverviewAfterLastLevel()
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     gsm.restartGame()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.phase).toBe('battle')
     expect(state.currentLevel).toBe(1)
   })
@@ -1106,7 +1113,7 @@ describe('GameStateMachine — restartGame() method', () => {
   it('restartGame() resets enemy to Level 1 enemy', () => {
     const gsm = reachFightOverviewAfterLastLevel()
     gsm.restartGame()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.enemyName).toBe(ENEMY_POOL[0].name)
     expect(state.enemyHp).toBe(ENEMY_POOL[0].maxHp)
     expect(state.enemyMaxHp).toBe(ENEMY_POOL[0].maxHp)
@@ -1115,7 +1122,7 @@ describe('GameStateMachine — restartGame() method', () => {
   it('restartGame() resets score to all zeros', () => {
     const gsm = reachFightOverviewAfterLastLevel()
     gsm.restartGame()
-    const { score } = gsm.getState()
+    const { score } = getFlat(gsm)
     expect(score.total).toBe(0)
     expect(score.crits).toBe(0)
     expect(score.hits).toBe(0)
@@ -1126,13 +1133,13 @@ describe('GameStateMachine — restartGame() method', () => {
   it('restartGame() resets elapsedMs to 0', () => {
     const gsm = reachFightOverviewAfterLastLevel()
     gsm.restartGame()
-    expect(gsm.getState().elapsedMs).toBe(0)
+    expect(getFlat(gsm).elapsedMs).toBe(0)
   })
 
   it('restartGame() resets lastHit to null', () => {
     const gsm = reachFightOverviewAfterLastLevel()
     gsm.restartGame()
-    expect(gsm.getState().lastHit).toBeNull()
+    expect(getFlat(gsm).lastHit).toBeNull()
   })
 
   it('after restartGame() game is fully playable — battle runs normally', () => {
@@ -1142,15 +1149,15 @@ describe('GameStateMachine — restartGame() method', () => {
     for (let i = 0; i < 10; i++) {
       gsm.update(MAX_DELTA_MS, [])
     }
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('restartGame() resets playerXp and playerLevel to start values', () => {
     const gsm = reachFightOverviewAfterLastLevel()
     // Sanity: by the time all levels are cleared the player has leveled up.
-    expect(gsm.getState().playerXp).toBeGreaterThan(0)
+    expect(getFlat(gsm).playerXp).toBeGreaterThan(0)
     gsm.restartGame()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.playerXp).toBe(0)
     expect(state.playerLevel).toBe(PLAYER_START_LEVEL)
     expect(state.pendingLevelUp).toBe(false)
@@ -1172,14 +1179,14 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
       // level in ENEMY_POOL is killable in well under 50 SLOW_SHOT crits.
       const maxHits = 50
       let hits = 0
-      while (gsm.getState().enemyHp > 0 && hits < maxHits) {
+      while (getFlat(gsm).enemyHp > 0 && hits < maxHits) {
         gsm._applyHitForTesting('CRIT', 'slow_shot')
         hits++
       }
       // Advance to next level if in fight_overview and not on the last level
-      const phase = gsm.getState().phase
+      const phase = getFlat(gsm).phase
       if (phase === 'fight_overview') {
-        if (gsm.getState().currentLevel >= ENEMY_POOL.length) break // last level done
+        if (getFlat(gsm).currentLevel >= ENEMY_POOL.length) break // last level done
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
@@ -1192,14 +1199,14 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     // Sanity: start state
-    expect(gsm.getState().playerLevel).toBe(PLAYER_START_LEVEL)
-    expect(gsm.getState().playerXp).toBe(0)
-    expect(gsm.getState().pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).playerLevel).toBe(PLAYER_START_LEVEL)
+    expect(getFlat(gsm).playerXp).toBe(0)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
     // Kill first enemy
-    while (gsm.getState().enemyHp > 0) {
+    while (getFlat(gsm).enemyHp > 0) {
       gsm._applyHitForTesting('CRIT', 'slow_shot')
     }
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.playerXp).toBe(XP_LEVEL_THRESHOLDS[2])
     expect(state.playerLevel).toBe(2)
     expect(state.pendingLevelUp).toBe(true)
@@ -1217,8 +1224,8 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
       const gsm = new GameStateMachine()
       gsm.startBattle()
       runKills(gsm, kills)
-      expect(gsm.getState().playerXp).toBe(kills)
-      expect(gsm.getState().playerLevel).toBe(level)
+      expect(getFlat(gsm).playerXp).toBe(kills)
+      expect(getFlat(gsm).playerLevel).toBe(level)
     }
   })
 
@@ -1229,44 +1236,44 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     runKills(gsm, threshold - 1)
-    expect(gsm.getState().playerXp).toBe(threshold - 1)
-    expect(gsm.getState().playerLevel).toBe(targetLevel - 1)
+    expect(getFlat(gsm).playerXp).toBe(threshold - 1)
+    expect(getFlat(gsm).playerLevel).toBe(targetLevel - 1)
     // One more kill crosses the boundary
-    while (gsm.getState().enemyHp > 0) {
+    while (getFlat(gsm).enemyHp > 0) {
       gsm._applyHitForTesting('CRIT', 'slow_shot')
     }
-    expect(gsm.getState().playerXp).toBe(threshold)
-    expect(gsm.getState().playerLevel).toBe(targetLevel)
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).playerXp).toBe(threshold)
+    expect(getFlat(gsm).playerLevel).toBe(targetLevel)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
   })
 
   it('AC #3 — pendingLevelUp blocks nextLevel() until confirmLevelUpUpgrade()', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    while (gsm.getState().enemyHp > 0) {
+    while (getFlat(gsm).enemyHp > 0) {
       gsm._applyHitForTesting('CRIT', 'slow_shot')
     }
-    expect(gsm.getState().pendingLevelUp).toBe(true)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     // nextLevel() is blocked by pendingLevelUp
     gsm.nextLevel()
-    expect(gsm.getState().currentLevel).toBe(1)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).currentLevel).toBe(1)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     // After confirm, gate opens and nextLevel() advances
     gsm.confirmLevelUpUpgrade()
-    expect(gsm.getState().pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
     gsm.nextLevel()
-    expect(gsm.getState().currentLevel).toBe(2)
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).currentLevel).toBe(2)
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('confirmLevelUpUpgrade() is a no-op when no level-up is pending', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
     gsm.confirmLevelUpUpgrade('crit_dmg_1')
-    expect(gsm.getState().pendingLevelUp).toBe(false)
-    expect(gsm.getState().playerLevel).toBe(PLAYER_START_LEVEL)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).playerLevel).toBe(PLAYER_START_LEVEL)
   })
 
   it('player level is capped at PLAYER_MAX_LEVEL and no further pendingLevelUp triggers', () => {
@@ -1274,7 +1281,7 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     runKills(gsm, ENEMY_POOL.length)
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.playerLevel).toBe(PLAYER_MAX_LEVEL)
     expect(state.playerXp).toBe(ENEMY_POOL.length)
     // The final kill triggers final level-up, but we cannot kill past ENEMY_POOL.length.
@@ -1293,8 +1300,8 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     gsm._setPlayerLevelForTesting(PLAYER_MAX_LEVEL)
     killCurrentEnemy(gsm)
     // playerXp increments, but level stays capped and no pendingLevelUp fires.
-    expect(gsm.getState().playerLevel).toBe(PLAYER_MAX_LEVEL)
-    expect(gsm.getState().pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).playerLevel).toBe(PLAYER_MAX_LEVEL)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
   })
 
   it('fight_overview on last kill clears pendingLevelUp — no inconsistent state', () => {
@@ -1304,7 +1311,7 @@ describe('GameStateMachine — XP & player leveling (task-41)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     runKills(gsm, ENEMY_POOL.length)
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.phase).toBe('fight_overview')
     expect(state.pendingLevelUp).toBe(false)
     expect(state.playerLevel).toBe(PLAYER_MAX_LEVEL)
@@ -1345,7 +1352,7 @@ describe('GameStateMachine — multi-touch: max 2 simultaneous pointers (AC #1�
     ])
 
     // Immediately after release — before projectiles arrive
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     const inFlight = state.activeProjectiles.filter(p => p.alive).length
     const alreadyHit = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     // Two shots were fired — both in flight or already arrived (e.g. very short distance)
@@ -1370,7 +1377,7 @@ describe('GameStateMachine — multi-touch: max 2 simultaneous pointers (AC #1�
       makeUp(3, RED_X, RED_Y),
     ])
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     const inFlight = state.activeProjectiles.filter(p => p.alive).length
     const alreadyHit = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     // Only MAX_SIMULTANEOUS_TOUCHES projectiles should exist (third pointer was dropped)
@@ -1387,7 +1394,7 @@ describe('GameStateMachine — multi-touch: max 2 simultaneous pointers (AC #1�
       makeDown(2, RIGHT_0_X, RIGHT_0_Y),
     ])
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     // Both skill slots are active simultaneously — independent laser states
     const leftSlot1 = state.activeSlots.find(s => s.id === 'left_0')
     const rightSlot1 = state.activeSlots.find(s => s.id === 'right_0')
@@ -1396,7 +1403,7 @@ describe('GameStateMachine — multi-touch: max 2 simultaneous pointers (AC #1�
 
     // Drag only pointer 1 — pointer 2 state is unaffected
     gsm.update(16, [makeMove(1, LEFT_0_X + 30, LEFT_0_Y)])
-    const state2 = gsm.getState()
+    const state2 = getFlat(gsm)
     const leftSlot2 = state2.activeSlots.find(s => s.id === 'left_0')
     const rightSlot2 = state2.activeSlots.find(s => s.id === 'right_0')
     expect(leftSlot2?.dragOffsetX).toBe(30)
@@ -1418,7 +1425,7 @@ describe('GameStateMachine — multi-touch: max 2 simultaneous pointers (AC #1�
     // Release pointer 3 — fires a projectile
     gsm.update(16, [makeUp(3, RED_X, RED_Y)])
 
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     const inFlight = state.activeProjectiles.filter(p => p.alive).length
     const alreadyHit = state.score.crits + state.score.hits + state.score.grazes + state.score.misses
     // Shot from pointer 3 was accepted
@@ -1439,7 +1446,7 @@ describe('advanceTime helper logic — large dt must be chunked', () => {
       gsm.update(step, [])
       remaining -= step
     }
-    expect(gsm.getState().elapsedMs).toBe(500)
+    expect(getFlat(gsm).elapsedMs).toBe(500)
   })
 })
 
@@ -1494,7 +1501,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     // Touch at the new left_0 position — should activate left_0 slot
     const newLeft0 = newLayout.find(p => p.id === 'left_0')!
     gsm.update(16, [makeDown(0, Math.round(newLeft0.x), Math.round(newLeft0.y))])
-    const slot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const slot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(slot?.active).toBe(true)
   })
 
@@ -1515,7 +1522,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
 
     // Touching at the new left_0 position activates left_0
     gsm.update(16, [makeDown(0, Math.round(newLeft0.x), Math.round(newLeft0.y))])
-    const slot = gsm.getState().activeSlots.find(s => s.id === 'left_0')
+    const slot = getFlat(gsm).activeSlots.find(s => s.id === 'left_0')
     expect(slot?.active).toBe(true)
   })
 
@@ -1541,7 +1548,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     gsm.setTouchPointPositions(twoLeftLayout)
 
     // All 3 slots should exist in the active slots
-    const slots = gsm.getState().activeSlots
+    const slots = getFlat(gsm).activeSlots
     expect(slots).toHaveLength(3)
     expect(slots.find(s => s.id === 'left_0')).toBeDefined()
     expect(slots.find(s => s.id === 'left_1')).toBeDefined()
@@ -1555,7 +1562,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     // Touching near left_1 should activate it
     const left1Pos = twoLeftLayout.find(p => p.id === 'left_1')!
     gsm.update(16, [makeDown(0, Math.round(left1Pos.x), Math.round(left1Pos.y))])
-    const left1After = gsm.getState().activeSlots.find(s => s.id === 'left_1')
+    const left1After = getFlat(gsm).activeSlots.find(s => s.id === 'left_1')
     expect(left1After?.active).toBe(true)
   })
 
@@ -1580,7 +1587,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     // setTouchPointPositions must initialise the new 'left_1' slot state
     gsm.setTouchPointPositions(newLayout)
 
-    const slots = gsm.getState().activeSlots
+    const slots = getFlat(gsm).activeSlots
     expect(slots).toHaveLength(3)
     const left1 = slots.find(s => s.id === 'left_1')
     expect(left1).toBeDefined()
@@ -1604,7 +1611,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     // Fire from left slot — should produce slow_shot projectile
     gsm.update(16, [makeDown(0, Math.round(leftPos.x), Math.round(leftPos.y))])
     gsm.update(16, [makeUp(0, Math.round(leftPos.x), Math.round(leftPos.y))])
-    const afterLeft = gsm.getState()
+    const afterLeft = getFlat(gsm)
     // Projectile was fired — may already have hit or be in flight
     const leftTotal = afterLeft.activeProjectiles.length + afterLeft.score.crits + afterLeft.score.hits + afterLeft.score.grazes + afterLeft.score.misses
     expect(leftTotal).toBeGreaterThanOrEqual(1)
@@ -1612,7 +1619,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
     // Fire from right slot — should produce fast_shot projectile
     gsm.update(16, [makeDown(1, Math.round(rightPos.x), Math.round(rightPos.y))])
     gsm.update(16, [makeUp(1, Math.round(rightPos.x), Math.round(rightPos.y))])
-    const afterRight = gsm.getState()
+    const afterRight = getFlat(gsm)
     const rightTotal = afterRight.activeProjectiles.length + afterRight.score.crits + afterRight.score.hits + afterRight.score.grazes + afterRight.score.misses
     expect(rightTotal).toBeGreaterThanOrEqual(leftTotal)
   })
@@ -1648,7 +1655,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
 
   it('AC#2 — at least 1 slot on each side (touchPointsPerSide)', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.touchPointsPerSide.left).toBeGreaterThanOrEqual(1)
     expect(state.touchPointsPerSide.right).toBeGreaterThanOrEqual(1)
   })
@@ -1664,7 +1671,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
 
   it('AC#7 — 2+2 default config (touchPointsPerSide = {left:2, right:2}, task-61.4)', () => {
     const gsm = new GameStateMachine()
-    expect(gsm.getState().touchPointsPerSide).toEqual({ left: 2, right: 2 })
+    expect(getFlat(gsm).touchPointsPerSide).toEqual({ left: 2, right: 2 })
   })
 
   it('AC#5 — SkillSlotConfig is importable and usable from constants.ts (task-61.4: 4 slots)', () => {
@@ -1691,7 +1698,7 @@ describe('GameStateMachine — setTouchPointPositions() / getTouchPointPositions
 
     // activeSlots reflects correct skillType
     gsm.update(16, [])
-    const slots = gsm.getState().activeSlots
+    const slots = getFlat(gsm).activeSlots
     expect(slots.find(s => s.side === 'left')?.skillType).toBe('white_shot')
     expect(slots.find(s => s.side === 'right')?.skillType).toBe('fireball')
   })
@@ -1715,7 +1722,7 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
   it('GameState.player exposes hp and maxHp = PLAYER_MAX_HP after startBattle', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.player.hp).toBeGreaterThan(0)
     expect(state.player.maxHp).toBeGreaterThan(0)
     expect(state.player.hp).toBe(state.player.maxHp)
@@ -1724,9 +1731,9 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
   it('player damage reduces HP and records lastPlayerHit', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const startHp = gsm.getState().player.maxHp
+    const startHp = getFlat(gsm).player.maxHp
     gsm._applyPlayerHitForTesting(6)
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.player.hp).toBe(startHp - 6)
     expect(state.lastPlayerHit).not.toBeNull()
     expect(state.lastPlayerHit!.damage).toBe(6)
@@ -1735,38 +1742,38 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
   it('player HP reaching 0 transitions phase to game_over', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const maxHp = gsm.getState().player.maxHp
+    const maxHp = getFlat(gsm).player.maxHp
     gsm._applyPlayerHitForTesting(maxHp)
-    expect(gsm.getState().phase).toBe('game_over')
-    expect(gsm.getState().player.hp).toBe(0)
+    expect(getFlat(gsm).phase).toBe('game_over')
+    expect(getFlat(gsm).player.hp).toBe(0)
   })
 
   it('update() is a no-op once phase === game_over', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
-    const snapshot = gsm.getState().elapsedMs
+    gsm._applyPlayerHitForTesting(getFlat(gsm).player.maxHp)
+    const snapshot = getFlat(gsm).elapsedMs
     advance(gsm, 1000)
-    expect(gsm.getState().elapsedMs).toBe(snapshot)
+    expect(getFlat(gsm).elapsedMs).toBe(snapshot)
   })
 
   it('lastPlayerHit is reset to null on battle start', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().lastPlayerHit).toBeNull()
+    expect(getFlat(gsm).lastPlayerHit).toBeNull()
   })
 
   it('GameState.activeDeliveries is empty at battle start', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().activeDeliveries).toEqual([])
+    expect(getFlat(gsm).activeDeliveries).toEqual([])
   })
 
   it('activeDeliveries stays empty when the enemy has no behaviour graph', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     advance(gsm, 8000)
-    expect(gsm.getState().activeDeliveries).toEqual([])
+    expect(getFlat(gsm).activeDeliveries).toEqual([])
   })
 })
 
@@ -1774,33 +1781,33 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
   /** Helper: drive the machine to game_over by dealing lethal player damage. */
   function reachGameOver(gsm: GameStateMachine): void {
     gsm.startBattle()
-    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
+    gsm._applyPlayerHitForTesting(getFlat(gsm).player.maxHp)
   }
 
   it('restartLevel() does nothing when not in game_over phase (battle)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.restartLevel()
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 
   it('restartLevel() does nothing when in fight_overview phase', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     killCurrentEnemy(gsm)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     gsm.restartLevel()
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
   })
 
   it('restartLevel() transitions game_over → battle, keeping the current level', () => {
     const gsm = new GameStateMachine()
     reachGameOver(gsm)
     // Force a higher level then re-trigger game_over for completeness
-    expect(gsm.getState().phase).toBe('game_over')
-    const levelBefore = gsm.getState().currentLevel
+    expect(getFlat(gsm).phase).toBe('game_over')
+    const levelBefore = getFlat(gsm).currentLevel
     gsm.restartLevel()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.phase).toBe('battle')
     expect(state.currentLevel).toBe(levelBefore)
   })
@@ -1809,7 +1816,7 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
     const gsm = new GameStateMachine()
     reachGameOver(gsm)
     gsm.restartLevel()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.player.hp).toBe(state.player.maxHp)
   })
 
@@ -1817,7 +1824,7 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
     const gsm = new GameStateMachine()
     reachGameOver(gsm)
     gsm.restartLevel()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.enemyHp).toBe(state.enemyMaxHp)
   })
 
@@ -1825,10 +1832,10 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(MAX_DELTA_MS, [])
-    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
+    gsm._applyPlayerHitForTesting(getFlat(gsm).player.maxHp)
     gsm.restartLevel()
-    expect(gsm.getState().activeDeliveries).toEqual([])
-    expect(gsm.getState().lastPlayerHit).toBeNull()
+    expect(getFlat(gsm).activeDeliveries).toEqual([])
+    expect(getFlat(gsm).lastPlayerHit).toBeNull()
   })
 })
 
@@ -1839,7 +1846,7 @@ describe('GameStateMachine — restartLevel() method (task-41)', () => {
 describe('GameStateMachine — global upgrades wiring', () => {
   it('initial state exposes DEFAULT_GLOBAL_UPGRADE_STATE values', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.globalUpgrades.critDamageMultiplier).toBe(CRIT_DAMAGE_MULTIPLIER)
     expect(state.globalUpgrades.critZoneTolerance).toBe(0)
     expect(state.globalUpgrades.critStunChance).toBe(0)
@@ -1855,18 +1862,18 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('crit_dmg_1')
     gsm._applyUpgradeForTesting('crit_dmg_2')
-    const before = gsm.getState().enemyHp
+    const before = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    const after = gsm.getState().enemyHp
-    const m = gsm.getState().globalUpgrades.critDamageMultiplier
+    const after = getFlat(gsm).enemyHp
+    const m = getFlat(gsm).globalUpgrades.critDamageMultiplier
     expect(before - after).toBe(Math.round(SLOW_SKILL_DAMAGE * m))
   })
 
   it('AC #5 — cast_time_1 multiplies activeSlots.rotationPeriodMs by 0.90', () => {
     const gsm = new GameStateMachine()
-    const before = gsm.getState().activeSlots
+    const before = getFlat(gsm).activeSlots
     gsm._applyUpgradeForTesting('cast_time_1')
-    const after = gsm.getState().activeSlots
+    const after = getFlat(gsm).activeSlots
     expect(after.length).toBe(before.length)
     for (let i = 0; i < after.length; i++) {
       expect(after[i].rotationPeriodMs).toBeCloseTo(before[i].rotationPeriodMs * 0.90, 6)
@@ -1878,10 +1885,10 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const bonus = gsm.getState().globalUpgrades.quickChainBonus
-    const hpBefore = gsm.getState().enemyHp
+    const bonus = getFlat(gsm).globalUpgrades.quickChainBonus
+    const hpBefore = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('HIT', 'slow_shot', bonus)
-    const dmg = hpBefore - gsm.getState().enemyHp
+    const dmg = hpBefore - getFlat(gsm).enemyHp
     expect(dmg).toBe(Math.round(SLOW_SKILL_DAMAGE * (1 + bonus)))
   })
 
@@ -1890,9 +1897,9 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const hpBefore = gsm.getState().enemyHp
+    const hpBefore = getFlat(gsm).enemyHp
     gsm._applyHitForTesting('HIT', 'slow_shot', 0)
-    expect(hpBefore - gsm.getState().enemyHp).toBe(SLOW_SKILL_DAMAGE)
+    expect(hpBefore - getFlat(gsm).enemyHp).toBe(SLOW_SKILL_DAMAGE)
   })
 
   it('AC #4 — CRIT with critStunChance=1 sets enemy.stunnedUntilMs above elapsedMs', () => {
@@ -1903,10 +1910,10 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm.update(100, []) // advance to a non-zero elapsedMs
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     expect(before.enemy.stunnedUntilMs).toBe(0)
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    const after = gsm.getState()
+    const after = getFlat(gsm)
     const dur = after.globalUpgrades.critStunDurationMs
     expect(after.enemy.stunnedUntilMs).toBe(before.elapsedMs + dur)
   })
@@ -1919,7 +1926,7 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().enemy.stunnedUntilMs).toBe(0)
+    expect(getFlat(gsm).enemy.stunnedUntilMs).toBe(0)
   })
 
   it('CRIT stun only triggers on actual CRIT hits, never on HIT/GRAZE', () => {
@@ -1929,9 +1936,9 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm._applyHitForTesting('HIT', 'slow_shot')
-    expect(gsm.getState().enemy.stunnedUntilMs).toBe(0)
+    expect(getFlat(gsm).enemy.stunnedUntilMs).toBe(0)
     gsm._applyHitForTesting('GRAZE', 'slow_shot')
-    expect(gsm.getState().enemy.stunnedUntilMs).toBe(0)
+    expect(getFlat(gsm).enemy.stunnedUntilMs).toBe(0)
   })
 
   it('_loadLevel resets enemyStunnedUntilMs to 0 on level transitions', () => {
@@ -1941,13 +1948,13 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_dmg_2')
     gsm._applyUpgradeForTesting('crit_stun_1')
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().enemy.stunnedUntilMs).toBeGreaterThan(0)
+    expect(getFlat(gsm).enemy.stunnedUntilMs).toBeGreaterThan(0)
     // Kill the enemy → transitions to fight_overview (pendingLevelUp gates nextLevel)
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().phase).toBe('fight_overview')
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    expect(gsm.getState().enemy.stunnedUntilMs).toBe(0)
+    expect(getFlat(gsm).enemy.stunnedUntilMs).toBe(0)
   })
 
   it('confirmLevelUpUpgrade applies the given upgrade node when gated', () => {
@@ -1955,12 +1962,12 @@ describe('GameStateMachine — global upgrades wiring', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     // Kill level 1 enemy to trigger first level-up — phase becomes fight_overview
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    const stateAfterKill = gsm.getState()
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    const stateAfterKill = getFlat(gsm)
     expect(stateAfterKill.pendingLevelUp).toBe(true)
     expect(stateAfterKill.phase).toBe('fight_overview')
     gsm.confirmLevelUpUpgrade('crit_dmg_1')
-    const after = gsm.getState()
+    const after = getFlat(gsm)
     expect(after.globalUpgrades.unlockedNodeIds).toContain('crit_dmg_1')
     expect(after.pendingLevelUp).toBe(false)
   })
@@ -1968,10 +1975,10 @@ describe('GameStateMachine — global upgrades wiring', () => {
   it('confirmLevelUpUpgrade with no nodeId still releases the gate', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
     gsm.confirmLevelUpUpgrade()
-    expect(gsm.getState().pendingLevelUp).toBe(false)
-    expect(gsm.getState().globalUpgrades.unlockedNodeIds).toEqual([])
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).globalUpgrades.unlockedNodeIds).toEqual([])
   })
 
   it('restartGame() resets global upgrades to default', () => {
@@ -1982,16 +1989,16 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_dmg_1')
     // Kill all levels
     for (let i = 0; i < ENEMY_POOL.length; i++) {
-      while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-      if (gsm.getState().phase === 'fight_overview' && gsm.getState().currentLevel < ENEMY_POOL.length) {
+      while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+      if (getFlat(gsm).phase === 'fight_overview' && getFlat(gsm).currentLevel < ENEMY_POOL.length) {
         gsm.confirmLevelUpUpgrade()
         gsm.nextLevel()
       }
     }
     // After last kill, phase is fight_overview with currentLevel = ENEMY_POOL.length
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     gsm.restartGame()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.globalUpgrades.unlockedNodeIds).toEqual([])
     expect(state.globalUpgrades.critDamageMultiplier).toBe(CRIT_DAMAGE_MULTIPLIER)
   })
@@ -2000,12 +2007,12 @@ describe('GameStateMachine — global upgrades wiring', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     // Drive XP to first level-up
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
     // crit_dmg_2 requires crit_dmg_1 — not yet unlocked → throws
     expect(() => gsm.confirmLevelUpUpgrade('crit_dmg_2')).toThrow(/Upgrade node not available/)
     // Gate remains held so the player can pick a valid node
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
   })
 
   it('confirmLevelUpUpgrade throws when the supplied node is already unlocked', () => {
@@ -2015,10 +2022,10 @@ describe('GameStateMachine — global upgrades wiring', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyUpgradeForTesting('crit_dmg_1')
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
     expect(() => gsm.confirmLevelUpUpgrade('crit_dmg_1')).toThrow(/Upgrade node not available/)
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
   })
 
   // White-shot projectiles fly fast enough (~15ms over the short slot→enemy
@@ -2035,7 +2042,7 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_dmg_1')
     // Calling again must not throw and must leave the state untouched
     expect(() => gsm._applyUpgradeForTesting('crit_dmg_1')).not.toThrow()
-    const unlocked = gsm.getState().globalUpgrades.unlockedNodeIds
+    const unlocked = getFlat(gsm).globalUpgrades.unlockedNodeIds
     expect(unlocked.filter((id) => id === 'crit_dmg_1')).toHaveLength(1)
   })
 
@@ -2044,9 +2051,9 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const left = gsm.getState().activeSlots.find((s) => s.id === 'left_0')!
+    const left = getFlat(gsm).activeSlots.find((s) => s.id === 'left_0')!
     firePointer(gsm, 1, left.x, left.y)
-    const projectiles = gsm.getState().activeProjectiles
+    const projectiles = getFlat(gsm).activeProjectiles
     expect(projectiles.length).toBeGreaterThan(0)
     expect(projectiles[projectiles.length - 1].chainBonus).toBe(0)
   })
@@ -2056,12 +2063,12 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const bonus = gsm.getState().globalUpgrades.quickChainBonus
-    const left = gsm.getState().activeSlots.find((s) => s.id === 'left_0')!
-    const right = gsm.getState().activeSlots.find((s) => s.id === 'right_0')!
+    const bonus = getFlat(gsm).globalUpgrades.quickChainBonus
+    const left = getFlat(gsm).activeSlots.find((s) => s.id === 'left_0')!
+    const right = getFlat(gsm).activeSlots.find((s) => s.id === 'right_0')!
     firePointer(gsm, 1, left.x, left.y)
     firePointer(gsm, 2, right.x, right.y)
-    const projectiles = gsm.getState().activeProjectiles
+    const projectiles = getFlat(gsm).activeProjectiles
     // The right_0 fire was second; its projectile carries chainBonus
     const fromRight = projectiles.find(
       (p) => Math.abs(p.origin.x - right.x) < 1 && Math.abs(p.origin.y - right.y) < 1,
@@ -2075,15 +2082,15 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const window = gsm.getState().globalUpgrades.quickChainWindowMs
-    const left = gsm.getState().activeSlots.find((s) => s.id === 'left_0')!
-    const right = gsm.getState().activeSlots.find((s) => s.id === 'right_0')!
+    const window = getFlat(gsm).globalUpgrades.quickChainWindowMs
+    const left = getFlat(gsm).activeSlots.find((s) => s.id === 'left_0')!
+    const right = getFlat(gsm).activeSlots.find((s) => s.id === 'right_0')!
     firePointer(gsm, 1, left.x, left.y)
     // Advance past the window in MAX_DELTA_MS chunks
     let r = window + 200
     while (r > 0) { const s = Math.min(r, MAX_DELTA_MS); gsm.update(s, []); r -= s }
     firePointer(gsm, 2, right.x, right.y)
-    const projectiles = gsm.getState().activeProjectiles
+    const projectiles = getFlat(gsm).activeProjectiles
     const fromRight = projectiles.find(
       (p) => Math.abs(p.origin.x - right.x) < 1 && Math.abs(p.origin.y - right.y) < 1,
     )
@@ -2104,8 +2111,8 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const bonus = gsm.getState().globalUpgrades.quickChainBonus
-    const slots = gsm.getState().activeSlots
+    const bonus = getFlat(gsm).globalUpgrades.quickChainBonus
+    const slots = getFlat(gsm).activeSlots
     const left0 = slots.find((s) => s.id === 'left_0')!
     const left1 = slots.find((s) => s.id === 'left_1')!
     const right0 = slots.find((s) => s.id === 'right_0')!
@@ -2115,7 +2122,7 @@ describe('GameStateMachine — global upgrades wiring', () => {
     // Now fire left_1 — _computeChainBonus iterates [left_0 (later), right_0 (earlier)].
     // Branch coverage: first iter sets mostRecent (null branch), second iter does NOT update (t > mostRecent false).
     firePointer(gsm, 4, left1.x, left1.y)
-    const projectiles = gsm.getState().activeProjectiles
+    const projectiles = getFlat(gsm).activeProjectiles
     const fromLeft1 = projectiles.find(
       (p) => Math.abs(p.origin.x - left1.x) < 1 && Math.abs(p.origin.y - left1.y) < 1,
     )
@@ -2128,15 +2135,15 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm.startBattle()
     gsm._applyUpgradeForTesting('cast_time_1')
     gsm._applyUpgradeForTesting('quick_chain_1')
-    const bonus = gsm.getState().globalUpgrades.quickChainBonus
-    const left = gsm.getState().activeSlots.find((s) => s.id === 'left_0')!
-    const right = gsm.getState().activeSlots.find((s) => s.id === 'right_0')!
+    const bonus = getFlat(gsm).globalUpgrades.quickChainBonus
+    const left = getFlat(gsm).activeSlots.find((s) => s.id === 'left_0')!
+    const right = getFlat(gsm).activeSlots.find((s) => s.id === 'right_0')!
     // Fire left, fire right, fire left again — third fire's chain lookup must
     // see right_0 (the other slot) as the recent cast, not its own previous fire.
     firePointer(gsm, 1, left.x, left.y)
     firePointer(gsm, 2, right.x, right.y)
     firePointer(gsm, 3, left.x, left.y)
-    const projectiles = gsm.getState().activeProjectiles
+    const projectiles = getFlat(gsm).activeProjectiles
     // The third (most recent) left_0 projectile carries the chainBonus
     const leftProjectiles = projectiles.filter(
       (p) => Math.abs(p.origin.x - left.x) < 1 && Math.abs(p.origin.y - left.y) < 1,
@@ -2149,17 +2156,17 @@ describe('GameStateMachine — global upgrades wiring', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     killCurrentEnemy(gsm)
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
     // Kill level 2 enemy → pendingLevelUp again
     killCurrentEnemy(gsm)
-    expect(gsm.getState().pendingLevelUp).toBe(true)
+    expect(getFlat(gsm).pendingLevelUp).toBe(true)
     // Force game_over via player damage while pendingLevelUp is true
-    gsm._applyPlayerHitForTesting(gsm.getState().player.maxHp)
-    expect(gsm.getState().phase).toBe('game_over')
+    gsm._applyPlayerHitForTesting(getFlat(gsm).player.maxHp)
+    expect(getFlat(gsm).phase).toBe('game_over')
     gsm.restartLevel()
-    expect(gsm.getState().pendingLevelUp).toBe(false)
+    expect(getFlat(gsm).pendingLevelUp).toBe(false)
   })
 
   it('enemy stun does not spawn new deliveries while frozen', () => {
@@ -2170,11 +2177,11 @@ describe('GameStateMachine — global upgrades wiring', () => {
     gsm._applyUpgradeForTesting('crit_stun_1')
     // Land a CRIT to lock stun
     gsm._applyHitForTesting('CRIT', 'slow_shot')
-    const stunUntil = gsm.getState().enemy.stunnedUntilMs
+    const stunUntil = getFlat(gsm).enemy.stunnedUntilMs
     // Advance time inside the stun window — no new delivery should be born
-    const startDeliveries = gsm.getState().activeDeliveries.length
-    gsm.update(Math.min(stunUntil - gsm.getState().elapsedMs - 50, MAX_DELTA_MS), [])
-    expect(gsm.getState().activeDeliveries.length).toBeLessThanOrEqual(startDeliveries)
+    const startDeliveries = getFlat(gsm).activeDeliveries.length
+    gsm.update(Math.min(stunUntil - getFlat(gsm).elapsedMs - 50, MAX_DELTA_MS), [])
+    expect(getFlat(gsm).activeDeliveries.length).toBeLessThanOrEqual(startDeliveries)
   })
 })
 
@@ -2185,7 +2192,7 @@ describe('GameStateMachine — global upgrades wiring', () => {
 describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
   it('AC #1 — fightStats is present in GameState with left/right/durationMs structure', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.fightStats).toBeDefined()
     expect(state.fightStats.left).toBeDefined()
     expect(state.fightStats.right).toBeDefined()
@@ -2194,14 +2201,14 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
 
   it('AC #2 — fightStats is readonly-safe: mutating returned copy does not affect internal state', () => {
     const gsm = new GameStateMachine()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     state.fightStats.left.fireCount = 9999
     state.fightStats.left.hitsByResult.CRIT = 9999
     state.fightStats.left.touchGaps.push(9999)
     // Re-read should not reflect the mutations
-    expect(gsm.getState().fightStats.left.fireCount).toBe(0)
-    expect(gsm.getState().fightStats.left.hitsByResult.CRIT).toBe(0)
-    expect(gsm.getState().fightStats.left.touchGaps).toHaveLength(0)
+    expect(getFlat(gsm).fightStats.left.fireCount).toBe(0)
+    expect(getFlat(gsm).fightStats.left.hitsByResult.CRIT).toBe(0)
+    expect(getFlat(gsm).fightStats.left.touchGaps).toHaveLength(0)
   })
 
   it('AC #3 — hitsByResult increments correctly for each hit result via _applyHitForTesting', () => {
@@ -2215,7 +2222,7 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm._applyHitForTesting('CRIT',  'fast_shot', 0, 0, 'right')
     gsm._applyHitForTesting('HIT',   'fast_shot', 0, 0, 'right')
 
-    const { left, right } = gsm.getState().fightStats
+    const { left, right } = getFlat(gsm).fightStats
     expect(left.hitsByResult.CRIT).toBe(1)
     expect(left.hitsByResult.HIT).toBe(1)
     expect(left.hitsByResult.GRAZE).toBe(1)
@@ -2237,9 +2244,9 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm._applyHitForTesting('MISS', 'slow_shot', 0, 0, 'left')
 
     const expected = SLOW_SKILL_DAMAGE * HIT_DAMAGE_MULTIPLIER * 2 // MISS adds 0
-    expect(gsm.getState().fightStats.left.totalDamage).toBe(expected)
+    expect(getFlat(gsm).fightStats.left.totalDamage).toBe(expected)
     // Right side untouched
-    expect(gsm.getState().fightStats.right.totalDamage).toBe(0)
+    expect(getFlat(gsm).fightStats.right.totalDamage).toBe(0)
   })
 
   it('AC #5 — touchGaps accumulates gaps between consecutive touch interactions on the same slot', () => {
@@ -2254,14 +2261,14 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm.update(16, [makeUp(0, Math.round(leftPos.x), Math.round(leftPos.y))])
     // Gap: no second down yet — touchGaps should be empty
 
-    expect(gsm.getState().fightStats.left.touchGaps).toHaveLength(0)
+    expect(getFlat(gsm).fightStats.left.touchGaps).toHaveLength(0)
 
     // Advance 100ms, then touch down again — gap = 100ms
     let r = 100
     while (r > 0) { const s = Math.min(r, MAX_DELTA_MS); gsm.update(s, []); r -= s }
     gsm.update(16, [makeDown(0, Math.round(leftPos.x), Math.round(leftPos.y))])
 
-    const gaps = gsm.getState().fightStats.left.touchGaps
+    const gaps = getFlat(gsm).fightStats.left.touchGaps
     expect(gaps).toHaveLength(1)
     expect(gaps[0]).toBeGreaterThan(0)
   })
@@ -2274,16 +2281,16 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
     gsm._applyHitForTesting('HIT', 'fast_shot', 0, 0, 'right')
 
-    expect(gsm.getState().fightStats.left.hitsByResult.CRIT).toBe(1)
-    expect(gsm.getState().fightStats.right.hitsByResult.HIT).toBe(1)
+    expect(getFlat(gsm).fightStats.left.hitsByResult.CRIT).toBe(1)
+    expect(getFlat(gsm).fightStats.right.hitsByResult.HIT).toBe(1)
 
     // Kill enemy to enter fight_overview
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().phase).toBe('fight_overview')
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
 
-    const { left, right, durationMs } = gsm.getState().fightStats
+    const { left, right, durationMs } = getFlat(gsm).fightStats
     expect(left.hitsByResult.CRIT).toBe(0)
     expect(left.hitsByResult.HIT).toBe(0)
     expect(right.hitsByResult.HIT).toBe(0)
@@ -2308,11 +2315,11 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
       if (i < ENEMY_POOL.length - 1) { gsm.confirmLevelUpUpgrade(); gsm.nextLevel() }
     }
     // After the last kill, phase is fight_overview (not victory)
-    expect(gsm.getState().phase).toBe('fight_overview')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
 
     gsm.restartGame()
 
-    const { left, right, durationMs } = gsm.getState().fightStats
+    const { left, right, durationMs } = getFlat(gsm).fightStats
     expect(left.hitsByResult.CRIT).toBe(0)
     expect(right.hitsByResult.CRIT).toBe(0)
     expect(left.totalDamage).toBe(0)
@@ -2338,8 +2345,8 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm.update(16, [makeDown(1, Math.round(rightPos.x), Math.round(rightPos.y))])
     gsm.update(16, [makeUp(1, Math.round(rightPos.x), Math.round(rightPos.y))])
 
-    expect(gsm.getState().fightStats.left.fireCount).toBe(2)
-    expect(gsm.getState().fightStats.right.fireCount).toBe(1)
+    expect(getFlat(gsm).fightStats.left.fireCount).toBe(2)
+    expect(getFlat(gsm).fightStats.right.fireCount).toBe(1)
   })
 
   it('AC #7 — durationMs tracks elapsed battle time (capped per frame)', () => {
@@ -2349,13 +2356,13 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
     gsm.update(MAX_DELTA_MS, [])
     gsm.update(MAX_DELTA_MS, [])
     // 50 + 50 = 100ms of battle time
-    expect(gsm.getState().fightStats.durationMs).toBe(MAX_DELTA_MS * 2)
+    expect(getFlat(gsm).fightStats.durationMs).toBe(MAX_DELTA_MS * 2)
   })
 
   it('skillType in SkillFightStats reflects the slot skill at initialisation', () => {
     // Default config: left=white_shot, right=fireball
     const gsm = new GameStateMachine()
-    const { left, right } = gsm.getState().fightStats
+    const { left, right } = getFlat(gsm).fightStats
     expect(left.skillType).toBe('white_shot')
     expect(right.skillType).toBe('fireball')
   })
@@ -2368,7 +2375,7 @@ describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
       gsm._applyHitForTesting('HIT', 'fast_shot', 0, 0, 'right')
     }
 
-    const { left, right } = gsm.getState().fightStats
+    const { left, right } = getFlat(gsm).fightStats
     expect(right.hitsByResult.HIT).toBe(5)
     expect(left.hitsByResult.HIT).toBe(0)
     expect(left.totalDamage).toBe(0)
@@ -2383,22 +2390,22 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
   it('completeFightOverview() does nothing when not in fight_overview phase (battle)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
     gsm.completeFightOverview()
-    expect(gsm.getState().phase).toBe('battle')
-    expect(gsm.getState().currentLevel).toBe(1)
+    expect(getFlat(gsm).phase).toBe('battle')
+    expect(getFlat(gsm).currentLevel).toBe(1)
   })
 
   it('completeFightOverview() on non-last level advances to next level (battle, level+1)', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     // Kill level 1 enemy → fight_overview (pendingLevelUp=true)
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().phase).toBe('fight_overview')
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     // Confirm upgrade to release pendingLevelUp gate, then call completeFightOverview
     gsm.confirmLevelUpUpgrade()
     gsm.completeFightOverview()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.phase).toBe('battle')
     expect(state.currentLevel).toBe(2)
   })
@@ -2416,10 +2423,10 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
         gsm.nextLevel()
       }
     }
-    expect(gsm.getState().phase).toBe('fight_overview')
-    expect(gsm.getState().currentLevel).toBe(ENEMY_POOL.length)
+    expect(getFlat(gsm).phase).toBe('fight_overview')
+    expect(getFlat(gsm).currentLevel).toBe(ENEMY_POOL.length)
     gsm.completeFightOverview()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.phase).toBe('battle')
     expect(state.currentLevel).toBe(1)
   })
@@ -2428,19 +2435,19 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
-    expect(gsm.getState().phase).toBe('fight_overview')
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).phase).toBe('fight_overview')
     // Snapshot should be present (captured at kill time)
-    expect(gsm.getState().fightStatsSnapshot).not.toBeNull()
+    expect(getFlat(gsm).fightStatsSnapshot).not.toBeNull()
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
     // After transitioning to next level, snapshot is cleared
-    expect(gsm.getState().fightStatsSnapshot).toBeNull()
+    expect(getFlat(gsm).fightStatsSnapshot).toBeNull()
   })
 
   it('fightStatsSnapshot is null at game start (loading phase)', () => {
     const gsm = new GameStateMachine()
-    expect(gsm.getState().fightStatsSnapshot).toBeNull()
+    expect(getFlat(gsm).fightStatsSnapshot).toBeNull()
   })
 
   it('fightStatsSnapshot is cleared after restartGame()', () => {
@@ -2455,9 +2462,9 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
         gsm.nextLevel()
       }
     }
-    expect(gsm.getState().fightStatsSnapshot).not.toBeNull()
+    expect(getFlat(gsm).fightStatsSnapshot).not.toBeNull()
     gsm.restartGame()
-    expect(gsm.getState().fightStatsSnapshot).toBeNull()
+    expect(getFlat(gsm).fightStatsSnapshot).toBeNull()
   })
 
   it('fightStatsSnapshot contains the stats from the completed fight', () => {
@@ -2466,8 +2473,8 @@ describe('GameStateMachine — completeFightOverview() method (task-47)', () => 
     // Apply exactly 2 CRITs then kill
     gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
     gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
-    const snapshot = gsm.getState().fightStatsSnapshot
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot', 0, 0, 'left')
+    const snapshot = getFlat(gsm).fightStatsSnapshot
     expect(snapshot).not.toBeNull()
     // The snapshot should reflect the crits applied before/during the kill
     expect(snapshot!.left.hitsByResult.CRIT).toBeGreaterThanOrEqual(2)
@@ -2483,39 +2490,39 @@ describe('GameStateMachine — ice_crystal freeze mechanic', () => {
   it('AC #1 — enemyFrozenUntilMs is 0 at battle start', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBe(0)
   })
 
   it('AC #2 — CRIT ice_crystal hit freezes for ICE_CRYSTAL_FREEZE_CRIT_MS', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(100, [])
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
-    expect(gsm.getState().enemyFrozenUntilMs).toBe(before.elapsedMs + ICE_CRYSTAL_FREEZE_CRIT_MS)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBe(before.elapsedMs + ICE_CRYSTAL_FREEZE_CRIT_MS)
   })
 
   it('AC #2 — HIT ice_crystal hit freezes for ICE_CRYSTAL_FREEZE_HIT_MS', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(100, [])
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     gsm._applyHitForTesting('HIT', 'ice_crystal')
-    expect(gsm.getState().enemyFrozenUntilMs).toBe(before.elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBe(before.elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS)
   })
 
   it('AC #3 — GRAZE ice_crystal hit does not set freeze', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('GRAZE', 'ice_crystal')
-    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBe(0)
   })
 
   it('AC #3 — MISS ice_crystal hit does not set freeze', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('MISS', 'ice_crystal')
-    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBe(0)
   })
 
   it('AC #7 — re-hit resets freeze timer (not additive)', () => {
@@ -2523,13 +2530,13 @@ describe('GameStateMachine — ice_crystal freeze mechanic', () => {
     gsm.startBattle()
     gsm.update(100, [])
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
-    const afterFirst = gsm.getState().enemyFrozenUntilMs
+    const afterFirst = getFlat(gsm).enemyFrozenUntilMs
     // Advance time but stay inside freeze window
     gsm.update(500, [])
     gsm._applyHitForTesting('HIT', 'ice_crystal')
-    const afterSecond = gsm.getState().enemyFrozenUntilMs
+    const afterSecond = getFlat(gsm).enemyFrozenUntilMs
     // Second hit resets to elapsedMs + HIT_MS (not first + HIT_MS)
-    expect(afterSecond).toBe(gsm.getState().elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS)
+    expect(afterSecond).toBe(getFlat(gsm).elapsedMs + ICE_CRYSTAL_FREEZE_HIT_MS)
     expect(afterSecond).toBeLessThan(afterFirst + ICE_CRYSTAL_FREEZE_HIT_MS)
   })
 
@@ -2543,7 +2550,7 @@ describe('GameStateMachine — ice_crystal freeze mechanic', () => {
     gsm.update(100, [])
     // Both crit stun and ice_crystal freeze triggered by a CRIT
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     const stunEnd = state.enemy.stunnedUntilMs
     const freezeEnd = state.enemyFrozenUntilMs
     // freeze should be longer (ICE_CRYSTAL_FREEZE_CRIT_MS = 2000ms vs stun typically 1000ms)
@@ -2554,12 +2561,12 @@ describe('GameStateMachine — ice_crystal freeze mechanic', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
-    expect(gsm.getState().enemyFrozenUntilMs).toBeGreaterThan(0)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBeGreaterThan(0)
     // Kill enemy and advance to next level
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    expect(gsm.getState().enemyFrozenUntilMs).toBe(0)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBe(0)
   })
 
   it('AC #4 — freeze blocks behavior runner (no new attacks)', () => {
@@ -2571,14 +2578,14 @@ describe('GameStateMachine — ice_crystal freeze mechanic', () => {
     gsm.update(100, [])
     // Apply freeze
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
-    const beforeDeliveries = gsm.getState().activeDeliveries.length
+    const beforeDeliveries = getFlat(gsm).activeDeliveries.length
     // Advance well within freeze window (CRIT freeze = 2000ms)
     gsm.update(500, [])
     // Deliveries should not have grown (enemy runner blocked by freeze)
     // This is a best-effort check: works for enemies without auto-spawning graphs
     // The real check is that enemyFrozenUntilMs > elapsedMs blocks tick
-    expect(gsm.getState().enemyFrozenUntilMs).toBeGreaterThan(gsm.getState().elapsedMs)
-    expect(gsm.getState().activeDeliveries.length).toBe(beforeDeliveries)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBeGreaterThan(getFlat(gsm).elapsedMs)
+    expect(getFlat(gsm).activeDeliveries.length).toBe(beforeDeliveries)
   })
 
   it('AC #6 — in-flight deliveries continue during freeze', () => {
@@ -2590,7 +2597,7 @@ describe('GameStateMachine — ice_crystal freeze mechanic', () => {
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
     gsm.update(500, [])
     // No throw / crash — delivery update ran normally
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 })
 
@@ -2609,7 +2616,7 @@ describe('GameStateMachine — MaskHitDetector integration', () => {
   it('enemyAnimKey and enemyFrameIndex have defaults in initial state', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.enemyAnimKey).toBe('idle')
     expect(state.enemyFrameIndex).toBe(0)
   })
@@ -2623,7 +2630,7 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
   it('AC #3 — discharge fields are 0/null at battle start', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.lightningDischargeUntilMs).toBe(0)
     expect(state.lightningDischargeResult).toBeNull()
     expect(state.lightningDischargeTarget).toBeNull()
@@ -2637,7 +2644,7 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     gsm.startBattle()
     gsm.update(16, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
     gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
-    expect(gsm.getState().activeProjectiles).toHaveLength(0)
+    expect(getFlat(gsm).activeProjectiles).toHaveLength(0)
   })
 
   it('AC #2 — damage is applied immediately on release (enemyHp decreases or stays same on miss)', () => {
@@ -2646,12 +2653,12 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
       { skillType: 'fast_shot', side: 'right', slotIndex: 0 },
     ])
     gsm.startBattle()
-    const hpBefore = gsm.getState().enemyHp
+    const hpBefore = getFlat(gsm).enemyHp
     // Hold for half a rotation period so reticle is mid-screen (should hit enemy)
     gsm.update(100, [makeDown(0, LEFT_0_X, LEFT_0_Y)])
     gsm.update(16, [makeUp(0, LEFT_0_X, LEFT_0_Y)])
     // Note: if reticle misses, HP stays the same — so we only assert it didn't increase
-    expect(gsm.getState().enemyHp).toBeLessThanOrEqual(hpBefore)
+    expect(getFlat(gsm).enemyHp).toBeLessThanOrEqual(hpBefore)
   })
 
   it('AC #3 — lightningDischargeTarget is set after lightning_blast release', () => {
@@ -2665,37 +2672,37 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     const lbX = Math.round(lb.x), lbY = Math.round(lb.y)
     gsm.update(16, [makeDown(0, lbX, lbY)])
     gsm.update(16, [makeUp(0, lbX, lbY)])
-    expect(gsm.getState().lightningDischargeTarget).not.toBeNull()
+    expect(getFlat(gsm).lightningDischargeTarget).not.toBeNull()
   })
 
   it('AC #4 — CRIT hit sets discharge to LIGHTNING_BLAST_DURATION_CRIT_MS', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(100, [])
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     gsm._fireLightningBlastForTesting('CRIT')
-    expect(gsm.getState().lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_CRIT_MS)
-    expect(gsm.getState().lightningDischargeResult).toBe('CRIT')
+    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_CRIT_MS)
+    expect(getFlat(gsm).lightningDischargeResult).toBe('CRIT')
   })
 
   it('AC #4 — HIT hit sets discharge to LIGHTNING_BLAST_DURATION_HIT_MS', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(100, [])
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     gsm._fireLightningBlastForTesting('HIT')
-    expect(gsm.getState().lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_HIT_MS)
-    expect(gsm.getState().lightningDischargeResult).toBe('HIT')
+    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_HIT_MS)
+    expect(getFlat(gsm).lightningDischargeResult).toBe('HIT')
   })
 
   it('AC #4 — GRAZE hit sets discharge to LIGHTNING_BLAST_DURATION_GRAZE_MS', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm.update(100, [])
-    const before = gsm.getState()
+    const before = getFlat(gsm)
     gsm._fireLightningBlastForTesting('GRAZE')
-    expect(gsm.getState().lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_GRAZE_MS)
-    expect(gsm.getState().lightningDischargeResult).toBe('GRAZE')
+    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(before.elapsedMs + LIGHTNING_BLAST_DURATION_GRAZE_MS)
+    expect(getFlat(gsm).lightningDischargeResult).toBe('GRAZE')
   })
 
   it('AC #4 — MISS sets discharge duration to 0, result to MISS', () => {
@@ -2703,16 +2710,16 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     gsm.startBattle()
     gsm.update(100, [])
     gsm._fireLightningBlastForTesting('MISS')
-    expect(gsm.getState().lightningDischargeUntilMs).toBe(gsm.getState().elapsedMs)
-    expect(gsm.getState().lightningDischargeResult).toBe('MISS')
+    expect(getFlat(gsm).lightningDischargeUntilMs).toBe(getFlat(gsm).elapsedMs)
+    expect(getFlat(gsm).lightningDischargeResult).toBe('MISS')
   })
 
   it('AC #5 — GRAZE uses standard GRAZE damage multiplier', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
-    const hpBefore = gsm.getState().enemyHp
+    const hpBefore = getFlat(gsm).enemyHp
     gsm._fireLightningBlastForTesting('GRAZE')
-    const damage = hpBefore - gsm.getState().enemyHp
+    const damage = hpBefore - getFlat(gsm).enemyHp
     expect(damage).toBeGreaterThan(0)
     expect(damage).toBeLessThan(LIGHTNING_BLAST_DAMAGE_MAX * CRIT_DAMAGE_MULTIPLIER)
   })
@@ -2721,11 +2728,11 @@ describe('GameStateMachine — lightning_blast instant hit mechanic', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     gsm._fireLightningBlastForTesting('CRIT')
-    expect(gsm.getState().lightningDischargeUntilMs).toBeGreaterThan(0)
-    while (gsm.getState().enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
+    expect(getFlat(gsm).lightningDischargeUntilMs).toBeGreaterThan(0)
+    while (getFlat(gsm).enemyHp > 0) gsm._applyHitForTesting('CRIT', 'slow_shot')
     gsm.confirmLevelUpUpgrade()
     gsm.nextLevel()
-    const state = gsm.getState()
+    const state = getFlat(gsm)
     expect(state.lightningDischargeUntilMs).toBe(0)
     expect(state.lightningDischargeResult).toBeNull()
     expect(state.lightningDischargeTarget).toBeNull()
@@ -2745,16 +2752,16 @@ describe('GameStateMachine — ice_crystal freeze-end transition', () => {
     gsm._applyHitForTesting('CRIT', 'ice_crystal')
     // Advance well inside the freeze window → wasFrozenLastTick = true
     gsm.update(100, [])
-    expect(gsm.getState().enemyFrozenUntilMs).toBeGreaterThan(gsm.getState().elapsedMs)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBeGreaterThan(getFlat(gsm).elapsedMs)
     // Advance past freeze end — the freeze-end branch (_lastAnimNodeId = null) fires
-    const freezeEnd = gsm.getState().enemyFrozenUntilMs
-    const current = gsm.getState().elapsedMs
+    const freezeEnd = getFlat(gsm).enemyFrozenUntilMs
+    const current = getFlat(gsm).elapsedMs
     const remaining = freezeEnd - current + 50
     for (let t = 0; t < remaining; t += MAX_DELTA_MS) {
       gsm.update(MAX_DELTA_MS, [])
     }
-    expect(gsm.getState().enemyFrozenUntilMs).toBeLessThanOrEqual(gsm.getState().elapsedMs)
+    expect(getFlat(gsm).enemyFrozenUntilMs).toBeLessThanOrEqual(getFlat(gsm).elapsedMs)
     // Game continues normally after freeze ends
-    expect(gsm.getState().phase).toBe('battle')
+    expect(getFlat(gsm).phase).toBe('battle')
   })
 })
