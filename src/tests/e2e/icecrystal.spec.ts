@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { gameApi } from '../helpers/gameApi'
 import type { BehaviorGraph } from '../../types'
 
@@ -7,7 +7,7 @@ test.use({ viewport: { width: 390, height: 844 } })
 const ICE_CRYSTAL_FREEZE_HIT_MS = 1000
 const ICE_CRYSTAL_FREEZE_CRIT_MS = 2000
 
-async function waitForBridge(page: import('@playwright/test').Page): Promise<void> {
+async function waitForBridge(page: Page): Promise<void> {
   await page.waitForFunction(
     () => (window as unknown as Record<string, unknown>)['__game'] !== undefined,
     { timeout: 5000 },

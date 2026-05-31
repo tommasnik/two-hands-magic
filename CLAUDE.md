@@ -7,6 +7,60 @@ Vstupní mechanika (rotující laser reticle ovládaný dotykem) vychází z pro
 
 ## Architecture — Non-Negotiable Rules
 
+### 0. No inline / dynamic imports
+
+**Never** use `import('module').Type` inline inside type annotations. All imports must be at the top of the file.
+
+```ts
+// WRONG
+result: import('../../types').HitResult
+export const FOO: Record<import('../../types').UpgradePath, string>
+
+// CORRECT
+import type { HitResult, UpgradePath } from '../../types'
+result: HitResult
+export const FOO: Record<UpgradePath, string>
+```
+
+Verify before committing: `grep -rn "import('" src/` must return nothing.
+
+---
+
+### 0b. No TypeScript escape hatches
+
+Avoid `any`, `as`, and `!` — they hide type errors instead of fixing them.
+
+**`any`** — never. Use `unknown` + narrowing, or define the actual type.
+
+**`as` casts** — only when TypeScript genuinely can't infer the type and fixing it properly would take more than ~5 lines. Never use `as` to silence an error you don't understand.
+
+```ts
+// WRONG — silencing instead of fixing
+const el = document.getElementById('canvas') as HTMLCanvasElement
+const result = getData() as SomeType
+
+// CORRECT — narrow properly
+const el = document.getElementById('canvas')
+if (!(el instanceof HTMLCanvasElement)) throw new Error('canvas missing')
+```
+
+**`!` (non-null assertion)** — never. Guard with `if`, `??`, or restructure so null is impossible.
+
+```ts
+// WRONG
+const value = map.get(key)!
+
+// CORRECT
+const value = map.get(key)
+if (value === undefined) throw new Error(`missing key: ${key}`)
+```
+
+Exceptions (document in a comment why):
+- Third-party type definitions that are wrong/incomplete
+- Phaser scene internals where the types are structurally unsound
+
+---
+
 ### 1. Game logic lives in `src/game/` — zero Phaser dependency
 
 All domain logic (entities, systems, state machine) must be pure TypeScript with **no Phaser imports**.

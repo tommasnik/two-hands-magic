@@ -3,10 +3,10 @@ id: TASK-73
 title: >-
   Refactoring: EffectsManager — vizuální efekty ven ze state, event-driven
   rendering
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 10:41'
-updated_date: '2026-05-31 10:43'
+updated_date: '2026-05-31 11:04'
 labels:
   - refactoring
   - rendering
@@ -135,12 +135,12 @@ this._skillRenderer.drawActiveEffects(ctx, this._effectsManager.activeEffects, s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `FightState` a `FightSnapshot` neobsahují žádná lightning-specific pole
-- [ ] #2 `processCommands()` vrací `void`, ne `LightningState | null`
-- [ ] #3 `GameStateMachine.update()` vrací `GameEvent[]`
-- [ ] #4 Lightning discharge vizuál funguje identicky jako před refactoringem (blikání po zásahu, správná délka pro CRIT/HIT/GRAZE)
-- [ ] #5 `EffectsManager.process()` správně zpracuje 2 hity ve stejném delta time — oba spustí svůj efekt
-- [ ] #6 Skill module `lightningBlastModule` obsahuje `hitEffect` s `durationByResult`
-- [ ] #7 Všechny unit testy procházejí (`npm run test`)
-- [ ] #8 Žádný nový lightning-specific branching v GSM, FightState ani StateBuilder
+- [x] #1 `FightState` a `FightSnapshot` neobsahují žádná lightning-specific pole
+- [x] #2 `processCommands()` vrací `void`, ne `LightningState | null`
+- [x] #3 `GameStateMachine.update()` vrací `GameEvent[]`
+- [x] #4 Lightning discharge vizuál funguje identicky jako před refactoringem (blikání po zásahu, správná délka pro CRIT/HIT/GRAZE)
+- [x] #5 `EffectsManager.process()` správně zpracuje 2 hity ve stejném delta time — oba spustí svůj efekt
+- [x] #6 Skill module `lightningBlastModule` obsahuje `hitEffect` s `durationByResult`
+- [x] #7 Všechny unit testy procházejí (`npm run test`)
+- [x] #8 Žádný nový lightning-specific branching v GSM, FightState ani StateBuilder
 <!-- AC:END -->

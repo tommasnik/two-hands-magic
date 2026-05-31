@@ -12,7 +12,6 @@ import { getXpProgress } from '../../game/upgrades'
 import { getSkillColor } from './SkillRenderer'
 import type { GameState, ActiveSlotState } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
-import type { TouchPoint } from '../../types'
 
 interface FloatText {
   x: number; y: number
@@ -95,7 +94,7 @@ export class HUDRenderer {
     for (const slot of state.activeSlots) {
       if (slot.active) {
         const reticle = computeReticle(
-          { rotationPeriodMs: slot.rotationPeriodMs } as TouchPoint,
+          { rotationPeriodMs: slot.rotationPeriodMs },
           slot.dragOffsetX,
           state.elapsedMs - slot.touchStartMs,
         )

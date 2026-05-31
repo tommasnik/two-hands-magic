@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { gameApi } from '../helpers/gameApi'
 import {
   FLOAT_TEXT_COLOR_CRIT,
@@ -10,7 +10,7 @@ import {
 // iPhone 14 portrait
 test.use({ viewport: { width: 390, height: 844 } })
 
-async function waitForBridge(page: import('@playwright/test').Page): Promise<void> {
+async function waitForBridge(page: Page): Promise<void> {
   await page.waitForFunction(
     () => (window as unknown as Record<string, unknown>)['__game'] !== undefined,
     { timeout: 5000 },

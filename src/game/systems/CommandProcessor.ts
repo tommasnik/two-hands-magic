@@ -10,8 +10,7 @@ import type { ProjectileSystem } from './ProjectileSystem'
 import type { CombatSystem } from './CombatSystem'
 import type { Enemy } from '../entities/Enemy'
 import { computeReticle } from './AimSystem'
-import type { TouchPoint } from '../../types'
-import type { GlobalUpgradeState } from '../../types'
+import type { HitResult, SkillType, GlobalUpgradeState } from '../../types'
 
 export interface CommandProcessorContext {
   layout: ActiveTouchPointPos[]
@@ -23,8 +22,8 @@ export interface CommandProcessorContext {
   projectileSystem: ProjectileSystem
   enemy: Enemy
   applyHit: (
-    result: import('../../types').HitResult,
-    skillType: import('../../types').SkillType,
+    result: HitResult,
+    skillType: SkillType,
     position: { x: number; y: number } | null,
     chainBonus: number,
     projectileRadius: number,
@@ -64,14 +63,13 @@ export function processCommands(
       const ts = ctx.slotStates[cmd.touchPointId]
       if (ts) { ts.active = false; ts.dragOffsetX = 0 }
       const slot = ctx.layout.find((s) => s.id === cmd.touchPointId)
-      if (slot) {
+      if (slot && ts) {
         ctx.lastTouchUpMs[cmd.touchPointId] = ctx.elapsedMs
         ctx.combat.fightStats[slot.side].fireCount++
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const touchStartMs = ctx.slotStates[cmd.touchPointId]!.touchStartMs
+        const touchStartMs = ts.touchStartMs
         const effectivePeriodMs = slot.rotationPeriodMs * ctx.globalUpgrades.castTimeMultiplier
         const reticle = computeReticle(
-          { rotationPeriodMs: effectivePeriodMs } as TouchPoint,
+          { rotationPeriodMs: effectivePeriodMs },
           cmd.dragOffsetX,
           ctx.elapsedMs - touchStartMs,
         )

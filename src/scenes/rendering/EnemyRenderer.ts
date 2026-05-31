@@ -132,7 +132,9 @@ export class EnemyRenderer {
     const frame = textures.getFrame(textureKey)
     if (!frame?.source.image) return
 
-    const img = frame.source.image as HTMLImageElement
+    const { image } = frame.source
+    if (!(image instanceof HTMLImageElement)) return
+    const img = image
     const manifestId = state.enemyManifestId
     let drawW = state.enemyDisplayWidth ?? 128
     let anchorX = 0.5
@@ -156,10 +158,10 @@ export class EnemyRenderer {
       try {
         if (textures.exists(maskKey)) {
           const maskFrame = textures.getFrame(maskKey)
-          if (maskFrame?.source.image) {
+          if (maskFrame?.source.image instanceof HTMLImageElement) {
             ctx.save()
             ctx.globalAlpha = HIT_ZONE_OVERLAY_OPACITY
-            ctx.drawImage(maskFrame.source.image as HTMLImageElement, dx, dy, drawW, drawH)
+            ctx.drawImage(maskFrame.source.image, dx, dy, drawW, drawH)
             ctx.restore()
           }
         }

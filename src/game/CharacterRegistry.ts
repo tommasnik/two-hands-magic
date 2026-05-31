@@ -17,6 +17,10 @@ export interface ManifestAnimationDef {
   loop: boolean
   /** true = hit-zone mask PNGs exist in masks/ directory for this animation. */
   hasMasks: boolean
+  /** PixelLab source metadata — present in JSON, ignored at runtime. */
+  source?: unknown
+  /** List of mask frame names that have been manually edited. */
+  masksEdited?: string[]
 }
 
 /** Runtime representation of a character manifest.json. */
@@ -33,6 +37,8 @@ export interface CharacterManifest {
   anchorY?: number
   /** Map of animKey -> animation definition. */
   animations: Record<string, ManifestAnimationDef>
+  /** PixelLab / tool source metadata — present in JSON, ignored at runtime. */
+  source?: unknown
 }
 
 /**

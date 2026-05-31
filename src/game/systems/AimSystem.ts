@@ -1,5 +1,4 @@
 import { AIM_GAIN, GAME_WIDTH, LASER_ORIGIN_Y } from '../constants'
-import type { TouchPoint } from '../../types'
 
 export interface ReticlePosition {
   x: number
@@ -16,11 +15,11 @@ export interface ReticlePosition {
  *
  * Horizontal correction: screen centre + dragOffsetX * AIM_GAIN, clamped to [0, GAME_WIDTH].
  *
- * @param touchPoint    - which touch point is active (carries rotationPeriodMs)
+ * @param touchPoint    - only rotationPeriodMs is used from the touch point
  * @param dragOffsetX   - horizontal drag in pixels since touch down
  * @param elapsedMs     - time elapsed since touch down, in ms
  */
-export function computeReticle(touchPoint: TouchPoint, dragOffsetX: number, elapsedMs: number): ReticlePosition {
+export function computeReticle(touchPoint: { rotationPeriodMs: number }, dragOffsetX: number, elapsedMs: number): ReticlePosition {
   const { rotationPeriodMs } = touchPoint
 
   // Phase within current cycle: 0 = start (bottom), approaches 1 (top) over one period.

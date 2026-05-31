@@ -1,9 +1,9 @@
-import type { InputEvent, SkillType, TouchPointId } from '../../types'
+import type { InputEvent, SkillType } from '../../types'
 import { LEFT_SIDE_SKILL, RIGHT_SIDE_SKILL, MAX_SIMULTANEOUS_TOUCHES } from '../constants'
 
 export interface AimCommand {
   type: 'aim'
-  touchPointId: TouchPointId
+  touchPointId: string
   dragOffsetX: number
   /** Skill type routed from the touch point side assignment. */
   skillType: SkillType
@@ -11,7 +11,7 @@ export interface AimCommand {
 
 export interface FireCommand {
   type: 'fire'
-  touchPointId: TouchPointId
+  touchPointId: string
   dragOffsetX: number
   /** Skill type routed from the touch point side assignment. */
   skillType: SkillType
@@ -25,7 +25,7 @@ export type GameCommand = AimCommand | FireCommand
  */
 export interface TouchPointEntry {
   /** Unique identifier for this touch point. */
-  id: TouchPointId | string
+  id: string
   /** Horizontal canvas position. Unit: px. */
   x: number
   /** Vertical canvas position. Unit: px. */
@@ -35,7 +35,7 @@ export interface TouchPointEntry {
 }
 
 interface PointerState {
-  touchPointId: TouchPointId | string
+  touchPointId: string
   skillType: SkillType
   startX: number
   currentX: number
@@ -75,7 +75,7 @@ export class InputManager {
    *   When using the legacy form, side is derived from the named color IDs.
    */
   constructor(
-    touchPointPositions: Array<{ id: TouchPointId | string; x: number; y: number; side?: 'left' | 'right' }>,
+    touchPointPositions: Array<{ id: string; x: number; y: number; side?: 'left' | 'right' }>,
   ) {
     // Derive side from touch point color names for backward compatibility when side is not provided.
     // Left-side IDs: green, violet, orange. Right-side IDs: blue, red, yellow.
@@ -121,7 +121,7 @@ export class InputManager {
           })
           commands.push({
             type: 'aim',
-            touchPointId: tp.id as TouchPointId,
+            touchPointId: tp.id,
             skillType,
             dragOffsetX: 0,
           })
@@ -134,7 +134,7 @@ export class InputManager {
           state.currentX = event.x
           commands.push({
             type: 'aim',
-            touchPointId: state.touchPointId as TouchPointId,
+            touchPointId: state.touchPointId,
             skillType: state.skillType,
             dragOffsetX: event.x - state.startX,
           })
@@ -148,7 +148,7 @@ export class InputManager {
           this._pointers.delete(event.pointerId)
           commands.push({
             type: 'fire',
-            touchPointId: state.touchPointId as TouchPointId,
+            touchPointId: state.touchPointId,
             skillType: state.skillType,
             dragOffsetX,
           })

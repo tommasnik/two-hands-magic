@@ -20,7 +20,7 @@ import type { DeliveryVisual, DeliveryRenderContext, RenderDelivery } from '../D
 
 export class SpritesheetDeliveryVisual implements DeliveryVisual {
   /** Live sprites keyed by delivery id (one instance is shared across deliveries). */
-  private readonly sprites = new Map<string, Phaser.GameObjects.Image>()
+  private readonly sprites = new Map<string, Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>()
 
   /**
    * @param textureKey Phaser texture key to render. If absent at runtime the
@@ -36,13 +36,17 @@ export class SpritesheetDeliveryVisual implements DeliveryVisual {
   spawn(d: RenderDelivery, rc: DeliveryRenderContext): void {
     const { scene } = rc
     if (!scene.textures.exists(this.textureKey)) return
-    const img = scene.add.image(d.origin.x, d.origin.y, this.textureKey)
-    img.setDepth(50)
-    if (this.animKey && 'play' in img) {
-      // When the texture is a spritesheet with a registered animation.
-      ;(img as unknown as Phaser.GameObjects.Sprite).play(this.animKey)
+    if (this.animKey) {
+      // Use a Sprite when an animation key is provided — Sprite supports play().
+      const sprite = scene.add.sprite(d.origin.x, d.origin.y, this.textureKey)
+      sprite.setDepth(50)
+      sprite.play(this.animKey)
+      this.sprites.set(d.id, sprite)
+    } else {
+      const img = scene.add.image(d.origin.x, d.origin.y, this.textureKey)
+      img.setDepth(50)
+      this.sprites.set(d.id, img)
     }
-    this.sprites.set(d.id, img)
   }
 
   update(d: RenderDelivery, _rc: DeliveryRenderContext): void {

@@ -3,6 +3,7 @@ import { InputManager } from '../../game/systems/InputManager'
 import { computeTouchPointPositions } from '../../game/entities/touchPoints'
 import { GAME_WIDTH, GAME_HEIGHT, PIXELS_PER_CM, MAX_SIMULTANEOUS_TOUCHES } from '../../game/constants'
 import type { InputEvent } from '../../types'
+import type { GameCommand } from '../../game/systems/InputManager'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -178,12 +179,12 @@ describe('InputManager', () => {
       ]
 
       // First run
-      const first: import('../../game/systems/InputManager').GameCommand[] = []
+      const first: GameCommand[] = []
       for (const e of sequence) first.push(...manager.update([e]))
 
       // Reset and replay
       manager.reset()
-      const second: import('../../game/systems/InputManager').GameCommand[] = []
+      const second: GameCommand[] = []
       for (const e of sequence) second.push(...manager.update([e]))
 
       expect(second).toEqual(first)

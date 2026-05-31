@@ -21,7 +21,9 @@ export function initMaskDetector(textures: Phaser.Textures.TextureManager): void
           if (!textures.exists(textureKey)) continue
           const frame = textures.getFrame(textureKey)
           if (!frame || !frame.source.image) continue
-          const img = frame.source.image as HTMLImageElement
+          const { image } = frame.source
+          if (!(image instanceof HTMLImageElement)) continue
+          const img = image
           const canvas = document.createElement('canvas')
           canvas.width = frame.realWidth
           canvas.height = frame.realHeight

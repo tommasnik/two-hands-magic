@@ -63,7 +63,10 @@ export class BattleScene extends Phaser.Scene {
     gameMachine.setTouchPointPositions(this._dynamicLayout)
 
     // Get canvas 2D context from Phaser's Canvas renderer
-    const renderer = this.game.renderer as Phaser.Renderer.Canvas.CanvasRenderer
+    const { renderer } = this.game
+    if (!(renderer instanceof Phaser.Renderer.Canvas.CanvasRenderer)) {
+      throw new Error('BattleScene requires Canvas renderer (not WebGL)')
+    }
     this.ctx = renderer.gameContext
 
     // Initialize sub-systems

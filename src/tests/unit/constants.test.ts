@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { HitResult } from '../../types'
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
@@ -457,7 +458,7 @@ describe('getHitResultColor — renderer color mapping', () => {
   })
 
   it('all four results map to distinct colors', () => {
-    const colors = new Set(['CRIT', 'HIT', 'GRAZE', 'MISS'].map(r => getHitResultColor(r as import('../../types').HitResult)))
+    const colors = new Set(['CRIT', 'HIT', 'GRAZE', 'MISS'].map(r => getHitResultColor(r as HitResult)))
     expect(colors.size).toBe(4)
   })
 })

@@ -21,21 +21,21 @@ import banditManifest from '../assets/characters/bandit/manifest.json'
 
 /** All character manifests to register and load. */
 const ALL_MANIFESTS: CharacterManifest[] = [
-  stoneGiantManifest as CharacterManifest,
-  plagueRatManifest as CharacterManifest,
-  iceGiantManifest as CharacterManifest,
-  crystalSpiderManifest as CharacterManifest,
-  emberWispManifest as CharacterManifest,
-  ironGolemManifest as CharacterManifest,
-  mirrorKnightManifest as CharacterManifest,
-  ancientTreantManifest as CharacterManifest,
-  goblinScoutManifest as CharacterManifest,
-  orcWarriorManifest as CharacterManifest,
-  insectSwarmManifest as CharacterManifest,
-  barnSpiderManifest as CharacterManifest,
-  wolfManifest as CharacterManifest,
-  wildBoarManifest as CharacterManifest,
-  banditManifest as CharacterManifest,
+  stoneGiantManifest,
+  plagueRatManifest,
+  iceGiantManifest,
+  crystalSpiderManifest,
+  emberWispManifest,
+  ironGolemManifest,
+  mirrorKnightManifest,
+  ancientTreantManifest,
+  goblinScoutManifest,
+  orcWarriorManifest,
+  insectSwarmManifest,
+  barnSpiderManifest,
+  wolfManifest,
+  wildBoarManifest,
+  banditManifest,
 ]
 
 export class LoadingScene extends Phaser.Scene {

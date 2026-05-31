@@ -14,7 +14,7 @@
 
 import type { ActiveDelivery } from '../../types'
 import { DELIVERY_CONNECT_FLASH_MS } from '../../game/constants'
-import type { DeliveryRenderContext, RenderDelivery } from './DeliveryVisual'
+import type { DeliveryRenderContext } from './DeliveryVisual'
 import type { DeliveryVisualRegistry } from './DeliveryVisualRegistry'
 
 /** A delivery that has connected and is playing its lingering impact flash. */
@@ -46,9 +46,9 @@ export class DeliveryRenderer {
         this.live.set(d.id, d)
         continue
       }
-      if (!this.live.has(d.id)) visual.spawn(d as RenderDelivery, rc)
+      if (!this.live.has(d.id)) visual.spawn(d, rc)
       this.live.set(d.id, d)
-      visual.update(d as RenderDelivery, rc)
+      visual.update(d, rc)
     }
 
     // 2. Deliveries that disappeared since last frame → connect + flash.
@@ -58,7 +58,7 @@ export class DeliveryRenderer {
       if (seen.has(id)) continue
       this.live.delete(id)
       const visual = this.registry.get(snapshot.visualKey)
-      if (visual) visual.onConnect({ ...snapshot, progress: 1 } as RenderDelivery, rc)
+      if (visual) visual.onConnect({ ...snapshot, progress: 1 }, rc)
       this.flashes.set(id, { snapshot: { ...snapshot, progress: 1 }, ageMs: 0 })
     }
 
@@ -70,7 +70,7 @@ export class DeliveryRenderer {
         const visual = this.registry.get(flash.snapshot.visualKey)
         if (visual) {
           visual.update(
-            { ...flash.snapshot, connectAgeMs: DELIVERY_CONNECT_FLASH_MS } as RenderDelivery,
+            { ...flash.snapshot, connectAgeMs: DELIVERY_CONNECT_FLASH_MS },
             rc,
           )
         }
@@ -79,7 +79,7 @@ export class DeliveryRenderer {
       }
       const visual = this.registry.get(flash.snapshot.visualKey)
       if (visual) {
-        visual.update({ ...flash.snapshot, connectAgeMs: flash.ageMs } as RenderDelivery, rc)
+        visual.update({ ...flash.snapshot, connectAgeMs: flash.ageMs }, rc)
       }
     }
   }

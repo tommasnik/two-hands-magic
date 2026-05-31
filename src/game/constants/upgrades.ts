@@ -1,4 +1,4 @@
-import type { GlobalUpgradeState, UpgradeNodeDef, UpgradeNodeId } from '../../types'
+import type { GlobalUpgradeState, UpgradePath, UpgradeNodeDef, UpgradeNodeId } from '../../types'
 import { CRIT_DAMAGE_MULTIPLIER } from './combat'
 
 // ============================================================
@@ -58,7 +58,7 @@ export const UPGRADE_NODES: readonly UpgradeNodeDef[] = [
  * Display titles for each upgrade path — used as column headers in the
  * level-up picker. Keeps copy out of the renderer so designers can retune.
  */
-export const UPGRADE_PATH_TITLES: Readonly<Record<import('../../types').UpgradePath, string>> = {
+export const UPGRADE_PATH_TITLES: Readonly<Record<UpgradePath, string>> = {
   cast_time:   'CAST TIME',
   crit:        'CRIT DMG',
   proj_speed:  'PROJ SPEED',
@@ -70,7 +70,7 @@ export const UPGRADE_PATH_TITLES: Readonly<Record<import('../../types').UpgradeP
  * Column ordering for the level-up picker tree (left → right).
  * quick_chain is rendered separately as a cross-path row below the tree.
  */
-export const UPGRADE_TREE_COLUMNS: readonly import('../../types').UpgradePath[] = [
+export const UPGRADE_TREE_COLUMNS: readonly UpgradePath[] = [
   'cast_time',
   'crit',
   'proj_speed',
