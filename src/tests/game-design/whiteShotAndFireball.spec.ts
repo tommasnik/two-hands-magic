@@ -19,7 +19,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
-import type { GameState } from '../../types'
 import { createInitialLayout } from '../../game/entities/touchPoints'
 import { calculateDamage } from '../../game/systems/DamageSystem'
 import {
@@ -67,8 +66,7 @@ const LEFT_0_Y  = Math.round(_LEFT_0.y)
 const RIGHT_0_X = Math.round(_RIGHT_0.x)
 const RIGHT_0_Y = Math.round(_RIGHT_0.y)
 
-/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
-function getFlat(machine: GameStateMachine): GameState {
+function getFlat(machine: GameStateMachine) {
   const { fight, game } = machine.getState()
   return { ...fight, ...game }
 }

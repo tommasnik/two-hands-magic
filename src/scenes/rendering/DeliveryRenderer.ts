@@ -33,7 +33,7 @@ export class DeliveryRenderer {
 
   /**
    * Render this frame's deliveries. `deliveries` is the pure game snapshot from
-   * GameState.activeDeliveries; `rc` carries the scene, canvas ctx and timing.
+   * FightSnapshot.activeDeliveries; `rc` carries the scene, canvas ctx and timing.
    */
   render(deliveries: readonly ActiveDelivery[], rc: DeliveryRenderContext): void {
     const seen = new Set<string>()

@@ -12,7 +12,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
-import type { GameState } from '../../types'
 import { createInitialLayout } from '../../game/entities/touchPoints'
 import {
   GAME_WIDTH,
@@ -58,7 +57,7 @@ type Action =
   | { type: 'injectInput'; payload: InputEvent }
   | { type: 'wait'; payload: { ms: number } }
 
-function getFlat(machine: GameStateMachine): GameState {
+function getFlat(machine: GameStateMachine) {
   const { fight, game } = machine.getState()
   return { ...fight, ...game }
 }

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import type { GameState, InputEvent, HitResult, SkillType, UpgradeNodeId, BehaviorGraph } from '../../types'
+import type { GameStateResult, InputEvent, HitResult, SkillType, UpgradeNodeId, BehaviorGraph } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
 
 /**
@@ -14,9 +14,9 @@ import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
  */
 export function gameApi(page: Page) {
   return {
-    /** Returns the current serialized GameState snapshot. */
-    getState: (): Promise<GameState> =>
-      page.evaluate(() => (window as unknown as Record<string, { getState: () => GameState }>)['__game'].getState()),
+    /** Returns the current serialized game state snapshot. */
+    getState: (): Promise<GameStateResult> =>
+      page.evaluate(() => (window as unknown as Record<string, { getState: () => GameStateResult }>)['__game'].getState()),
 
     /** Queues a raw InputEvent to be processed on the next game update. */
     injectInput: (event: InputEvent): Promise<void> =>

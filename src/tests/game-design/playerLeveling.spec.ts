@@ -8,7 +8,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
-import type { GameState } from '../../types'
 import {
   XP_LEVEL_THRESHOLDS,
   PLAYER_START_LEVEL,
@@ -26,8 +25,7 @@ import {
 /** Damage of a single SLOW_SHOT CRIT — the strongest single shot in the kit. */
 const SLOW_CRIT = SLOW_SKILL_DAMAGE * CRIT_DAMAGE_MULTIPLIER
 
-/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
-function getFlat(gsm: GameStateMachine): GameState {
+function getFlat(gsm: GameStateMachine) {
   const { fight, game } = gsm.getState()
   return { ...fight, ...game }
 }

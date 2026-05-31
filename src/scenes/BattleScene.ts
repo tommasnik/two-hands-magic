@@ -132,9 +132,9 @@ export class BattleScene extends Phaser.Scene {
 
     // Advance renderers that need per-frame state (animations, timers)
     const dtS = cappedDelta / 1000
-    this._enemyRenderer.update(dtS, { ...fight, ...game })
+    this._enemyRenderer.update(dtS, fight)
     this._skillRenderer.update(dtS, fight.activeProjectiles)
-    this._hudRenderer.update(cappedDelta, { ...fight, ...game })
+    this._hudRenderer.update(cappedDelta, { fight, game })
     this._phaseOverlay.update(
       game,
       fight.fightStatsSnapshot,
@@ -150,14 +150,13 @@ export class BattleScene extends Phaser.Scene {
 
   private onRender(): void {
     const { fight, game } = gameMachine.getState()
-    const state = { ...fight, ...game }
     const ctx = this.ctx
     const now = performance.now()
 
     ctx.save()
 
     this._backgroundRenderer.render(ctx)
-    this._enemyRenderer.render(ctx, this.textures, state, now)
+    this._enemyRenderer.render(ctx, this.textures, fight, now)
 
     // Fire particles (drawn before projectiles so balls render on top)
     this._skillRenderer.drawFireParticles(ctx)
@@ -171,7 +170,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // Skill overlays (frozen, active hit effects)
-    this._skillRenderer.drawFrozenOverlay(ctx, state)
+    this._skillRenderer.drawFrozenOverlay(ctx, fight)
     this._skillRenderer.drawActiveEffects(ctx, this._effectsManager.activeEffects, fight.elapsedMs)
 
     // Incoming enemy attack deliveries
@@ -182,7 +181,7 @@ export class BattleScene extends Phaser.Scene {
       dtMs: this._lastFrameDtMs,
     })
 
-    this._hudRenderer.render(ctx, state, this._dynamicLayout, now)
+    this._hudRenderer.render(ctx, { fight, game }, this._dynamicLayout, now)
 
     ctx.restore()
   }

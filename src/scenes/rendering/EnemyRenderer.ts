@@ -10,7 +10,7 @@ import {
   getHitResultColor,
 } from '../../game/constants'
 import { characterRegistry } from '../../game/CharacterRegistry'
-import type { GameState, HitResult, HitZoneName } from '../../types'
+import type { FightSnapshot, HitResult, HitZoneName } from '../../types'
 
 interface Spark {
   x: number; y: number
@@ -39,7 +39,7 @@ export class EnemyRenderer {
    * Advance particle/float-text animations.
    * Must be called each frame before render().
    */
-  update(dtS: number, state: GameState): void {
+  update(dtS: number, state: FightSnapshot): void {
     // Detect new hit events → spawn visual effects
     if (state.lastHit && state.lastHit.timestamp !== this.lastHitTimestamp) {
       this.lastHitTimestamp = state.lastHit.timestamp
@@ -67,7 +67,7 @@ export class EnemyRenderer {
   }
 
   /** Render enemy sprite, hit zone overlay, stun indicator, sparks, and float texts. */
-  render(ctx: CanvasRenderingContext2D, textures: Phaser.Textures.TextureManager, state: GameState, now: number): void {
+  render(ctx: CanvasRenderingContext2D, textures: Phaser.Textures.TextureManager, state: FightSnapshot, now: number): void {
     this._drawEnemySprite(ctx, textures, state)
     this._drawStunIndicator(ctx, state, now)
     this._drawSparks(ctx)
@@ -78,7 +78,7 @@ export class EnemyRenderer {
   // Spawn helpers
   // -----------------------------------------------------------------------
 
-  private _spawnHitEffects(result: HitResult, _hitZone: HitZoneName, state: GameState): void {
+  private _spawnHitEffects(result: HitResult, _hitZone: HitZoneName, state: FightSnapshot): void {
     const hitPos = state.lastHit?.position
     const ex = hitPos?.x ?? state.enemy.x
     const ey = hitPos?.y ?? state.enemy.y
@@ -110,11 +110,11 @@ export class EnemyRenderer {
   // -----------------------------------------------------------------------
 
   /**
-   * Generic sprite renderer — renders the current enemy animation frame from GameState.
+   * Generic sprite renderer — renders the current enemy animation frame from FightSnapshot.
    * Uses spriteKey + animKey + frameIndex to look up the Phaser texture.
    * No per-enemy branching — all sprite-based enemies use the same code path.
    */
-  private _drawEnemySprite(ctx: CanvasRenderingContext2D, textures: Phaser.Textures.TextureManager, state: GameState): void {
+  private _drawEnemySprite(ctx: CanvasRenderingContext2D, textures: Phaser.Textures.TextureManager, state: FightSnapshot): void {
     const spriteKey = state.enemySpriteKey
     const animKey = state.enemyAnimKey
     const frameIndex = state.enemyFrameIndex
@@ -169,7 +169,7 @@ export class EnemyRenderer {
     }
   }
 
-  private _drawStunIndicator(ctx: CanvasRenderingContext2D, state: GameState, now: number): void {
+  private _drawStunIndicator(ctx: CanvasRenderingContext2D, state: FightSnapshot, now: number): void {
     const remainingMs = state.enemy.stunnedUntilMs - state.elapsedMs
     if (remainingMs <= 0) return
     const ex = state.enemy.x

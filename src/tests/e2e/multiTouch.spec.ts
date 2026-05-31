@@ -44,7 +44,7 @@ test('two touches with different pointerIds generate two projectiles in flight',
 
   // Both slot states should be active simultaneously
   const stateDown = await api.getState()
-  const activeSlots = stateDown.activeSlots as Array<{ id: string; active: boolean }>
+  const activeSlots = stateDown.fight.activeSlots as Array<{ id: string; active: boolean }>
   const left0  = activeSlots.find(s => s.id === 'left_0')
   const right0 = activeSlots.find(s => s.id === 'right_0')
   expect(left0?.active).toBe(true)
@@ -56,12 +56,12 @@ test('two touches with different pointerIds generate two projectiles in flight',
   await api.advanceTime(16)
 
   const stateAfterFire = await api.getState()
-  const inFlight = stateAfterFire.activeProjectiles.filter((p) => p.alive).length
+  const inFlight = stateAfterFire.fight.activeProjectiles.filter((p) => p.alive).length
   const alreadyHit =
-    stateAfterFire.score.crits +
-    stateAfterFire.score.hits +
-    stateAfterFire.score.grazes +
-    stateAfterFire.score.misses
+    stateAfterFire.fight.score.crits +
+    stateAfterFire.fight.score.hits +
+    stateAfterFire.fight.score.grazes +
+    stateAfterFire.fight.score.misses
   // Two shots fired — both in flight or already resolved
   expect(inFlight + alreadyHit).toBe(2)
 })
@@ -95,9 +95,9 @@ test('third simultaneous touch is ignored — only 2 projectiles generated', asy
   await api.advanceTime(16)
 
   const state = await api.getState()
-  const inFlight = state.activeProjectiles.filter((p) => p.alive).length
+  const inFlight = state.fight.activeProjectiles.filter((p) => p.alive).length
   const alreadyHit =
-    state.score.crits + state.score.hits + state.score.grazes + state.score.misses
+    state.fight.score.crits + state.fight.score.hits + state.fight.score.grazes + state.fight.score.misses
   // Only 2 projectiles (third pointer was rejected)
   expect(inFlight + alreadyHit).toBe(2)
 })
@@ -126,7 +126,7 @@ test('releasing one pointer allows a new third pointer to be accepted', async ({
 
   const stateAfterRelease = await api.getState()
   // Left slot (left_0) fired — no longer active
-  const slotsAfterRelease = stateAfterRelease.activeSlots as Array<{ id: string; active: boolean }>
+  const slotsAfterRelease = stateAfterRelease.fight.activeSlots as Array<{ id: string; active: boolean }>
   expect(slotsAfterRelease.find(s => s.id === 'left_0')?.active).toBe(false)
   expect(slotsAfterRelease.find(s => s.id === 'right_0')?.active).toBe(true)
 
@@ -138,9 +138,9 @@ test('releasing one pointer allows a new third pointer to be accepted', async ({
   await api.advanceTime(16)
 
   const stateFinal = await api.getState()
-  const inFlight = stateFinal.activeProjectiles.filter((p) => p.alive).length
+  const inFlight = stateFinal.fight.activeProjectiles.filter((p) => p.alive).length
   const alreadyHit =
-    stateFinal.score.crits + stateFinal.score.hits + stateFinal.score.grazes + stateFinal.score.misses
+    stateFinal.fight.score.crits + stateFinal.fight.score.hits + stateFinal.fight.score.grazes + stateFinal.fight.score.misses
   // Two total shots fired (pointer 1 + pointer 3), pointer 2 still held
   expect(inFlight + alreadyHit).toBeGreaterThanOrEqual(1)
 })

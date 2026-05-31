@@ -69,8 +69,8 @@ test('game continues normally if fullscreen is denied', async ({ page }) => {
   const phase = await page.evaluate(
     () =>
       (
-        window as unknown as Record<string, { getState: () => { phase: string } }>
-      )['__game'].getState().phase,
+        window as unknown as Record<string, { getState: () => { game: { phase: string } } }>
+      )['__game'].getState().game.phase,
   )
   expect(phase).toBe('battle')
 })

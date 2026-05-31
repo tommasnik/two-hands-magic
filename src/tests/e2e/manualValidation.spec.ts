@@ -17,7 +17,7 @@ test('manual: getState returns battle phase', async ({ page }) => {
   await api.startBattle()
 
   const state = await api.getState()
-  expect(state.phase).toBe('battle')
+  expect(state.game.phase).toBe('battle')
 
   // No console errors during load and initial gameplay
   expect(errors).toHaveLength(0)
@@ -41,10 +41,10 @@ test('manual: inject touch input reflects in game state', async ({ page }) => {
   await api.advanceTime(500)
 
   const state = await api.getState()
-  expect(state.phase).toBe('battle')
+  expect(state.game.phase).toBe('battle')
   // Score must exist and be non-negative
-  expect(state.score).toBeDefined()
-  expect(state.score.total).toBeGreaterThanOrEqual(0)
+  expect(state.fight.score).toBeDefined()
+  expect(state.fight.score.total).toBeGreaterThanOrEqual(0)
 })
 
 test('manual: no console errors during gameplay', async ({ page }) => {

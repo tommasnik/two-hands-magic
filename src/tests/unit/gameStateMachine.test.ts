@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
-import type { GameState } from '../../types'
 import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 import {
   MAX_DELTA_MS,
@@ -92,8 +91,7 @@ function makeMove(
   return { pointerId, action: 'move', x, y, timestamp }
 }
 
-/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
-function getFlat(gsm: GameStateMachine): GameState {
+function getFlat(gsm: GameStateMachine) {
   const { fight, game } = gsm.getState()
   return { ...fight, ...game }
 }
@@ -426,7 +424,7 @@ describe('GameStateMachine — score tracking per HitResult', () => {
 
 describe('GameStateMachine — determinism', () => {
   it('same input sequence produces identical state in two independent instances', () => {
-    function runSequence(): GameState {
+    function runSequence() {
       const gsm = new GameStateMachine()
       gsm.startBattle()
 
@@ -1716,7 +1714,7 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
     }
   }
 
-  it('GameState.player exposes hp and maxHp = PLAYER_MAX_HP after startBattle', () => {
+  it('player exposes hp and maxHp = PLAYER_MAX_HP after startBattle', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     const state = getFlat(gsm)
@@ -1760,7 +1758,7 @@ describe('GameStateMachine — player HP and game over (task-41)', () => {
     expect(getFlat(gsm).lastPlayerHit).toBeNull()
   })
 
-  it('GameState.activeDeliveries is empty at battle start', () => {
+  it('activeDeliveries is empty at battle start', () => {
     const gsm = new GameStateMachine()
     gsm.startBattle()
     expect(getFlat(gsm).activeDeliveries).toEqual([])
@@ -2187,7 +2185,7 @@ describe('GameStateMachine — global upgrades wiring', () => {
 // ---------------------------------------------------------------------------
 
 describe('GameStateMachine — FightStats per-skill tracking (task-46)', () => {
-  it('AC #1 — fightStats is present in GameState with skills/durationMs structure', () => {
+  it('AC #1 — fightStats is present in FightSnapshot with skills/durationMs structure', () => {
     const gsm = new GameStateMachine()
     const state = getFlat(gsm)
     expect(state.fightStats).toBeDefined()

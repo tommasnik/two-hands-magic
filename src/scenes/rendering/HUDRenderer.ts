@@ -10,7 +10,7 @@ import {
 import { computeReticle } from '../../game/systems/AimSystem'
 import { getXpProgress } from '../../game/upgrades'
 import { getSkillColor } from './SkillRenderer'
-import type { GameState, ActiveSlotState } from '../../types'
+import type { GameStateResult, ActiveSlotState } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
 
 interface FloatText {
@@ -58,11 +58,11 @@ export class HUDRenderer {
    * Advance player-hit flash timer and float texts.
    * Must be called each frame before render().
    */
-  update(dtMs: number, state: GameState): void {
+  update(dtMs: number, state: GameStateResult): void {
     // Detect new player-hit events → trigger red flash + floating damage number
-    if (state.lastPlayerHit && state.lastPlayerHit.timestamp !== this._lastPlayerHitTimestamp) {
-      this._lastPlayerHitTimestamp = state.lastPlayerHit.timestamp
-      this._spawnPlayerHitEffects(state.lastPlayerHit.damage)
+    if (state.fight.lastPlayerHit && state.fight.lastPlayerHit.timestamp !== this._lastPlayerHitTimestamp) {
+      this._lastPlayerHitTimestamp = state.fight.lastPlayerHit.timestamp
+      this._spawnPlayerHitEffects(state.fight.lastPlayerHit.damage)
     }
 
     // Advance / clear flash overlay
@@ -88,15 +88,15 @@ export class HUDRenderer {
   }
 
   /** Draw canvas HUD elements: slot rings, lasers, aim points, float texts. */
-  render(ctx: CanvasRenderingContext2D, state: GameState, _dynamicLayout: ActiveTouchPointPos[], now: number): void {
-    this._drawActiveSlots(ctx, state.activeSlots, now)
+  render(ctx: CanvasRenderingContext2D, state: GameStateResult, _dynamicLayout: ActiveTouchPointPos[], now: number): void {
+    this._drawActiveSlots(ctx, state.fight.activeSlots, now)
 
-    for (const slot of state.activeSlots) {
+    for (const slot of state.fight.activeSlots) {
       if (slot.active) {
         const reticle = computeReticle(
           { rotationPeriodMs: slot.rotationPeriodMs },
           slot.dragOffsetX,
-          state.elapsedMs - slot.touchStartMs,
+          state.fight.elapsedMs - slot.touchStartMs,
         )
         const dx = reticle.x - slot.x
         const dy = reticle.y - slot.y
@@ -128,18 +128,18 @@ export class HUDRenderer {
     })
   }
 
-  private _updateDomHud(state: GameState): void {
-    if (this.hudLevel) this.hudLevel.textContent = `LEVEL ${state.currentLevel}`
-    if (this.hudEnemyName) this.hudEnemyName.textContent = state.enemyName
+  private _updateDomHud(state: GameStateResult): void {
+    if (this.hudLevel) this.hudLevel.textContent = `LEVEL ${state.game.currentLevel}`
+    if (this.hudEnemyName) this.hudEnemyName.textContent = state.fight.enemyName
     if (this.hudHpFill) {
-      const fillPct = state.enemyMaxHp > 0 ? (state.enemyHp / state.enemyMaxHp) * 100 : 0
+      const fillPct = state.fight.enemyMaxHp > 0 ? (state.fight.enemyHp / state.fight.enemyMaxHp) * 100 : 0
       this.hudHpFill.style.width = `${fillPct}%`
     }
     if (this.playerHpFill) {
-      const fillPct = state.player.maxHp > 0 ? (state.player.hp / state.player.maxHp) * 100 : 0
+      const fillPct = state.fight.player.maxHp > 0 ? (state.fight.player.hp / state.fight.player.maxHp) * 100 : 0
       this.playerHpFill.style.width = `${fillPct}%`
     }
-    this._updateXpHud(state.playerLevel, state.playerXp)
+    this._updateXpHud(state.game.playerLevel, state.game.playerXp)
   }
 
   private _updateXpHud(playerLevel: number, playerXp: number): void {

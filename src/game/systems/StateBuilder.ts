@@ -1,5 +1,5 @@
 // ============================================================
-// StateBuilder — assembles a serializable GameState snapshot
+// StateBuilder — assembles a serializable GameStateResult snapshot
 // from raw GSM fields. No Phaser dependency.
 // ============================================================
 

@@ -53,7 +53,7 @@ test('HP bar width decreases after a confirmed hit', async ({ page }) => {
   await page.waitForTimeout(100)
 
   const state = await api.getState()
-  expect(state.enemyHp).toBeLessThan(state.enemyMaxHp)
+  expect(state.fight.enemyHp).toBeLessThan(state.fight.enemyMaxHp)
 
   // Verify HP bar fill decreased
   const updatedStyle = await hpFill.getAttribute('style')
@@ -61,7 +61,7 @@ test('HP bar width decreases after a confirmed hit', async ({ page }) => {
   const match = updatedStyle?.match(/width:\s*([\d.]+)%/)
   expect(match).not.toBeNull()
   const fillPct = parseFloat(match![1])
-  const expectedPct = (state.enemyHp / state.enemyMaxHp) * 100
+  const expectedPct = (state.fight.enemyHp / state.fight.enemyMaxHp) * 100
   expect(fillPct).toBeCloseTo(expectedPct, 0)
   expect(fillPct).toBeLessThan(100)
 })

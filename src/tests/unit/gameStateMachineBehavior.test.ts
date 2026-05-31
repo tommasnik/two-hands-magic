@@ -12,7 +12,6 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
-import type { GameState } from '../../types'
 import { characterRegistry } from '../../game/CharacterRegistry'
 import { MaskHitDetector } from '../../game/systems/MaskHitDetector'
 import { MAX_DELTA_MS, PLAYER_MAX_HP } from '../../game/constants'
@@ -52,8 +51,7 @@ beforeAll(() => {
   })
 })
 
-/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
-function getFlat(gsm: GameStateMachine): GameState {
+function getFlat(gsm: GameStateMachine) {
   const { fight, game } = gsm.getState()
   return { ...fight, ...game }
 }

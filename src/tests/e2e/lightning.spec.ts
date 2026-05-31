@@ -16,12 +16,12 @@ test('instant hit: enemy HP decreases immediately on lightning_blast release', a
   const api = gameApi(page)
   await api.startBattle()
   const stateBefore = await api.getState()
-  const hpBefore = stateBefore.enemyHp
+  const hpBefore = stateBefore.fight.enemyHp
 
   await api.fireLightningBlast('HIT')
 
   const stateAfter = await api.getState()
-  expect(stateAfter.enemyHp).toBeLessThan(hpBefore)
+  expect(stateAfter.fight.enemyHp).toBeLessThan(hpBefore)
 })
 
 test('MISS: enemy HP does not decrease on lightning_blast MISS', async ({ page }) => {
@@ -30,10 +30,10 @@ test('MISS: enemy HP does not decrease on lightning_blast MISS', async ({ page }
   const api = gameApi(page)
   await api.startBattle()
   const stateBefore = await api.getState()
-  const hpBefore = stateBefore.enemyHp
+  const hpBefore = stateBefore.fight.enemyHp
 
   await api.fireLightningBlast('MISS')
 
   const stateAfter = await api.getState()
-  expect(stateAfter.enemyHp).toBe(hpBefore)
+  expect(stateAfter.fight.enemyHp).toBe(hpBefore)
 })

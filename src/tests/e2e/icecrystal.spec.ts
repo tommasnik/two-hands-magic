@@ -21,7 +21,7 @@ test('freeze on HIT: enemyFrozenUntilMs > 0', async ({ page }) => {
   await api.startBattle()
   await api.applyHit('HIT', 'ice_crystal')
   const state = await api.getState()
-  expect(state.enemyFrozenUntilMs).toBeGreaterThan(0)
+  expect(state.fight.enemyFrozenUntilMs).toBeGreaterThan(0)
 })
 
 test('freeze on CRIT: enemyFrozenUntilMs >= ICE_CRYSTAL_FREEZE_CRIT_MS', async ({ page }) => {
@@ -31,7 +31,7 @@ test('freeze on CRIT: enemyFrozenUntilMs >= ICE_CRYSTAL_FREEZE_CRIT_MS', async (
   await api.startBattle()
   await api.applyHit('CRIT', 'ice_crystal')
   const state = await api.getState()
-  expect(state.enemyFrozenUntilMs).toBeGreaterThanOrEqual(ICE_CRYSTAL_FREEZE_CRIT_MS)
+  expect(state.fight.enemyFrozenUntilMs).toBeGreaterThanOrEqual(ICE_CRYSTAL_FREEZE_CRIT_MS)
 })
 
 test('no freeze on GRAZE: enemyFrozenUntilMs === 0', async ({ page }) => {
@@ -41,7 +41,7 @@ test('no freeze on GRAZE: enemyFrozenUntilMs === 0', async ({ page }) => {
   await api.startBattle()
   await api.applyHit('GRAZE', 'ice_crystal')
   const state = await api.getState()
-  expect(state.enemyFrozenUntilMs).toBe(0)
+  expect(state.fight.enemyFrozenUntilMs).toBe(0)
 })
 
 test('behavior runner stops during freeze: no new deliveries spawned while frozen', async ({ page }) => {
@@ -85,19 +85,19 @@ test('behavior runner stops during freeze: no new deliveries spawned while froze
   // Freeze with ice_crystal HIT (freeze duration = 1000ms)
   await api.applyHit('HIT', 'ice_crystal')
   const stateAtFreeze = await api.getState()
-  const deliveriesAtFreeze = stateAtFreeze.activeDeliveries.length
+  const deliveriesAtFreeze = stateAtFreeze.fight.activeDeliveries.length
 
   // Verify the enemy is actually frozen
-  expect(stateAtFreeze.enemyFrozenUntilMs).toBeGreaterThan(stateAtFreeze.elapsedMs)
+  expect(stateAtFreeze.fight.enemyFrozenUntilMs).toBeGreaterThan(stateAtFreeze.fight.elapsedMs)
 
   // Advance 500ms — still within the 1000ms freeze window, runner must not tick
   await api.advanceTime(500)
   const stateAfter = await api.getState()
 
   // Deliveries can only expire/connect while frozen — count must not increase
-  expect(stateAfter.activeDeliveries.length).toBeLessThanOrEqual(deliveriesAtFreeze)
+  expect(stateAfter.fight.activeDeliveries.length).toBeLessThanOrEqual(deliveriesAtFreeze)
   // Enemy must still be frozen
-  expect(stateAfter.enemyFrozenUntilMs).toBeGreaterThan(stateAfter.elapsedMs)
+  expect(stateAfter.fight.enemyFrozenUntilMs).toBeGreaterThan(stateAfter.fight.elapsedMs)
 })
 
 test('freeze expires after ICE_CRYSTAL_FREEZE_HIT_MS', async ({ page }) => {
@@ -112,5 +112,5 @@ test('freeze expires after ICE_CRYSTAL_FREEZE_HIT_MS', async ({ page }) => {
   const state = await api.getState()
 
   // elapsedMs is now past enemyFrozenUntilMs → enemy is no longer frozen
-  expect(state.enemyFrozenUntilMs).toBeLessThanOrEqual(state.elapsedMs)
+  expect(state.fight.enemyFrozenUntilMs).toBeLessThanOrEqual(state.fight.elapsedMs)
 })

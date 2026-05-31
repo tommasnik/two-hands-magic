@@ -72,7 +72,7 @@ export interface InteractionRule {
 
 // ============================================================
 // EnemyState subset needed by onHit callbacks
-// (avoids a circular dependency on the full GameState type)
+// (avoids a circular dependency on the full state types)
 // ============================================================
 
 /**

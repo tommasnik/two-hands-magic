@@ -1,5 +1,5 @@
 import { PROJECTILE_BASE_RADIUS_PX, GAME_WIDTH, GAME_HEIGHT } from '../../game/constants'
-import type { Projectile, GameState } from '../../types'
+import type { Projectile, FightSnapshot } from '../../types'
 import type { ActiveTouchPointPos } from '../../game/entities/touchPoints'
 import type { ActiveEffect } from '../effects/EffectsManager'
 
@@ -286,7 +286,7 @@ export class SkillRenderer {
    * Draws a single large ice crystal column over the enemy while freeze is active.
    * Three vertical facets + three-part tip give a 3D hexagonal prism appearance.
    */
-  drawFrozenOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
+  drawFrozenOverlay(ctx: CanvasRenderingContext2D, state: FightSnapshot): void {
     if (state.enemyFrozenUntilMs <= state.elapsedMs) return
 
     const cx = state.enemy.x

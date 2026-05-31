@@ -24,9 +24,9 @@ test('AC#5: lastHit is null before first hit — no zone flash active', async ({
   await page.waitForTimeout(100)
 
   const state = await api.getState()
-  expect(state.phase).toBe('battle')
+  expect(state.game.phase).toBe('battle')
   // No hit has occurred yet — lastHit must be null (means no zone flash initiated)
-  expect(state.lastHit).toBeNull()
+  expect(state.fight.lastHit).toBeNull()
 })
 
 // AC#6: after a hit, the struck zone is recorded in lastHit.hitZone
@@ -44,11 +44,11 @@ test('AC#6: after a hit, the struck zone is recorded in lastHit.hitZone', async 
   await page.waitForTimeout(100)
 
   const state = await api.getState()
-  expect(state.lastHit).not.toBeNull()
+  expect(state.fight.lastHit).not.toBeNull()
   // hitZone must be 'none' when applied via _applyHitForTesting (no position known)
   // but the field must exist and be a valid zone string
   const validZones = ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'none']
-  expect(validZones).toContain(state.lastHit?.hitZone)
+  expect(validZones).toContain(state.fight.lastHit?.hitZone)
 })
 
 // AC#6 extended: after a real projectile hit, hitZone matches the result
@@ -77,15 +77,15 @@ test('AC#6 extended: projectile hit records consistent hitZone matching result',
   await api.advanceTime(2000)
 
   const state = await api.getState()
-  expect(state.lastHit).not.toBeNull()
+  expect(state.fight.lastHit).not.toBeNull()
 
   // hitZone must be a valid zone name
   const validZones = ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'none']
-  expect(validZones).toContain(state.lastHit?.hitZone)
+  expect(validZones).toContain(state.fight.lastHit?.hitZone)
 
   // hitZone must be consistent with the hit result:
   // CRIT → head, HIT → torso, GRAZE → arm or leg, MISS → none
-  const { result, hitZone } = state.lastHit!
+  const { result, hitZone } = state.fight.lastHit!
   if (result === 'CRIT') {
     expect(hitZone).toBe('head')
   } else if (result === 'HIT') {

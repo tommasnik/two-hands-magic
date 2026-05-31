@@ -10,7 +10,7 @@ test('getState returns a valid game state', async ({ page }) => {
   const api = gameApi(page)
   const state = await api.getState()
   expect(state).not.toBeNull()
-  expect(['loading', 'battle', 'game_over']).toContain(state.phase)
+  expect(['loading', 'battle', 'game_over']).toContain(state.game.phase)
 })
 
 test('injectInput registers touch and reflects in state', async ({ page }) => {
@@ -27,5 +27,5 @@ test('injectInput registers touch and reflects in state', async ({ page }) => {
   await api.advanceTime(16)
   const state = await api.getState()
   expect(state).not.toBeNull()
-  expect(state.phase).toBe('battle')
+  expect(state.game.phase).toBe('battle')
 })

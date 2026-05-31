@@ -6,7 +6,7 @@
 import { GameStateMachine } from '../../game/GameStateMachine'
 import { MAX_DELTA_MS } from '../../game/constants'
 import type { GameDesignSpec, Action, Assertion } from './types'
-import type { GameState, GameStateResult } from '../../types'
+import type { GameStateResult } from '../../types'
 
 export interface RunResult {
   profileName: 'powerUser' | 'casualPlayer'
@@ -71,51 +71,51 @@ async function runProfile(
    * Update per-step metrics from a freshly returned GameStateResult.
    */
   function collectStateMetrics(result: GameStateResult): void {
-    const state: GameState = { ...result.fight, ...result.game }
+    const { fight } = result
     // Initialise prevEnemyHp on the very first call
-    if (prevEnemyHp === -1) prevEnemyHp = state.enemyHp
+    if (prevEnemyHp === -1) prevEnemyHp = fight.enemyHp
 
     // Time to first crit / hit (compare against previous counters before updating them)
-    if (metrics.timeToFirstCrit === null && state.score.crits > prevCrits) {
-      metrics.timeToFirstCrit = state.elapsedMs
+    if (metrics.timeToFirstCrit === null && fight.score.crits > prevCrits) {
+      metrics.timeToFirstCrit = fight.elapsedMs
     }
-    if (metrics.timeToFirstHit === null && state.score.hits > prevHits) {
-      metrics.timeToFirstHit = state.elapsedMs
+    if (metrics.timeToFirstHit === null && fight.score.hits > prevHits) {
+      metrics.timeToFirstHit = fight.elapsedMs
     }
 
-    if (state.score.crits > 0 || state.score.hits > 0) {
+    if (fight.score.crits > 0 || fight.score.hits > 0) {
       metrics.atLeastOneHit = true
     }
 
     // Count total hits (crits + hits + grazes — any shot that connected)
     // Must be read before updating prevCrits/prevHits/prevGrazes
     const prevTotalHits = prevCrits + prevHits + prevGrazes
-    const newTotalHits = state.score.crits + state.score.hits + state.score.grazes
+    const newTotalHits = fight.score.crits + fight.score.hits + fight.score.grazes
     if (newTotalHits > prevTotalHits) {
       metrics.totalHits = newTotalHits
     }
 
     // Update previous counters
-    prevCrits = state.score.crits
-    prevHits = state.score.hits
-    prevGrazes = state.score.grazes
+    prevCrits = fight.score.crits
+    prevHits = fight.score.hits
+    prevGrazes = fight.score.grazes
 
     // Track shots fired: count new projectiles that appeared since the last step.
     // A projectile is added to activeProjectiles on the same frame the fire command fires.
-    const currentProjectileCount = state.activeProjectiles.length
+    const currentProjectileCount = fight.activeProjectiles.length
     if (currentProjectileCount > prevProjectileCount) {
       metrics.totalShots = (metrics.totalShots as number) + (currentProjectileCount - prevProjectileCount)
     }
     prevProjectileCount = currentProjectileCount
 
     // Track HP damage dealt (cumulative)
-    if (prevEnemyHp > state.enemyHp) {
-      metrics.damageDealt = (metrics.damageDealt as number) + (prevEnemyHp - state.enemyHp)
-      prevEnemyHp = state.enemyHp
+    if (prevEnemyHp > fight.enemyHp) {
+      metrics.damageDealt = (metrics.damageDealt as number) + (prevEnemyHp - fight.enemyHp)
+      prevEnemyHp = fight.enemyHp
     }
 
     // Track hitsToKill: snapshot totalHits at the moment the enemy's HP first reaches 0
-    if (state.enemyHp <= 0 && (metrics.hitsToKill as number) === 0 && (metrics.totalHits as number) > 0) {
+    if (fight.enemyHp <= 0 && (metrics.hitsToKill as number) === 0 && (metrics.totalHits as number) > 0) {
       metrics.hitsToKill = metrics.totalHits
     }
   }

@@ -65,7 +65,7 @@ test('AC#4: touch at center of each circle activates that circle, not a neighbou
     // The slot whose id matches this position should be active
     const activatedId = pos.id
     // Use activeSlots for dynamic slot state
-    const activeSlots = state.activeSlots as Array<{ id: string; active: boolean }>
+    const activeSlots = state.fight.activeSlots as Array<{ id: string; active: boolean }>
     const slot = activeSlots.find(s => s.id === activatedId)
     expect(slot, `Slot "${activatedId}" at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) should exist in activeSlots`).toBeTruthy()
     expect(slot!.active, `Slot "${activatedId}" should be active after tapping its center`).toBe(true)
@@ -102,7 +102,7 @@ test('AC#1: touch at left_0 circle center does not activate right_0', async ({ p
   await api.advanceTime(16)
 
   const state = await api.getState()
-  const activeSlots = state.activeSlots as Array<{ id: string; active: boolean }>
+  const activeSlots = state.fight.activeSlots as Array<{ id: string; active: boolean }>
 
   const left0Slot  = activeSlots.find(s => s.id === 'left_0')
   const right0Slot = activeSlots.find(s => s.id === 'right_0')
@@ -157,7 +157,7 @@ test('AC#2 + AC#3: nearest-point positions match rendered circle positions', asy
     await api.advanceTime(16)
 
     const state = await api.getState()
-    const activeSlots = state.activeSlots as Array<{ id: string; active: boolean }>
+    const activeSlots = state.fight.activeSlots as Array<{ id: string; active: boolean }>
     const slot = activeSlots.find(s => s.id === pos.id)
     expect(
       slot?.active,

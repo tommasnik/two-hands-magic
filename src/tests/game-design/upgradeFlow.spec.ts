@@ -14,7 +14,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { GameStateMachine } from '../../game/GameStateMachine'
-import type { GameState } from '../../types'
 import { getXpProgress } from '../../game/upgrades'
 import {
   PLAYER_START_LEVEL,
@@ -23,8 +22,7 @@ import {
   UPGRADE_NODES,
 } from '../../game/constants'
 
-/** Flatten GameStateResult into the legacy flat GameState shape for test assertions. */
-function getFlat(gsm: GameStateMachine): GameState {
+function getFlat(gsm: GameStateMachine) {
   const { fight, game } = gsm.getState()
   return { ...fight, ...game }
 }

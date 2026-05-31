@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import type { GameStateResult } from '../../types'
 
 test('game canvas renders without errors', async ({ page }) => {
   const errors: string[] = []
@@ -81,13 +82,13 @@ test('window.__game.getState() is consistent after rendering', async ({ page }) 
   const state = await page.evaluate(
     () =>
       (
-        window as unknown as Record<string, { getState: () => Record<string, unknown> }>
+        window as unknown as Record<string, { getState: () => GameStateResult }>
       )['__game'].getState(),
   )
 
-  expect(state.phase).toBe('battle')
-  expect(state.score).toBeDefined()
-  expect(state.enemy).toBeDefined()
-  expect(Array.isArray(state.activeProjectiles)).toBe(true)
-  expect(Array.isArray(state.activeSlots)).toBe(true)
+  expect(state.game.phase).toBe('battle')
+  expect(state.fight.score).toBeDefined()
+  expect(state.fight.enemy).toBeDefined()
+  expect(Array.isArray(state.fight.activeProjectiles)).toBe(true)
+  expect(Array.isArray(state.fight.activeSlots)).toBe(true)
 })

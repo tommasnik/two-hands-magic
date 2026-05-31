@@ -276,7 +276,7 @@ export interface AttackSpec {
 
 /**
  * Serialisable snapshot of one in-flight attack delivery for the render layer.
- * Produced by DeliverySystem.getActive() and exposed in GameState so the render
+ * Produced by DeliverySystem.getActive() and exposed in FightSnapshot so the render
  * layer and the test bridge can draw / inspect orbs and overlays. Carries only
  * data (a visualKey + geometry) — never any Phaser / render detail.
  */
@@ -759,10 +759,3 @@ export interface GameStateResult {
   game: GlobalSnapshot
 }
 
-/**
- * Complete game state snapshot (flat view).
- * @deprecated Use GameStateResult with { fight, game } destructuring instead.
- * Kept as an alias for backward compatibility with renderers until they are updated.
- * Will be removed after TASK-72.
- */
-export type GameState = FightSnapshot & GlobalSnapshot

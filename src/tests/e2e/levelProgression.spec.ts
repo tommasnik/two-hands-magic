@@ -20,7 +20,7 @@ async function drainEnemyHp(
 ): Promise<void> {
   for (let i = 0; i < 20; i++) {
     const state = await api.getState()
-    if (state.enemyHp <= 0 || state.phase !== 'battle') break
+    if (state.fight.enemyHp <= 0 || state.game.phase !== 'battle') break
     await api.applyHit('CRIT', 'slow_shot')
     await new Promise(r => setTimeout(r, 50))
   }
@@ -36,15 +36,15 @@ test('AC#5: Level 2 enemy name appears after level 1 complete', async ({ page })
 
   // Verify level 1 starts with Stone Giant (ENEMY_POOL[0])
   const initialState = await api.getState()
-  expect(initialState.currentLevel).toBe(1)
-  expect(initialState.enemyName.toLowerCase()).toContain('stone')
+  expect(initialState.game.currentLevel).toBe(1)
+  expect(initialState.fight.enemyName.toLowerCase()).toContain('stone')
 
   // Drain level 1 enemy HP → phase transitions to fight_overview
   await drainEnemyHp(api)
 
   const afterLevel1 = await api.getState()
-  expect(afterLevel1.phase).toBe('fight_overview')
-  expect(afterLevel1.enemyHp).toBe(0)
+  expect(afterLevel1.game.phase).toBe('fight_overview')
+  expect(afterLevel1.fight.enemyHp).toBe(0)
 
   // Confirm pending level-up, then advance to level 2
   await api.confirmLevelUpUpgrade()
@@ -52,13 +52,13 @@ test('AC#5: Level 2 enemy name appears after level 1 complete', async ({ page })
   await page.waitForTimeout(50)
 
   const level2State = await api.getState()
-  expect(level2State.currentLevel).toBe(2)
+  expect(level2State.game.currentLevel).toBe(2)
   // Level 2 enemy is Plague Rat (ENEMY_POOL[1])
-  expect(level2State.enemyName.toLowerCase()).toContain('plague')
-  expect(level2State.phase).toBe('battle')
+  expect(level2State.fight.enemyName.toLowerCase()).toContain('plague')
+  expect(level2State.game.phase).toBe('battle')
   // HP fully restored for new enemy
-  expect(level2State.enemyHp).toBe(level2State.enemyMaxHp)
-  expect(level2State.enemyHp).toBeGreaterThan(0)
+  expect(level2State.fight.enemyHp).toBe(level2State.fight.enemyMaxHp)
+  expect(level2State.fight.enemyHp).toBeGreaterThan(0)
 
   // DOM HUD should reflect the new enemy name
   await page.waitForTimeout(100)
@@ -79,14 +79,14 @@ test('AC#6: campaign completes after all 6 levels', async ({ page }) => {
   const TOTAL_LEVELS = 6
   for (let lvl = 1; lvl <= TOTAL_LEVELS; lvl++) {
     let state = await api.getState()
-    expect(state.currentLevel).toBe(lvl)
-    expect(state.phase).toBe('battle')
+    expect(state.game.currentLevel).toBe(lvl)
+    expect(state.game.phase).toBe('battle')
 
     // Drain this level's enemy HP
     await drainEnemyHp(api)
     state = await api.getState()
-    expect(state.enemyHp).toBe(0)
-    expect(state.phase).toBe('fight_overview')
+    expect(state.fight.enemyHp).toBe(0)
+    expect(state.game.phase).toBe('fight_overview')
 
     if (lvl < TOTAL_LEVELS) {
       // Intermediate level → confirm upgrade + advance
@@ -108,8 +108,8 @@ test('AC#7: after killing first enemy, game transitions to new enemy without fre
   // Kill the first enemy
   await drainEnemyHp(api)
   const afterKill = await api.getState()
-  expect(afterKill.phase).toBe('fight_overview')
-  expect(afterKill.enemyHp).toBe(0)
+  expect(afterKill.game.phase).toBe('fight_overview')
+  expect(afterKill.fight.enemyHp).toBe(0)
 
   // Advance to level 2
   await api.confirmLevelUpUpgrade()
@@ -118,13 +118,13 @@ test('AC#7: after killing first enemy, game transitions to new enemy without fre
 
   // Game must be in battle phase (not frozen/stuck)
   const level2State = await api.getState()
-  expect(level2State.phase).toBe('battle')
-  expect(level2State.currentLevel).toBe(2)
+  expect(level2State.game.phase).toBe('battle')
+  expect(level2State.game.currentLevel).toBe(2)
 
   // New enemy must be shown with full HP
-  expect(level2State.enemyHp).toBeGreaterThan(0)
-  expect(level2State.enemyHp).toBe(level2State.enemyMaxHp)
-  expect(level2State.enemyName.toLowerCase()).toContain('plague')
+  expect(level2State.fight.enemyHp).toBeGreaterThan(0)
+  expect(level2State.fight.enemyHp).toBe(level2State.fight.enemyMaxHp)
+  expect(level2State.fight.enemyName.toLowerCase()).toContain('plague')
 
   // HUD must display the new enemy name
   await page.waitForTimeout(50)
@@ -138,5 +138,5 @@ test('AC#7: after killing first enemy, game transitions to new enemy without fre
   // Game must be interactive — fire a shot without throwing
   await api.applyHit('HIT', 'slow_shot')
   const afterHit = await api.getState()
-  expect(afterHit.enemyHp).toBeLessThan(afterHit.enemyMaxHp)
+  expect(afterHit.fight.enemyHp).toBeLessThan(afterHit.fight.enemyMaxHp)
 })
