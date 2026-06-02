@@ -72,7 +72,7 @@ export class LoadingScene extends Phaser.Scene {
           const paddedIndex = String(i).padStart(2, '0')
           this.load.image(
             `${spriteKey}_${animKey}_${i}`,
-            `src/assets/characters/${id}/frames/${animKey}_${paddedIndex}.png`,
+            `assets/characters/${id}/frames/${animKey}_${paddedIndex}.png`,
           )
         }
 
@@ -82,7 +82,7 @@ export class LoadingScene extends Phaser.Scene {
             const paddedIndex = String(i).padStart(2, '0')
             this.load.image(
               `${spriteKey}_mask_${animKey}_${i}`,
-              `src/assets/characters/${id}/masks/${animKey}_${paddedIndex}.png`,
+              `assets/characters/${id}/masks/${animKey}_${paddedIndex}.png`,
             )
           }
         }
