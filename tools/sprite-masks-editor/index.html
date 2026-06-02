@@ -352,6 +352,92 @@ const ZONES = {
   erase: { r: 0,   g: 0,   b: 0,   a: 0   },
 };
 
+// ============================================================
+// .msk binary codec (mirror of src/game/systems/maskBinary.ts).
+// Zone codes: 0 none, 1 head/crit, 2 torso/hit, 3 leftLeg/graze.
+// The editor edits RGBA ImageData but persists the compact .msk the game loads.
+// ============================================================
+const MAX_RUN = 0xffff;
+const CODE_COLORS = {
+  0: [0, 0, 0, 0],
+  1: [255, 0, 0, 255],
+  2: [255, 255, 0, 255],
+  3: [0, 255, 0, 255],
+};
+
+function classifyRGBA(r, g, b, a) {
+  if (a === 0) return 0;
+  if (r > 200 && g < 50) return 1;
+  if (r > 200 && g > 200) return 2;
+  if (g > 200 && r < 50) return 3;
+  return 0;
+}
+
+function encodeMsk(codes, width, height) {
+  const runs = [];
+  const n = width * height;
+  let i = 0;
+  while (i < n) {
+    const code = codes[i];
+    let len = 1;
+    while (i + len < n && codes[i + len] === code && len < MAX_RUN) len++;
+    runs.push(len, code);
+    i += len;
+  }
+  const out = new Uint8Array(8 + (runs.length / 2) * 3);
+  out[0] = 0x4d; out[1] = 0x53; out[2] = 0x4b; out[3] = 0x31;
+  out[4] = width & 0xff; out[5] = (width >> 8) & 0xff;
+  out[6] = height & 0xff; out[7] = (height >> 8) & 0xff;
+  let o = 8;
+  for (let r = 0; r < runs.length; r += 2) {
+    out[o] = runs[r] & 0xff; out[o + 1] = (runs[r] >> 8) & 0xff; out[o + 2] = runs[r + 1];
+    o += 3;
+  }
+  return out;
+}
+
+function decodeMsk(buffer) {
+  const b = new Uint8Array(buffer);
+  const magic = ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]) >>> 0;
+  if (b.length < 8 || magic !== 0x4d534b31) throw new Error('invalid .msk');
+  const width = b[4] | (b[5] << 8);
+  const height = b[6] | (b[7] << 8);
+  const codes = new Uint8Array(width * height);
+  let o = 8, p = 0;
+  while (o + 3 <= b.length && p < codes.length) {
+    const len = b[o] | (b[o + 1] << 8);
+    const code = b[o + 2];
+    o += 3;
+    const end = Math.min(p + len, codes.length);
+    codes.fill(code, p, end);
+    p = end;
+  }
+  return { width, height, codes };
+}
+
+/** Build an editable RGBA ImageData from decoded zone codes. */
+function imageDataFromMsk(buffer) {
+  const { width, height, codes } = decodeMsk(buffer);
+  const img = new ImageData(width, height);
+  for (let i = 0; i < codes.length; i++) {
+    const [r, g, b, a] = CODE_COLORS[codes[i]] || CODE_COLORS[0];
+    const o = i * 4;
+    img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = a;
+  }
+  return img;
+}
+
+/** Encode an RGBA ImageData into .msk bytes by classifying each pixel's color. */
+function mskFromImageData(maskData, width, height) {
+  const codes = new Uint8Array(width * height);
+  const d = maskData.data;
+  for (let i = 0; i < codes.length; i++) {
+    const o = i * 4;
+    codes[i] = classifyRGBA(d[o], d[o + 1], d[o + 2], d[o + 3]);
+  }
+  return encodeMsk(codes, width, height);
+}
+
 // State
 let characters = [];
 let currentChar = null;
@@ -421,10 +507,10 @@ async function apiGetCharacters() {
   return res.json();
 }
 
-async function apiSaveMask(charId, filename, pngBlob) {
+async function apiSaveMask(charId, filename, body) {
   const res = await fetch(`/api/characters/${charId}/masks/${filename}`, {
     method: 'POST',
-    body: pngBlob,
+    body,
   });
   return res.json();
 }
@@ -512,8 +598,8 @@ async function selectAnim(animKey) {
       anim: animKey,
       index: i,
       framePath: `/assets/characters/${currentChar.id}/frames/${animKey}_${pad}.png`,
-      maskPath: `/assets/characters/${currentChar.id}/masks/${animKey}_${pad}.png`,
-      maskFilename: `${animKey}_${pad}.png`,
+      maskPath: `/assets/characters/${currentChar.id}/masks/${animKey}_${pad}.msk`,
+      maskFilename: `${animKey}_${pad}.msk`,
     });
   }
 
@@ -598,16 +684,16 @@ async function loadAllAssets() {
     const spriteImg = await loadImage(frame.framePath);
     if (spriteImg) spriteImages[frame.name] = spriteImg;
 
-    // Load existing mask
-    const maskImg = await loadImage(frame.maskPath);
-    if (maskImg) {
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = canvasSize;
-      tmpCanvas.height = canvasSize;
-      const tmpCtx = tmpCanvas.getContext('2d');
-      tmpCtx.drawImage(maskImg, 0, 0);
-      maskDataStore[frame.name] = tmpCtx.getImageData(0, 0, canvasSize, canvasSize);
-      undoStacks[frame.name] = [];
+    // Load existing mask (.msk binary → editable RGBA ImageData)
+    try {
+      const res = await fetch(frame.maskPath);
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        maskDataStore[frame.name] = imageDataFromMsk(buf);
+        undoStacks[frame.name] = [];
+      }
+    } catch (e) {
+      // No existing mask — falls back to auto-generated on first edit.
     }
   }));
 }
@@ -953,20 +1039,9 @@ async function flushDirty() {
   }
 }
 
-function saveMaskToDisk(frame, maskData) {
-  return new Promise((resolve, reject) => {
-    const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = canvasSize;
-    tmpCanvas.height = canvasSize;
-    const tmpCtx = tmpCanvas.getContext('2d');
-    tmpCtx.putImageData(maskData, 0, 0);
-    tmpCanvas.toBlob(async (blob) => {
-      try {
-        await apiSaveMask(currentChar.id, frame.maskFilename, blob);
-        resolve();
-      } catch (e) { reject(e); }
-    }, 'image/png');
-  });
+async function saveMaskToDisk(frame, maskData) {
+  const bytes = mskFromImageData(maskData, canvasSize, canvasSize);
+  await apiSaveMask(currentChar.id, frame.maskFilename, bytes);
 }
 
 function showSaveIndicator(text, cls) {

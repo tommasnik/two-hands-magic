@@ -10,7 +10,23 @@ import {
   getHitResultColor,
 } from '../../game/constants'
 import { characterRegistry } from '../../game/CharacterRegistry'
+import { maskDetector } from './characterAssets'
 import type { FightSnapshot, HitResult, HitZoneName } from '../../types'
+
+/**
+ * Debug-overlay colors per hit zone (RGBA), matching the legacy mask palette.
+ * The binary mask format only encodes head/torso/leftLeg/none; the remaining
+ * zones stay transparent (they never occur from a decoded mask).
+ */
+const ZONE_OVERLAY_COLORS: Record<HitZoneName, [number, number, number, number]> = {
+  head: [255, 0, 0, 255],
+  torso: [255, 255, 0, 255],
+  leftLeg: [0, 255, 0, 255],
+  leftArm: [0, 0, 0, 0],
+  rightArm: [0, 0, 0, 0],
+  rightLeg: [0, 0, 0, 0],
+  none: [0, 0, 0, 0],
+}
 
 interface Spark {
   x: number; y: number
@@ -34,6 +50,8 @@ export class EnemyRenderer {
   private sparks: Spark[] = []
   private floatTexts: FloatText[] = []
   private lastHitTimestamp: number | null = null
+  /** Debug-only cache of reconstructed hit-zone overlay canvases, keyed by frame. */
+  private _overlayCache = new Map<string, HTMLCanvasElement>()
 
   /**
    * Advance particle/float-text animations.
@@ -154,19 +172,52 @@ export class EnemyRenderer {
     ctx.restore()
 
     if (HIT_ZONE_OVERLAY_ENABLED) {
-      const maskKey = `${spriteKey}_mask_${animKey}_${frameIndex}`
-      try {
-        if (textures.exists(maskKey)) {
-          const maskFrame = textures.getFrame(maskKey)
-          if (maskFrame?.source.image instanceof HTMLImageElement) {
-            ctx.save()
-            ctx.globalAlpha = HIT_ZONE_OVERLAY_OPACITY
-            ctx.drawImage(maskFrame.source.image, dx, dy, drawW, drawH)
-            ctx.restore()
-          }
-        }
-      } catch { /* mask texture unavailable — skip silently */ }
+      const overlay = this._getZoneOverlay(spriteKey, animKey, frameIndex)
+      if (overlay) {
+        ctx.save()
+        ctx.globalAlpha = HIT_ZONE_OVERLAY_OPACITY
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(overlay, dx, dy, drawW, drawH)
+        ctx.restore()
+      }
     }
+  }
+
+  /**
+   * Build (and cache) a colored hit-zone overlay canvas from the shared mask
+   * detector for the given frame. Reconstructs the same visualization the old
+   * RGBA mask PNGs provided, but from the compact binary zone data. Debug-only
+   * (gated by HIT_ZONE_OVERLAY_ENABLED), so it is never built in production.
+   */
+  private _getZoneOverlay(spriteKey: string, animKey: string, frameIndex: number): HTMLCanvasElement | null {
+    const cacheKey = `${spriteKey}:${animKey}:${frameIndex}`
+    const cached = this._overlayCache.get(cacheKey)
+    if (cached) return cached
+
+    const dims = maskDetector.getMaskDimensions(spriteKey, animKey, frameIndex)
+    if (!dims) return null
+
+    const { width, height } = dims
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const c2 = canvas.getContext('2d')
+    if (!c2) return null
+
+    const img = c2.createImageData(width, height)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const [r, g, b, a] = ZONE_OVERLAY_COLORS[maskDetector.getZone(spriteKey, animKey, frameIndex, x, y)]
+        const o = (y * width + x) * 4
+        img.data[o] = r
+        img.data[o + 1] = g
+        img.data[o + 2] = b
+        img.data[o + 3] = a
+      }
+    }
+    c2.putImageData(img, 0, 0)
+    this._overlayCache.set(cacheKey, canvas)
+    return canvas
   }
 
   private _drawStunIndicator(ctx: CanvasRenderingContext2D, state: FightSnapshot, now: number): void {

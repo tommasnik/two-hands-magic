@@ -236,4 +236,19 @@ describe('MaskHitDetector', () => {
       expect(detector.getMaskDimensions('stone_giant', 'idle', 99)).toBeUndefined()
     })
   })
+
+  describe('loadZones — direct zone-code path (runtime / .msk)', () => {
+    it('stores raw zone codes and resolves them to zone names', () => {
+      // 2x2 grid: head, torso, leftLeg, none (row-major).
+      const codes = new Uint8Array([1, 2, 3, 0])
+      detector.loadZones(SK, 'attack', 2, codes, 2, 2)
+
+      expect(detector.hasMask(SK, 'attack', 2)).toBe(true)
+      expect(detector.getZone(SK, 'attack', 2, 0, 0)).toBe('head')
+      expect(detector.getZone(SK, 'attack', 2, 1, 0)).toBe('torso')
+      expect(detector.getZone(SK, 'attack', 2, 0, 1)).toBe('leftLeg')
+      expect(detector.getZone(SK, 'attack', 2, 1, 1)).toBe('none')
+      expect(detector.getMaskDimensions(SK, 'attack', 2)).toEqual({ width: 2, height: 2 })
+    })
+  })
 })

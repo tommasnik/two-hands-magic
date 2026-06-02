@@ -64,9 +64,9 @@ Diskutabilní = nemá čistou humanoid/quadruped kostru nebo může vypadat víc
                             └─ při zamítnutí přegeneruj a znovu si vyžádej potvrzení. Bez potvrzení NEanimuj.
 4. animate idle    (south, v3, 8 frames, seamless loop)
 5. animate attack  (south, v3, 8 frames)
-6. download frames → src/assets/characters/{id}/frames/   (přejmenuj na {animKey}_{NN}.png)
-7. manifest.json   (šablona v CLAUDE.md)
-8. masks           (python3 scripts/generate_masks.py src/assets/characters/{id})
+6. download frames → public/assets/characters/{id}/frames/   (přejmenuj na {animKey}_{NN}.png)
+7. manifest.json   (šablona v CLAUDE.md) → src/assets/characters/{id}/manifest.json
+8. masks (.msk)    (python3 scripts/generate_masks.py public/assets/characters/{id})
 9. (volitelné) zpřesni masky v sprite-masks-editoru
 ```
 

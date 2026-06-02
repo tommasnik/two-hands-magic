@@ -304,12 +304,18 @@ Generický systém pro organizaci, pojmenování a načítání character sprit�
 
 ```
 src/assets/characters/{character-id}/
-  manifest.json              ← popis charu, animací, masek (strojově čitelný)
+  manifest.json              ← popis charu, animací, masek (strojově čitelný) — TRACKED v gitu
+public/assets/characters/{character-id}/
   frames/
     {anim}_{NN}.png          ← vizuální sprite framy (idle_00.png, attack_00.png, …)
   masks/
-    {anim}_{NN}.png          ← hit-zone masky, 1:1 k framům (stejné jméno, jiný adresář)
+    {anim}_{NN}.msk          ← hit-zone masky v kompaktním binárním formátu, 1:1 k framům
 ```
+
+> **Umístění:** manifesty žijí v `src/assets/characters/` (importuje je Vite at build time).
+> Framy a masky žijí v `public/assets/characters/` (Vite je servíruje na rootu, kopíruje do `dist/`).
+> Maska je binární `.msk` (1 bajt/pixel zone-kód, RLE) — viz `src/game/systems/maskBinary.ts`.
+
 
 **character-id** = kebab-case, shodný s adresářem (např. `stone-giant`, `goblin-scout`).
 
@@ -380,33 +386,37 @@ Důležité: v manifestu i v kódu se attack animace vždy jmenuje **`attack`** 
 ### Pojmenování souborů
 
 Framy:  `frames/{animKey}_{frameIndex:02d}.png` → `frames/idle_00.png`, `frames/attack_04.png`
-Masky:  `masks/{animKey}_{frameIndex:02d}.png`  → `masks/idle_00.png`, `masks/attack_04.png`
+Masky:  `masks/{animKey}_{frameIndex:02d}.msk` → `masks/idle_00.msk`, `masks/attack_04.msk`
 
 Frame index je vždy **zero-padded na 2 cifry** (00–99).
 
-### Phaser texture keys
+### Phaser keys / mask cache keys
 
-Konvence pro registraci textur v Phaser:
+| Typ       | Vzor                                  | Příklad                    | Cache              |
+|-----------|---------------------------------------|----------------------------|--------------------|
+| Frame     | `{spriteKey}_{animKey}_{frameIndex}`  | `stone_giant_idle_3`       | textura (PNG)      |
+| Mask      | `{spriteKey}_mask_{animKey}_{frameIndex}` | `stone_giant_mask_idle_3` | binary (`.msk`)    |
 
-| Typ       | Vzor                                  | Příklad                    |
-|-----------|---------------------------------------|----------------------------|
-| Frame     | `{spriteKey}_{animKey}_{frameIndex}`  | `stone_giant_idle_3`       |
-| Mask      | `{spriteKey}_mask_{animKey}_{frameIndex}` | `stone_giant_mask_idle_3` |
+`frameIndex` v klíči je **bez paddingu** (číslo, ne string). Framy se načítají jako Phaser
+textury; masky jako binární data (`load.binary`) — viz `src/scenes/rendering/characterAssets.ts`.
 
-`frameIndex` v klíči je **bez paddingu** (číslo, ne string) — shodné s aktuálním kódem.
+### Mask systém — hit zóny
 
-### Mask systém — barvy hit zón
+Maska je binární `.msk` soubor: jeden bajt na pixel kóduje hit zónu (RLE-komprimováno).
+Formát viz `src/game/systems/maskBinary.ts`. Zone-kódy:
 
-Masky jsou PNG obrázky kde barva pixelu kóduje hit zónu:
+| Kód | Zóna       | Hit výsledek | Barva v editoru |
+|-----|------------|--------------|-----------------|
+| `0` | `none`     | miss         | průhledná       |
+| `1` | `head`     | CRIT         | červená         |
+| `2` | `torso`    | HIT          | žlutá           |
+| `3` | `leftLeg`  | GRAZE        | zelená          |
 
-| Barva               | RGB podmínka           | Zóna       | Hit výsledek |
-|---------------------|------------------------|------------|-------------|
-| Průhledná (alpha=0) | `a == 0`               | `none`     | miss        |
-| Červená             | `R > 200 && G < 50`   | `head`     | CRIT        |
-| Žlutá               | `R > 200 && G > 200`  | `torso`    | HIT         |
-| Zelená              | `G > 200 && R < 50`   | `leftLeg`  | GRAZE       |
-
-Masky se malují v **sprite-masks-editoru** (`tools/sprite-masks-editor/`, spusť `npm run masks-editor`) — canvas tool pro ruční painting zón přes sprite framy.
+Runtime dekóduje `.msk` rovnou do `MaskHitDetector` (žádný `<canvas>`/`getImageData`).
+Masky se malují v **sprite-masks-editoru** (`tools/sprite-masks-editor/`, spusť `npm run masks-editor`) —
+canvas tool maluje barevné zóny, ale ukládá je jako `.msk` (zone-kódy). RGBA→kód klasifikace
+(`a==0`→0, `R>200&G<50`→1, `R>200&G>200`→2, `G>200&R<50`→3) je sdílená editorem, generátorem
+i `MaskHitDetector.loadMaskData`.
 
 ### Generování v PixelLabu
 
@@ -438,16 +448,20 @@ Kompletní postup pro stažení a kategorizaci všeho z PixelLabu:
    - `animations` mapa: pro každou animaci `frameCount`, `frameDurationMs`, `loop`, `hasMasks`, `source.animationId`
    - Pro PixelLab objekty použité jako characters: `"type": "object"` a `source.objectId` místo `characterId`, ale soubory žijí v `src/assets/characters/`
 
-5. **Generuj základní masky** — skript `scripts/generate_masks.py`:
+5. **Generuj základní masky** (`.msk`) — skript `scripts/generate_masks.py` (vyžaduje PIL):
    ```bash
    python3 scripts/generate_masks.py --all              # všechny bez masek
-   python3 scripts/generate_masks.py src/assets/characters/plague-rat  # jeden
+   python3 scripts/generate_masks.py public/assets/characters/plague-rat  # jeden
    python3 scripts/generate_masks.py --all --force       # přepsat existující
    ```
-   Skript vezme všechny framy, viditelné pixely (alpha > threshold) udělá zelené (GRAZE zóna). Výsledek je základní maska — pro přesnější zonaci (red=CRIT, yellow=HIT) se pak použije mask editor.
+   Viditelné pixely (alpha > threshold) → zone-kód 3 (GRAZE), zbytek 0 (none). Výstup je
+   binární `.msk`. Pro přesnější zonaci (1=CRIT head, 2=HIT torso) se pak použije mask editor.
+   Konverze starých RGBA PNG masek na `.msk` (bez PIL, čistě Node): `node scripts/convert_masks_to_msk.cjs`.
 
 6. **Přidej character do constants.ts** — `EnemyDef` s `spriteKey`, `maskConfig`, `displayWidth`
-7. **Zaregistruj v loaderu** — LoadingScene přečte manifest a načte framy + masky
+7. **Zaregistruj manifest** — přidej import do `LoadingScene` (`ALL_MANIFESTS`). Framy + `.msk` masky
+   se načtou **lazy per-enemy** (`characterAssets.ts`): první nepřítel blokuje loading screen,
+   zbytek se streamuje na pozadí během prvního souboje.
 
 #### Pojmenování animací z PixelLabu
 
@@ -463,7 +477,7 @@ Kompletní postup pro stažení a kategorizaci všeho z PixelLabu:
 1. **Vygeneruj sprite + animace v PixelLab** dle **`PixelLab.md`** (metoda, `view`, prompty, pre-check, schválení base spritu, idle + attack) → zapiš `projectId`, `characterId` a `animationId` pro každou animaci
 2. **Stáhni framy** — curl z CDN (viz URL vzor výše), přejmenuj na `{animKey}_{NN}.png`
 3. **Vytvoř manifest.json** podle šablony výše
-4. **Generuj masky** — `python3 scripts/generate_masks.py src/assets/characters/{id}`
+4. **Generuj masky** (`.msk`) — `python3 scripts/generate_masks.py public/assets/characters/{id}`
 5. **(Volitelné) Zpřesni masky** v sprite-masks-editoru (`tools/sprite-masks-editor/`) — red/yellow/green zóny
 6. **Přidej do constants.ts a loaderu**
 
@@ -507,9 +521,12 @@ export const ENEMY_STONE_GIANT: EnemyDef = {
 }
 ```
 
-Načítání framů/masek i rendering jsou **plně generické**: `LoadingScene` projde
-registr a načte všechny framy + masky podle manifestu, `GameStateMachine._loadLevel`
-zapne `MaskHitDetector`, jakmile manifest hlásí `hasMasks`. Žádný per-enemy branching.
+Načítání framů/masek i rendering jsou **plně generické a lazy**: `LoadingScene` zaregistruje
+všechny manifesty a načte jen prvního nepřítele; `BattleScene` pak streamuje zbytek kampaně
+na pozadí v pořadí encounterů (`characterAssets.loadCampaignCharactersInBackground`). Každý
+character se dekóduje jen jednou (frame textury + `.msk` masky → sdílený `MaskHitDetector`).
+`GameStateMachine._loadLevel` zapne `MaskHitDetector`, jakmile manifest hlásí `hasMasks`.
+Žádný per-enemy branching.
 
 ---
 

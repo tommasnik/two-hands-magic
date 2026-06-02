@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-"""Generate green hit-zone masks from sprite frames.
+"""Generate baseline hit-zone masks from sprite frames, in the compact ".msk" format.
 
-All visible pixels (alpha > 0) become green (0, 220, 0, 255).
-Transparent pixels stay transparent.
+All visible pixels (alpha > threshold) get zone code 3 (leftLeg / GRAZE — the
+auto-generated baseline). Transparent pixels get code 0 (none). Refine zones
+(head=1 crit, torso=2 hit) afterwards in the sprite-masks editor.
+
+Output is the binary ".msk" format the game loads at runtime
+(see src/game/systems/maskBinary.ts):
+    magic 'MSK1' | u16 width | u16 height | RLE runs of [u16 len][u8 code]
+
+Assets live under public/assets/ (Vite serves public/ at the site root).
 
 Usage:
   # Single character:
-  python3 scripts/generate_masks.py src/assets/characters/plague-rat
+  python3 scripts/generate_masks.py public/assets/characters/plague-rat
 
   # All characters missing masks:
   python3 scripts/generate_masks.py --all
 
   # Specific alpha threshold (default 10):
-  python3 scripts/generate_masks.py src/assets/characters/plague-rat --threshold 20
+  python3 scripts/generate_masks.py public/assets/characters/plague-rat --threshold 20
 """
 import argparse
 import sys
@@ -20,23 +27,46 @@ from pathlib import Path
 
 from PIL import Image
 
-GREEN = (0, 220, 0, 255)
-TRANSPARENT = (0, 0, 0, 0)
+MAX_RUN = 0xFFFF
+
+# Zone codes — keep in sync with src/game/systems/maskBinary.ts.
+ZONE_NONE = 0
+ZONE_GRAZE = 3
+
+
+def encode_msk(codes: bytearray, width: int, height: int) -> bytes:
+    out = bytearray(b"MSK1")
+    out += width.to_bytes(2, "little")
+    out += height.to_bytes(2, "little")
+    n = width * height
+    i = 0
+    while i < n:
+        code = codes[i]
+        length = 1
+        while i + length < n and codes[i + length] == code and length < MAX_RUN:
+            length += 1
+        out += length.to_bytes(2, "little")
+        out.append(code)
+        i += length
+    return bytes(out)
 
 
 def generate_mask(frame_path: Path, mask_path: Path, threshold: int) -> bool:
     img = Image.open(frame_path).convert("RGBA")
-    mask = Image.new("RGBA", img.size, TRANSPARENT)
+    width, height = img.size
     pixels = img.load()
-    mask_pixels = mask.load()
 
-    for y in range(img.height):
-        for x in range(img.width):
+    codes = bytearray(width * height)
+    for y in range(height):
+        for x in range(width):
             if pixels[x, y][3] > threshold:
-                mask_pixels[x, y] = GREEN
+                codes[y * width + x] = ZONE_GRAZE
+            else:
+                codes[y * width + x] = ZONE_NONE
 
     mask_path.parent.mkdir(parents=True, exist_ok=True)
-    mask.save(mask_path)
+    with open(mask_path, "wb") as f:
+        f.write(encode_msk(codes, width, height))
     return True
 
 
@@ -48,7 +78,7 @@ def process_character(char_dir: Path, threshold: int, force: bool) -> int:
         print(f"  SKIP {char_dir.name}: no frames/ directory")
         return 0
 
-    if masks_dir.exists() and any(masks_dir.glob("*.png")) and not force:
+    if masks_dir.exists() and any(masks_dir.glob("*.msk")) and not force:
         print(f"  SKIP {char_dir.name}: masks/ already has files (use --force to overwrite)")
         return 0
 
@@ -58,7 +88,7 @@ def process_character(char_dir: Path, threshold: int, force: bool) -> int:
 
     count = 0
     for frame in frames:
-        mask_path = masks_dir / frame.name
+        mask_path = masks_dir / f"{frame.stem}.msk"
         generate_mask(frame, mask_path, threshold)
         count += 1
 
@@ -67,7 +97,7 @@ def process_character(char_dir: Path, threshold: int, force: bool) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate green masks from sprite frames")
+    parser = argparse.ArgumentParser(description="Generate baseline .msk masks from sprite frames")
     parser.add_argument("path", nargs="?", help="Path to character directory")
     parser.add_argument("--all", action="store_true", help="Process all characters missing masks")
     parser.add_argument("--threshold", type=int, default=10, help="Alpha threshold (default: 10)")
@@ -78,18 +108,18 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    assets = Path(__file__).resolve().parent.parent / "src" / "assets"
+    assets = Path(__file__).resolve().parent.parent / "public" / "assets"
 
     if args.all:
         total = 0
-        for char_dir in sorted((assets / "characters").iterdir()):
-            if not char_dir.is_dir():
+        for group in ("characters", "objects"):
+            group_dir = assets / group
+            if not group_dir.exists():
                 continue
-            total += process_character(char_dir, args.threshold, args.force)
-        for obj_dir in sorted((assets / "objects").iterdir()):
-            if not obj_dir.is_dir():
-                continue
-            total += process_character(obj_dir, args.threshold, args.force)
+            for char_dir in sorted(group_dir.iterdir()):
+                if not char_dir.is_dir():
+                    continue
+                total += process_character(char_dir, args.threshold, args.force)
         print(f"\nTotal: {total} masks")
     else:
         path = Path(args.path)

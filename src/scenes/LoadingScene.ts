@@ -1,6 +1,9 @@
 import Phaser from 'phaser'
 import { characterRegistry } from '../game/CharacterRegistry'
 import type { CharacterManifest } from '../game/CharacterRegistry'
+import { gameMachine } from '../game/GameStateMachine'
+import { ENEMY_POOL } from '../game/constants'
+import { maskDetector, preloadCharacterAssets, finishPreloadCharacter } from './rendering/characterAssets'
 
 // Static manifest imports — Vite resolves JSON imports at build time
 import stoneGiantManifest from '../assets/characters/stone-giant/manifest.json'
@@ -41,6 +44,10 @@ const ALL_MANIFESTS: CharacterManifest[] = [
 export class LoadingScene extends Phaser.Scene {
   private _fill: HTMLElement | null = null
   private _label: HTMLElement | null = null
+  /** Manifest id of the first enemy, preloaded here; the rest stream in during battle. */
+  private _firstId: string | undefined
+  /** Mask references for the first enemy, decoded in create() once loading completes. */
+  private _firstMaskRefs: ReturnType<typeof preloadCharacterAssets> = []
 
   constructor() {
     super({ key: 'LoadingScene' })
@@ -62,35 +69,22 @@ export class LoadingScene extends Phaser.Scene {
       }
     }
 
-    // Generically load all frames and masks for every registered character
-    for (const manifest of characterRegistry.getAll()) {
-      const { id, spriteKey, animations } = manifest
+    // Share the mask detector with the game before the first level loads.
+    gameMachine.setMaskDetector(maskDetector)
 
-      for (const [animKey, anim] of Object.entries(animations)) {
-        // Load sprite frames
-        for (let i = 0; i < anim.frameCount; i++) {
-          const paddedIndex = String(i).padStart(2, '0')
-          this.load.image(
-            `${spriteKey}_${animKey}_${i}`,
-            `assets/characters/${id}/frames/${animKey}_${paddedIndex}.png`,
-          )
-        }
-
-        // Load hit-zone masks (only if masks exist for this animation)
-        if (anim.hasMasks) {
-          for (let i = 0; i < anim.frameCount; i++) {
-            const paddedIndex = String(i).padStart(2, '0')
-            this.load.image(
-              `${spriteKey}_mask_${animKey}_${i}`,
-              `assets/characters/${id}/masks/${animKey}_${paddedIndex}.png`,
-            )
-          }
-        }
-      }
+    // Only the first enemy blocks the loading screen — the remaining campaign
+    // characters stream in during the first battle (BattleScene background load).
+    const firstId = ENEMY_POOL[0].manifestId
+    if (firstId !== undefined && characterRegistry.has(firstId)) {
+      this._firstId = firstId
+      this._firstMaskRefs = preloadCharacterAssets(this, firstId)
     }
   }
 
   create(): void {
+    if (this._firstId !== undefined) {
+      finishPreloadCharacter(this, this._firstId, this._firstMaskRefs)
+    }
     document.getElementById('loading-screen')?.classList.add('hidden')
     this.scene.start('BattleScene')
   }

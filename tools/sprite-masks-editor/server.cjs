@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 3333;
-const ASSETS_DIR = path.resolve(__dirname, '../../src/assets/characters');
+// Frames + masks live under public/ (Vite serves it at the site root).
+const ASSETS_DIR = path.resolve(__dirname, '../../public/assets/characters');
+// Manifests are the tracked source of truth under src/.
+const MANIFEST_DIR = path.resolve(__dirname, '../../src/assets/characters');
 
 const MIME = {
   '.html': 'text/html',
@@ -11,6 +14,7 @@ const MIME = {
   '.css': 'text/css',
   '.png': 'image/png',
   '.json': 'application/json',
+  '.msk': 'application/octet-stream',
 };
 
 function sendJson(res, data) {
@@ -43,14 +47,14 @@ const server = http.createServer(async (req, res) => {
 
   // API: list characters with manifests
   if (p === '/api/characters' && req.method === 'GET') {
-    const dirs = fs.readdirSync(ASSETS_DIR, { withFileTypes: true })
+    const dirs = fs.readdirSync(MANIFEST_DIR, { withFileTypes: true })
       .filter(d => d.isDirectory())
       .map(d => d.name)
       .sort();
 
     const characters = [];
     for (const dir of dirs) {
-      const manifestPath = path.join(ASSETS_DIR, dir, 'manifest.json');
+      const manifestPath = path.join(MANIFEST_DIR, dir, 'manifest.json');
       if (!fs.existsSync(manifestPath)) continue;
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
       characters.push(manifest);
@@ -62,7 +66,7 @@ const server = http.createServer(async (req, res) => {
   const manifestMatch = p.match(/^\/api\/characters\/([^/]+)\/manifest$/);
   if (manifestMatch && req.method === 'POST') {
     const [, charId] = manifestMatch;
-    const manifestPath = path.join(ASSETS_DIR, charId, 'manifest.json');
+    const manifestPath = path.join(MANIFEST_DIR, charId, 'manifest.json');
     if (!fs.existsSync(manifestPath)) return send404(res);
     const body = await readBody(req);
     const data = JSON.parse(body.toString('utf8'));

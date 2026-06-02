@@ -1,9 +1,10 @@
 // ============================================================
 // MaskHitDetector — pure TypeScript, no Phaser dependency
-// Pixel-perfect hit detection from pre-parsed PNG mask data.
+// Pixel-perfect hit detection from pre-parsed hit-zone masks.
 // ============================================================
 
 import type { HitZoneName } from '../../types'
+import { MASK_ZONE, zoneCodeToName } from './maskBinary'
 
 /**
  * Key format for internal mask storage: "spriteKey:animKey:frameIndex"
@@ -11,22 +12,26 @@ import type { HitZoneName } from '../../types'
  */
 type MaskKey = string
 
-/** Internal mask data entry — raw RGBA pixel buffer + dimensions. */
+/** Internal mask entry — one zone code per pixel (row-major) + dimensions. */
 interface MaskEntry {
-  data: Uint8Array
+  codes: Uint8Array
   width: number
   height: number
 }
 
 /**
- * Pixel-perfect hit zone detector using pre-loaded PNG mask data.
+ * Pixel-perfect hit zone detector.
  *
- * Each mask is a 128x128 RGBA image where pixel colors encode zone types:
- *   - alpha = 0      -> 'none' (miss — transparent pixel)
- *   - R > 200, G < 50 -> 'head' (crit zone — red)
- *   - R > 200, G > 200 -> 'torso' (hit zone — yellow)
- *   - G > 200, R < 50 -> 'leftLeg' (graze zone — green)
- *   - anything else    -> 'none'
+ * Masks are stored as a compact zone-code grid: one byte per pixel, where
+ *   0 -> 'none'    (miss)
+ *   1 -> 'head'    (crit)
+ *   2 -> 'torso'   (hit)
+ *   3 -> 'leftLeg' (graze)
+ *
+ * The runtime feeds codes directly via {@link loadZones} (decoded from the
+ * compact ".msk" binary format — see maskBinary.ts). {@link loadMaskData}
+ * remains as an RGBA convenience that classifies pixel colors into codes;
+ * it is the single place the legacy color encoding is interpreted.
  *
  * No Phaser, no browser APIs — only Uint8Array and math.
  */
@@ -34,29 +39,57 @@ export class MaskHitDetector {
   private _masks = new Map<MaskKey, MaskEntry>()
 
   /**
-   * Register mask pixel data for a specific animation frame of a character.
-   * Must be called during asset loading (before gameplay begins).
+   * Register pre-decoded zone codes for a specific animation frame.
+   * This is the fast runtime path — codes come straight from a decoded .msk.
    *
-   * @param spriteKey  - Character sprite key prefix (e.g. 'stone_giant', 'plague_rat')
+   * @param spriteKey  - Character sprite key prefix (e.g. 'stone_giant')
    * @param animKey    - Animation name (e.g. 'idle', 'attack')
    * @param frameIndex - Zero-based frame index within the animation
-   * @param data       - Raw RGBA pixel data (width * height * 4 bytes)
-   * @param width      - Mask image width in pixels
-   * @param height     - Mask image height in pixels
+   * @param codes      - width * height zone codes (1 byte per pixel, row-major)
+   * @param width      - Mask width in pixels
+   * @param height     - Mask height in pixels
+   */
+  loadZones(spriteKey: string, animKey: string, frameIndex: number, codes: Uint8Array, width: number, height: number): void {
+    const key: MaskKey = `${spriteKey}:${animKey}:${frameIndex}`
+    this._masks.set(key, { codes, width, height })
+  }
+
+  /**
+   * Register mask data from a raw RGBA pixel buffer, classifying colors into
+   * zone codes. Retained for tests and any RGBA-sourced caller:
+   *   - alpha = 0       -> none (transparent)
+   *   - R > 200, G < 50  -> head  (crit, red)
+   *   - R > 200, G > 200 -> torso (hit, yellow)
+   *   - G > 200, R < 50  -> leftLeg (graze, green)
+   *   - anything else    -> none
+   *
+   * @param data - Raw RGBA pixel data (width * height * 4 bytes)
    */
   loadMaskData(spriteKey: string, animKey: string, frameIndex: number, data: Uint8Array, width: number, height: number): void {
-    const key: MaskKey = `${spriteKey}:${animKey}:${frameIndex}`
-    this._masks.set(key, { data, width, height })
+    const codes = new Uint8Array(width * height)
+    for (let i = 0; i < codes.length; i++) {
+      const offset = i * 4
+      const r = data[offset]
+      const g = data[offset + 1]
+      const a = data[offset + 3]
+      if (a === 0) {
+        codes[i] = MASK_ZONE.none
+      } else if (r > 200 && g < 50) {
+        codes[i] = MASK_ZONE.head
+      } else if (r > 200 && g > 200) {
+        codes[i] = MASK_ZONE.torso
+      } else if (g > 200 && r < 50) {
+        codes[i] = MASK_ZONE.leftLeg
+      } else {
+        codes[i] = MASK_ZONE.none
+      }
+    }
+    this.loadZones(spriteKey, animKey, frameIndex, codes, width, height)
   }
 
   /**
    * Returns the hit zone name for a pixel coordinate on a specific animation frame.
    *
-   * @param spriteKey  - Character sprite key prefix (e.g. 'stone_giant', 'plague_rat')
-   * @param animKey    - Current animation name (e.g. 'idle', 'attack')
-   * @param frameIndex - Current frame index within the animation
-   * @param frameX     - X coordinate in mask pixel space (0–127 for 128px masks)
-   * @param frameY     - Y coordinate in mask pixel space (0–127 for 128px masks)
    * @returns Zone name: 'head' (crit), 'torso' (hit), 'leftLeg' (graze), or 'none' (miss)
    */
   getZone(spriteKey: string, animKey: string, frameIndex: number, frameX: number, frameY: number): HitZoneName {
@@ -64,36 +97,15 @@ export class MaskHitDetector {
     const entry = this._masks.get(key)
     if (!entry) return 'none'
 
-    // Bounds check
     const ix = Math.floor(frameX)
     const iy = Math.floor(frameY)
     if (ix < 0 || ix >= entry.width || iy < 0 || iy >= entry.height) return 'none'
 
-    // Read RGBA at pixel (ix, iy)
-    const offset = (iy * entry.width + ix) * 4
-    const r = entry.data[offset]
-    const g = entry.data[offset + 1]
-    // b is at offset + 2 but unused
-    const a = entry.data[offset + 3]
-
-    // Transparent = miss
-    if (a === 0) return 'none'
-
-    // Red channel dominant, green low = crit (head)
-    if (r > 200 && g < 50) return 'head'
-
-    // Both red and green high = hit (torso) — yellow
-    if (r > 200 && g > 200) return 'torso'
-
-    // Green dominant, red low = graze (leftLeg)
-    if (g > 200 && r < 50) return 'leftLeg'
-
-    return 'none'
+    return zoneCodeToName(entry.codes[iy * entry.width + ix])
   }
 
   /**
    * Returns true if mask data has been loaded for the given character, animation key and frame.
-   * Useful for checking if pixel-perfect detection is available.
    */
   hasMask(spriteKey: string, animKey: string, frameIndex: number): boolean {
     return this._masks.has(`${spriteKey}:${animKey}:${frameIndex}`)

@@ -16,7 +16,7 @@ import { EnemyRenderer } from './rendering/EnemyRenderer'
 import { HUDRenderer } from './rendering/HUDRenderer'
 import { PhaseOverlayManager } from './rendering/PhaseOverlayManager'
 import { SkillRenderer } from './rendering/SkillRenderer'
-import { initMaskDetector } from './rendering/MaskDetectorLoader'
+import { loadCampaignCharactersInBackground } from './rendering/characterAssets'
 import { EffectsManager } from './effects/EffectsManager'
 import type { InputEvent } from '../types'
 
@@ -77,7 +77,12 @@ export class BattleScene extends Phaser.Scene {
     this._phaseOverlay.onConfirmUpgrade = (id) => gameMachine.confirmLevelUpUpgrade(id)
     this._phaseOverlay.onFightOverviewContinue = () => gameMachine.completeFightOverview()
     this._phaseOverlay.init()
-    initMaskDetector(this.textures)
+
+    // The first enemy + its masks were loaded by LoadingScene (which also wired
+    // the shared mask detector into the game). Stream the rest of the campaign's
+    // characters in now, in encounter order, so they're ready well before the
+    // player reaches them — without blocking the initial loading screen.
+    void loadCampaignCharactersInBackground(this)
 
     // Loading finished — reveal the start overlay now that everything is ready
     document.getElementById('start-overlay')?.classList.remove('hidden')
