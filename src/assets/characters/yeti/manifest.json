@@ -1,0 +1,37 @@
+{
+  "id": "yeti",
+  "spriteKey": "yeti",
+  "displayWidth": 192,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "980f47d8-107d-4db1-ba3d-f364b5affc83",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "c63219cf-9bf0-41d3-b374-a16188edc7d5",
+        "animationGroupId": "f98f6427-4331-46bf-8927-4e815f7ec352",
+        "direction": "south",
+        "description": "A massive shaggy white yeti with slate-blue face and long clawed arms, hunched and breathing heavily, shoulders rising and falling, fur swaying, occasionally flexing its claws. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "2e3137fb-db72-4d49-9f03-cb8e72421410",
+        "animationGroupId": "91535a11-856e-406d-a76d-9a225ef823b7",
+        "direction": "south",
+        "description": "The massive white yeti with long clawed arms attacks — it rears up beating its chest once, then swings both clawed arms down toward the camera in a crushing double blow, then drops back into its hunched posture."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

@@ -1,0 +1,37 @@
+{
+  "id": "frozen-revenant",
+  "spriteKey": "frozen_revenant",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "f0e2201b-1d89-4c40-8147-d3fc2fa3f90b",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "5a790865-cbe6-4ac9-84c2-2ed48fa1486b",
+        "animationGroupId": "3a03395a-3d6c-4ca3-8714-41d85d6fe8d1",
+        "direction": "south",
+        "description": "A frozen undead warrior in frost-covered dented iron armor holding an ice-sheathed longsword, standing rigid. Sways stiffly, cold white eyes pulsing, frost vapor drifting off its shoulders. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "7b4bfefb-b4e4-4f54-bfe1-35248aa0d841",
+        "animationGroupId": "657bc00e-07a1-4640-bdf2-7661855c7ce0",
+        "direction": "south",
+        "description": "The frozen warrior in rimed iron armor attacks — it heaves the ice-sheathed longsword up over its shoulder, then swings it down toward the camera in a heavy frozen arc, then stiffly resets its guard."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

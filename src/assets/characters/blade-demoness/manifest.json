@@ -1,0 +1,37 @@
+{
+  "id": "blade-demoness",
+  "spriteKey": "blade_demoness",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "78c2f006-43e0-4cd0-81af-f43be9e4f94c",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "fa779761-89da-4e08-b187-5a86fb9890b6",
+        "animationGroupId": "5ac9aac6-58d6-4a0b-b26a-18d9a153912d",
+        "direction": "south",
+        "description": "A slender crimson demoness with obsidian blade forearms and swept-back horns, standing in an elegant fighting stance, blades lowered, tail swaying slowly, hair drifting, violet eyes glowing. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "fc7e6aa6-4fb4-45ab-807c-b8454d597301",
+        "animationGroupId": "8fde7fcc-c58b-4d75-9701-d465f983b401",
+        "direction": "south",
+        "description": "The crimson demoness with obsidian blade forearms attacks — she spins once gathering momentum, then slashes both curved blades toward the camera in a scissoring cross-cut, then flows back into her elegant stance."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Idle animation stalled twice at 95%% and eventually failed server-side; retried and succeeded. Base sprite approved pre-session; self-reviewed (gate 3 pre-approved)."
+}

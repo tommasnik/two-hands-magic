@@ -1,0 +1,37 @@
+{
+  "id": "glacier-colossus",
+  "spriteKey": "glacier_colossus",
+  "displayWidth": 256,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "d08d3f83-2aef-4838-8281-63afd07f8d16",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "9e431a6c-403a-42cd-b52e-83c03b7da281",
+        "animationGroupId": "e221f136-9a5d-40d7-864f-d1b409593900",
+        "direction": "south",
+        "description": "A towering translucent glacier colossus with boulders frozen inside its body and glowing cyan cracks, standing immense and slow. Heaves with a grinding breath, ice creaking, cracks pulsing with cold light. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "b80e640d-3a97-4ff3-aac5-b0a9a1a9bd9d",
+        "animationGroupId": "7cfd5bca-3636-4211-8f0b-7f5fb3d11a7a",
+        "direction": "south",
+        "description": "The towering glacier colossus attacks — it draws both massive ice fists back, then slams them together toward the camera in a crushing blow that scatters ice shards, then grinds back upright."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character (boss), south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

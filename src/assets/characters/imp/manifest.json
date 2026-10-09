@@ -1,0 +1,37 @@
+{
+  "id": "imp",
+  "spriteKey": "imp",
+  "displayWidth": 96,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "22ea0c60-9f73-4633-abed-7f1573888cb6",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "378fd5c4-de3d-4834-a157-35518622dc18",
+        "animationGroupId": "8e5c410d-447e-4dc2-ad82-a9af523a7874",
+        "direction": "south",
+        "description": "A small crimson imp with curved horns and folded bat wings, crouched playfully, tail flicking side to side, wings twitching, grinning with glowing yellow eyes. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "430b0f0f-5983-4902-967d-5cc6fc0a08b1",
+        "animationGroupId": "6bd5398f-e728-424b-8070-d3eb6256daa1",
+        "direction": "south",
+        "description": "The small crimson imp with bat wings attacks — it conjures a small flickering fireball between its claws, then hurls it toward the camera with a hop, then lands back in its crouched grinning stance."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base sprite approved pre-session (character 22ea0c60, named 'Imp v2' in PixelLab); idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

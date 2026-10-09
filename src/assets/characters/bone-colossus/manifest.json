@@ -1,0 +1,37 @@
+{
+  "id": "bone-colossus",
+  "spriteKey": "bone_colossus",
+  "displayWidth": 208,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "cf6d9060-4bdc-4da4-972d-9f62db0fa469",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "4943e738-e32a-4414-827b-94234000f9ce",
+        "animationGroupId": "d73111dc-849d-45e7-be6c-156b3f796dec",
+        "direction": "south",
+        "description": "A hulking colossus built from interlocked ribcages, skulls and fused femur arms, glowing sickly green between the bones, looming and swaying heavily, loose bones rattling and shifting. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "b118e10f-441c-4201-acd3-172a1645fdad",
+        "animationGroupId": "403e3ca7-c0a9-46db-afb2-cb153716c40f",
+        "direction": "south",
+        "description": "The bone colossus with fused femur arms attacks — it rears back with a rattling shudder, then sweeps a massive bone-shard claw toward the camera in a wide crushing arc, then settles back into its looming sway."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

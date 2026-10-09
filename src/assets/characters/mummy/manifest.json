@@ -1,0 +1,37 @@
+{
+  "id": "mummy",
+  "spriteKey": "mummy",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "acbfcef3-5808-43f7-a8db-8cc5c5fc5023",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "1244e3f6-d500-44d1-9134-abd2f00ab34b",
+        "animationGroupId": "b168bb77-eb0e-460a-99cf-1e618379ad26",
+        "direction": "south",
+        "description": "A hunched undead mummy wrapped in tattered sand-stained linen bandages with a blue-and-gold pharaonic headcloth, clawed hands half-raised. Sways slowly, breathing, bandage strips swinging. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "0468b50f-8b7a-4c37-847c-ebe7af6b47cf",
+        "animationGroupId": "1370563e-91b2-470a-8953-4a1ca1efb01f",
+        "direction": "south",
+        "description": "The hunched mummy in tattered linen bandages with a blue-and-gold pharaonic headcloth attacks — rears back gathering itself, then lunges toward the camera slashing downward with both clawed bandaged hands, then recoils back into its hunched ready stance."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base + animations approved before this session; this session only integrated frames/manifest/masks."
+}

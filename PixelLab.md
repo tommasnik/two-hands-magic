@@ -1,131 +1,116 @@
-# PixelLab — generování sprites (instrukce)
+# PixelLab — generování enemy spritů (operativní návod)
 
-> Načti tento soubor pokaždé, když pracuješ s **PixelLab MCP** nebo když **generuješ / zadáváš generování sprites**.
-> Destilace ověřených zkušeností. Detaily game-side pipeline (manifest, loader, masky) jsou v `CLAUDE.md` → „Sprite & Character Asset System".
+> Definitivní proces ověřený na 24 enemies (2026-07-20). Nahrazuje všechny starší návody.
+> Cíl per enemy: **south-facing base sprite + `idle` + `attack` animace** (9 framů, south).
+> **Zadání všech enemies žijí v `scripts/sprite-gen/enemy-specs.json`** — descriptions,
+> idle/attack prompty, PixelLab IDs, stav. Ten soubor je source of truth; tento dokument je proces.
 
----
-
-## 1. Než cokoliv vygeneruješ
-
-1. **Načti aktuální docs** — `WebFetch https://api.pixellab.ai/mcp/docs`. Reference všech tools + parametrů; aktualizuje se s API. Nikdy nespoléhej na zapamatované parametry.
-2. **Zkontroluj balance** — `get_balance` před větší dávkou.
-3. **Project ID** naší hry: `10f15a6e-f984-4afa-8be1-b703bfaeb07e`.
+Project ID: `10f15a6e-f984-4afa-8be1-b703bfaeb07e`
 
 ---
 
-## 2. Kamera / view — side-scroller konvence (DŮLEŽITÉ)
+## Kdy se model ptá uživatele (jediné 3 gate-y)
 
-Hra je **side-scroller**. Nepřátelé musí být snímaní kamerou **v úrovni očí, zepředu** — NE shora (top-down).
+Vše ostatní běží autonomně, bez doptávání.
 
-| Nástroj | Parametr | Hodnota |
-|---------|----------|---------|
-| `create_character` | `view` | `"side"` (NE default `"low top-down"`) |
-| `create_1_direction_object` | `view` | `"sidescroller"` |
+| Gate | Kdy | Jak |
+|------|-----|-----|
+| 1. Metoda | Jen u enemy, který NENÍ ve specs a má netypický tvar | `AskUserQuestion` s doporučením |
+| 2. Base sprite | **VŽDY** před animací | Pošli preview/galerii (`SendUserFile`). Characters: schválit/zamítnout. Objects: uživatel vybere číslo kandidáta — buď odpoví číslem (→ `select_object_frames`), nebo si vybere sám v PixelLab UI s tagem (→ najdi přes `list_objects(tags="...")`) |
+| 3. Animace | Po vygenerování idle+attack | Pošli GIFy. Po schválení integruj |
 
-- Směr animací zůstává **`south`** = postava čelem ke kameře.
-- `view: "side"` + směr `south` = **čelní pohled v úrovni očí** (kamera nemíří shora). Přesně to chceme.
-- `view` ovládá náklon kamery (top-down vs. eye-level), `direction` ovládá natočení postavy. Profil (doleva/doprava) by byl `east`/`west` — ten nepoužíváme.
-
----
-
-## 3. Volba metody generování — character vs. object
-
-Tři cesty, každá na jiný typ tvora:
-
-| # | Metoda | Tool | Kdy |
-|---|--------|------|-----|
-| 1 | **Skeleton character** | `create_character` (`humanoid` / `quadruped` + template) | Jasný bipední / čtyřnohý tvor |
-| 2 | **Single object** | `create_1_direction_object` → `animate_object` | Tvar, který se nevejde do humanoid/quadruped kostry |
-| 3 | **Sada objektů + výběr** | `create_1_direction_object` (batch) → uživatel vybere → `animate_object` | Jako 2, ale chceme vybírat z víc variant |
-
-Rozdíly:
-- **Character (1)**: skeleton animace, vždy 8 směrů (v3/pro), kostra. Pro netypické tvary (pavouk) bývá horší.
-- **Object (2/3)**: jediný směr, žádné plýtvání na rotace, volnější tvar bez kostry. Batch mód podle `size` vygeneruje víc kandidátů (≤42px→64, ≤85px→16, ≤170px→4) ve stavu `review`. V naší hře jsou objekty plnohodnotní nepřátelé (manifest `"type": "object"`).
-- ⚠️ `create_character` **neumí** reference image — existující obrázek nejde proměnit ve skeleton-character.
-
-### Rozhodovací pravidlo
-
-- **Jasný humanoid** (bandita, gnoll, rytíř, ork, mág…) → **vždy metoda 1**, `body_type: humanoid`. Neptej se.
-- **Jasný čtyřnožec** (medvěd, vlk, kanec, kočka, kůň…) → **vždy metoda 1**, `body_type: quadruped` + nejbližší `template` (bear/cat/dog/horse/lion). Neptej se.
-- **Diskutabilní / netypický tvar** → **NEJDŘÍV se zeptej uživatele** (`AskUserQuestion`), navrhni doporučenou variantu 1/2/3 a nech rozhodnout. Bez odpovědi negeneruj.
-
-Diskutabilní = nemá čistou humanoid/quadruped kostru nebo může vypadat víc způsoby: pavouk (8 nohou), elementál, beholder, drak (čtyřnohý vs. wyvern), ještěři/lizardi, cokoliv beztvarého/létajícího/vícenohého. Když váháš „je to jasné?" → ber to jako diskutabilní a zeptej se.
+Zamítnutí = uprav prompt podle připomínky a generuj znovu. Nikdy neanimuj neschválený base.
 
 ---
 
-## 4. Proces generování jednoho spritu
+## 1. Volba metody (rozhodni sám podle tvaru)
+
+- **Humanoid** (2 nohy, 2 ruce — i kostlivec, golem, démon s křídly)
+  → `create_character(mode="v3", view="side", body_type="humanoid", size=<tier>)`
+- **Vše ostatní** (čtyřnožec, hejno, elementál, had, drak, stín, létavec)
+  → `create_1_direction_object(view="sidescroller", style_images=[<ref>])`
+  - ⚠️ v3 quadrupedy neumí; standard mód je zakázán (plochý, stylově nekonzistentní výsledek)
+  - `style_images`: schválený v3 sprite tematicky blízké palety (Demon Lord pro ohnivé, Glacier Colossus pro ledové…), příprava:
+    `convert <sprite>.png -trim +repage -resize 128x128 -background none -gravity center -extent 128x128 -colors 48 -strip PNG8:ref.png` → base64
+  - `size` NEZADÁVEJ spolu se style_images — output size určuje největší style image (128 → 4 kandidáti)
+  - base64 ref ověř roundtripem (PIL `verify()`) — poškozený stream API odmítne
+
+Size tiery (native px; in-game velikost řeší `displayWidth` v manifestu):
+S 64–96 (havěť, imp) · M 128 (humanoidi) · L 160–192 (yeti, velcí tvorové) · XL 208–256 (bossové, kolosové)
+
+## 2. Prompty — pravidla
+
+Vše anglicky. Hotové texty per enemy → `enemy-specs.json` (`description`, `idle`, `attack`).
+
+**description (create)** — 40–80 slov, statický vizuál: silueta, materiály, barvy, zbraň, póza.
+- Objekty **VŽDY**: „facing the viewer head-on, front view, chest and head pointed straight at the camera". **NIKDY** „side view" — vygeneruje profil otočený doprava.
+- Objekty přidej styl-fráze: „rich shading ramps", „strong rim light", „high-contrast detailed pixel art".
+
+**idle (animace)** — 1 věta vizuální kotva + drobné pohyby (dýchání, plápolání, přešlapování) + **povinně**:
+> "The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
+
+**attack (animace)** — příprava → úder **na kameru** → recoil. Údery směrem k hráči piš explicitně:
+„lunges forward snapping its jaws shut right at the viewer, head growing large as it strikes at the camera".
+Zbraň/anatomie viditelná na spritu je autoritativní (pre-check reálného vzhledu před psaním promptu).
+
+## 3. Generování — dávky a limity
+
+- **Tier 1 = max 8 souběžných jobů.** Posílej po vlnách; na `429` počkej 2–3 min (background `sleep`) a pošli další vlnu.
+- Job spadlý na „heavy load" → pošli **stejný create znovu** (stane se běžně).
+- Doba: characters ~3–5 min, objekty ~30–90 s. Stav: `get_character` / `get_object` (s `include_preview=false` kvůli kontextu).
+- **Každé ID okamžitě zapiš do `enemy-specs.json`** (`pixellab.characterId`/`objectId`, `status`).
+- Ceny: v3 character 3–9 gen (dle size), objekt ~20–25 gen, animace 8 gen/směr. `get_balance` před velkou dávkou.
+
+## 4. Stažení preview / framů — CDN URL vzory
 
 ```
-1. create_character / create_1_direction_object   (view dle §2, params dle tasku)
-2. PRE-CHECK base spritu  ── stáhni a vizuálně zkontroluj (get_character/get_object, include_preview)
-                            └─ uprav action_description podle REÁLNÉHO vzhledu (póza, zbraň, barvy, proporce)
-3. ⚠️ STOP — schválení base spritu UŽIVATELEM
-                            └─ zobraz sprite, popiš ho, POČKEJ na explicitní potvrzení
-                            └─ při zamítnutí přegeneruj a znovu si vyžádej potvrzení. Bez potvrzení NEanimuj.
-4. animate idle    (south, v3, 8 frames, seamless loop)
-5. animate attack  (south, v3, 8 frames)
-6. download frames → src/assets/characters/{id}/frames/   (přejmenuj na {animKey}_{NN}.png)
-7. manifest.json   (šablona v CLAUDE.md)
-8. masks           (python3 scripts/generate_masks.py src/assets/characters/{id})
-9. (volitelné) zpřesni masky v sprite-masks-editoru
+# character rotace:
+https://backblaze.pixellab.ai/file/pixellab-characters/{projectId}/{characterId}/rotations/south.png
+# character animace (i = 0..8):
+https://backblaze.pixellab.ai/file/pixellab-characters/{projectId}/{characterId}/animations/{animationId}/south/{i}.png
+# object kandidáti (review):
+https://backblaze.pixellab.ai/file/pixellab-characters/objects/{projectId}/{objectId}/rotations/frame_{n}.png
+# object hotový + animace:
+https://backblaze.pixellab.ai/file/pixellab-characters/objects/{projectId}/{objectId}/rotations/unknown.png
+https://backblaze.pixellab.ai/file/pixellab-characters/objects/{projectId}/{objectId}/animations/{animationId}/unknown/{i}.png
 ```
 
-**Výběr kandidátů (review stav) dělá VŽDY uživatel, nikdy agent.** Platí pro characters i objects. Agent kandidáty zobrazí (`include_preview`) a popíše; výběr potvrdí `select_object_frames`, zahození `dismiss_review`.
+Galerie pro schvalování: `montage -label '%t' *.png -tile 4x -geometry 200x200+8+8 -background '#222' -fill white sheet.png`
+GIF preview animací: `convert -delay 15 -loop 0 -dispose Background idle_{0..8}.png idle.gif` (attack `-delay 10`).
 
----
+## 5. Animace (po schválení base — gate 2)
 
-## 5. Jak psát prompty
+- **Character**: `animate_character(character_id, mode="v3", frame_count=8, directions=["south"], animation_name="idle"|"attack", action_description=<prompt ze specs>)`
+- **Object**: `animate_object(object_id, mode="v3", frame_count=8, display_name="idle"|"attack", animation_description=<prompt>)` — **BEZ `directions`** (1-dir objekt)
+- Výstup = 9 framů (reference frame 0 + 8 generovaných).
+- Špatná animace → vygeneruj novou skupinu s upraveným promptem (staré skupiny nevadí, manifest odkazuje na konkrétní `animationId`).
 
-### `description` (při create)
-Kompletní statický vizuální popis postavy: materiály, barvy, proporce, srst/peří, zbraně, vybavení, textury, póza. Čím víc detailů, tím konzistentnější výsledek.
+## 6. Integrace do hry (po schválení animací — gate 3)
 
-### `action_description` (při animate)
-**Self-contained** — PixelLab generuje framy nezávisle, takže prompt musí nést vizuální informace nutné pro konzistenci, ne jen popis pohybu. `description` z create slouží jako vizuální kotva — v animaci ji není třeba opakovat celou.
+1. Framy → `src/assets/characters/{id}/frames/{anim}_{NN}.png` (NN = 00–08)
+2. `manifest.json` — šablona v `CLAUDE.md` (Sprite & Character Asset System). Objekt: `"type": "object"`, `source.objectId`, animace `direction: "unknown"`. Zapiš `animationId` + `animationGroupId` pro re-download.
+3. Masky: `python3 scripts/generate_masks.py src/assets/characters/{id}` (zelené auto-masky; zpřesnění zón dělá člověk v `npm run masks-editor`)
+4. `constants.ts` / `EnemyDef` / `ENEMY_POOL` — **nedělej** v rámci asset pipeline; patří do game-design fáze actů.
+5. Aktualizuj `enemy-specs.json`: `status: "assets-integrated"`.
 
-### Délka promptu
+## 7. Checklist nového enemy (kopíruj a odškrtávej)
 
-Cílová délka: **40–70 slov (~250–450 znaků)**, tj. 2–3 věty.
-Delší prompt konzistenci nezlepšuje — `description` z create už nese plný vizuál.
+```
+[ ] enemy je ve specs (jinak: doplň záznam — description/idle/attack dle §2, metoda dle §1)
+[ ] create (v3 character | object + style_images)  → zapiš ID do specs
+[ ] počkej na completed (poll ~2-4 min, retry na heavy load)
+[ ] stáhni preview → pošli uživateli → GATE 2 (schválení / výběr kandidáta)
+[ ] object: select_object_frames / najdi vybraný přes list_objects(tags=...)
+[ ] animate idle + attack (v3, 8 frames, south / bez directions)
+[ ] stáhni framy → GIFy → pošli uživateli → GATE 3
+[ ] framy do assets/ + manifest.json + generate_masks.py
+[ ] specs: status assets-integrated
+```
 
-Struktura:
-- **1 věta** — vizuální kotva: silueta + 1–2 materiály + zbraň. **NE** celý inventář výstroje.
-- **1–2 věty** — pohyb: příprava → úder/drift → návrat.
-- idle navíc: povinná věta o seamless loop.
+## 8. Skriptovatelnost (pro orchestraci více enemies)
 
-**Anti-pattern**: opakovat kompletní soupisku výstroje (vesta + pláty + rukávy + kalhoty + boty + belt + pouches + kapuce + šátek…) v každém animačním promptu. Stačí 3–5 klíčových znaků.
-
-Pravidla:
-1. **Pre-check first** — popis odvoď od toho, co reálně vidíš na spritu, ne od idealizovaného zadání. Pokud sprite nemá zbraň ze zadání, uprav útok.
-2. **Idle = seamless loop** — první a poslední frame vizuálně identické (póza i pozice). Do promptu VŽDY explicitně přidej větu:
-   > „The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
-3. **Vizuální kotva** — uveď siluetu + 1–2 dominantní materiály + zbraň. Neopakuj celý inventář výstroje z `description`.
-4. **Konzistence zbraní** — pokud postava drží zbraň (meč, sekera, dýka, oštěp…), attack MUSÍ útočit **touto** zbraní viditelnou na spritu. Žádný generic punch/slam. Zbraň na spritu je autoritativní, ne popis v zadání. Bestie útočí přirozeně (bite/pounce/gore/claw swipe).
-
-### Šablona
-
-**idle** (loop):
-> „A [silueta + 1–2 materiály + zbraň], standing upright facing forward. [Drobné idle pohyby: dýchání, přešlapování, twitch uší/ocasu]. The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
-
-**attack** (one-shot):
-> „The [silueta + zbraň] attacks — [příprava: coil/draw back/lower head], [úder směrem ke kameře], [recoil zpět do ready stance]."
-
----
-
-## 6. Pojmenování animací
-
-V manifestu i kódu se útočná animace **vždy** jmenuje `attack` (ne `throw`/`slash`/`bite`) — sémantický typ, ne vizuální popis. Tím je loader/renderer generický. Povinné: `idle` + `attack`. Volitelné: `hurt`, `death`.
-
-| PixelLab popis | animKey |
-|----------------|---------|
-| sits/stands/breathing/idle | `idle` (loop: true) |
-| attack/throw/lunge/bite/slash | `attack` (loop: false) |
-| alternativní útok | `attack_<popis>` / `bite` / `throw` |
-
----
-
-## 7. Quality escalation (když je výsledek špatný)
-
-Animace: zkus další úroveň (nejdřív smaž předchozí):
-1. **template** (1 gen/dir) — standardní walk/run/idle
-2. **v3** (1 gen/dir) — custom `action_description`, levné re-roll → **náš default**
-3. **pro** (20–40 gen/dir) — nejvyšší kvalita, cross-direction reference. ⚠️ Pro `pro` mode: první volání BEZ `confirm_cost`, ukaž cenu uživateli, teprve po potvrzení `confirm_cost: true`.
+- Driver čte `enemy-specs.json`, filtruje podle `status`, posílá vlny po ≤8 jobech.
+- Čekání: background `sleep 120-240` → poll → další vlna. Nikdy aktivní smyčka bez spánku.
+- Schvalování dávkuj: jedna galerie (HTML/montage) pro celou vlnu, ne po jednom obrázku.
+- Stavový automat per enemy: `todo → base-generating → base-review → base-approved → animating → anim-review → assets-integrated`. Po každém přechodu zapiš specs (idempotentní restart).
+- Paralelní subagenti: každý dostane 1–3 enemies + tento soubor; sdílený limit 8 jobů platí pro celý účet — orchestrátor přiděluje sloty.

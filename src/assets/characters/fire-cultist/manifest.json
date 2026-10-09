@@ -1,0 +1,37 @@
+{
+  "id": "fire-cultist",
+  "spriteKey": "fire_cultist",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "03fd4e3f-cff9-44cb-8ea5-f9062e4ed263",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "ee183cdb-43bb-45be-a540-a183724fc4f0",
+        "animationGroupId": "937bb2ec-5a8c-4fe0-a7d9-fe34aa5b1c78",
+        "direction": "south",
+        "description": "A robed fire mage with glowing ember accents, standing with hands loosely at the sides, robes swaying gently, small flames flickering around the palms. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "c2226014-81b4-4f76-a438-fa7defd0cd5a",
+        "animationGroupId": "c83b40d1-d731-4eab-9ffc-089c71f71511",
+        "direction": "south",
+        "description": "The robed fire mage attacks — flames gather between raised hands into a burning sphere, then the mage hurls the fireball toward the camera, then lowers the hands as the flames die down."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Backfill enemy (character existed pre-session with no animations); idle+attack generated this session via v3, self-reviewed (gate 3 pre-approved)."
+}

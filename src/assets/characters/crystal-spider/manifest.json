@@ -13,6 +13,18 @@
     }
   },
   "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "3fe49fe7-5b0a-4b7b-8c14-dde33b0b01cf",
+        "animationGroupId": "6c54da72-d73b-4560-8b7d-6c416f00a078",
+        "direction": "south",
+        "description": "A large crystalline spider with translucent gem-like legs and a faceted glowing body, standing in place, legs shifting subtly one at a time, crystals glinting. Seamless loop."
+      }
+    },
     "attack": {
       "frameCount": 9,
       "frameDurationMs": 100,
@@ -83,5 +95,5 @@
       ]
     }
   },
-  "_notes": "No idle animation yet — needs PixelLab idle generation. Three attack variants from two character states."
+  "_notes": "Idle generated this session via v3 (backfill), self-reviewed. Idle masks auto-generated (green); attack/attack_mandible/bite masks are hand-edited — do not overwrite with --force. Three attack variants from two character states."
 }

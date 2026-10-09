@@ -1,0 +1,38 @@
+{
+  "id": "snow-harpy",
+  "spriteKey": "snow_harpy",
+  "displayWidth": 128,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "e6fb1881-f45d-47ba-971a-9096d5030153",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "6823b03e-36af-4f3e-8049-ca3504f72318",
+        "animationGroupId": "469b5f56-c2d1-4e12-a65d-fa1b86565706",
+        "direction": "unknown",
+        "description": "A pale snow harpy with frost-white wings half-spread, hovering gently, wings beating slowly, white hair and icy feathers drifting in the cold air. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "0c00fd6d-2f3c-42bb-9101-77f5d457a76d",
+        "animationGroupId": "bf8f01af-2caf-49c5-9c15-e6af3b8bc8d9",
+        "direction": "unknown",
+        "description": "The pale snow harpy with frosted wings attacks — she rises with a sharp wingbeat, then dives toward the camera slashing with bird-like talons, then flaps back up into her hovering pose."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

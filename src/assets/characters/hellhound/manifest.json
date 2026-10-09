@@ -1,0 +1,38 @@
+{
+  "id": "hellhound",
+  "spriteKey": "hellhound",
+  "displayWidth": 260,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "6820786d-1bbd-472c-81cc-db2ee6f0d0db",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "356ce7b7-e859-4961-89c8-6836f7a7dff5",
+        "animationGroupId": "f167a78a-35c8-4b0c-9207-3b9e8d7e8dc8",
+        "direction": "unknown",
+        "description": "Predatory stance facing viewer, flame mane flickers, breathing, seamless loop"
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "b9e2eac7-9525-41bc-becb-fcfff0f5b64b",
+        "animationGroupId": "3bc9bbf2-bcf2-402f-862e-ec69c1654e20",
+        "direction": "unknown",
+        "description": "Rears back with jaws stretching wide revealing furnace fire in throat, lunges snapping jaws at the viewer, recoils"
+      }
+    }
+  },
+  "_notes": "1-direction object generated front-facing (south) with style_images reference from Demon Lord v3 sprite. Quadruped POC — see PixelLab.md quadruped rule."
+}

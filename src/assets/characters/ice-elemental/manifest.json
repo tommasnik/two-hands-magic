@@ -1,0 +1,38 @@
+{
+  "id": "ice-elemental",
+  "spriteKey": "ice_elemental",
+  "displayWidth": 160,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "612cb220-6954-4c17-a34e-b89c634a50a5",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "7f1d46d9-c23b-476b-aa71-49904b9e9d29",
+        "animationGroupId": "d1d9f0c3-e26e-4453-b2bd-1fdfcf556058",
+        "direction": "unknown",
+        "description": "A levitating humanoid cluster of translucent ice crystals with a glowing pale-blue core, shards slowly orbiting the body, snow particles drifting, the core pulsing gently. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "092acd67-b933-4fdb-93ed-018931bccf95",
+        "animationGroupId": "177ed95e-47fb-4143-890e-b27092417dec",
+        "direction": "unknown",
+        "description": "The crystalline ice elemental with the glowing blue core attacks — its orbiting shards gather and sharpen, then fire forward toward the camera in a burst of ice splinters, then new shards reform around its body."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

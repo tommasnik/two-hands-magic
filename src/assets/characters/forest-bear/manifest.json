@@ -1,0 +1,37 @@
+{
+  "id": "forest-bear",
+  "spriteKey": "forest_bear",
+  "displayWidth": 160,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "7d5053c5-e504-4084-b1ce-1b3cf78de9f3",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "9607d7f7-32e7-4169-97c1-07c89e8a4f0b",
+        "animationGroupId": "e6047893-f829-42ff-8729-458678a3ecd8",
+        "direction": "south",
+        "description": "A large brown forest bear standing on all fours, thick shaggy fur, breathing heavily, head swaying slightly, ears twitching. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "c94c384e-3207-4314-96b9-5135b43263e1",
+        "animationGroupId": "418f3a0b-2729-4e48-b09a-28b5c6300371",
+        "direction": "south",
+        "description": "The large brown bear attacks — it rears up on its hind legs, then swipes a heavy front paw with claws toward the camera, then drops back onto all fours."
+      }
+    }
+  },
+  "_notes": "v3 quadruped character, south direction only. Backfill enemy (character existed pre-session with no animations); idle+attack generated this session via v3, self-reviewed (gate 3 pre-approved)."
+}

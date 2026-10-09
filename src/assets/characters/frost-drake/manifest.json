@@ -1,0 +1,38 @@
+{
+  "id": "frost-drake",
+  "spriteKey": "frost_drake",
+  "displayWidth": 224,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "034e09dc-2697-4a0f-93df-1afc884e1b03",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "da462cd7-49f0-482c-b684-5fce9f4b753e",
+        "animationGroupId": "13201526-818a-46e0-a21e-62a8c2f59a58",
+        "direction": "unknown",
+        "description": "A pale blue wyvern-like ice drake with frost-veined wings half-spread, breathing slowly with freezing mist curling from its nostrils, wings flexing gently, tail swaying. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "e6c0fca2-5b1b-41b0-87c3-cb86814f65d9",
+        "animationGroupId": "bf8e9b97-8183-429b-8a1b-0cc533372d7d",
+        "direction": "unknown",
+        "description": "The pale blue ice drake attacks — it rears its head back inhaling deeply, then blasts a cone of freezing mist and ice shards toward the camera, then settles back with wings half-spread."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

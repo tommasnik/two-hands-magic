@@ -1,0 +1,37 @@
+{
+  "id": "tomb-colossus",
+  "spriteKey": "tomb_colossus",
+  "displayWidth": 224,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "04785c42-a935-4a78-82a1-bc3257f65ee6",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "d7ddaf7f-a093-4ecb-bc10-60e845de07f2",
+        "animationGroupId": "630226c2-4c8a-49ad-94c7-8830ac427e22",
+        "direction": "south",
+        "description": "A colossal sandstone tomb guardian with glowing turquoise cracks and gold hieroglyphs, standing massive and still. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "36618ec8-6b9c-4738-b1d5-3dacdd2bcd63",
+        "animationGroupId": "a6ae29c8-ceee-43ea-a887-29e256aff08f",
+        "direction": "south",
+        "description": "The colossal sandstone guardian with glowing turquoise cracks attacks — it raises one massive square fist high overhead, then smashes it down toward the camera with a heavy impact, then grinds slowly back upright."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character (boss), south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

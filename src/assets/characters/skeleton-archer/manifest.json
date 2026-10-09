@@ -1,0 +1,37 @@
+{
+  "id": "skeleton-archer",
+  "spriteKey": "skeleton_archer",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "2a46e417-f6b7-4b28-acd4-6b0aa63894ef",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "eca03c13-3cad-4f94-a0a3-963ad3c3e996",
+        "animationGroupId": "9e186905-9f77-4387-95b8-a5f0693156e2",
+        "direction": "south",
+        "description": "A yellowed skeleton archer in a torn hood holding a weathered recurve bow, standing watchfully. Ribcage shifts subtly, bow arm sways, pale-blue eye lights flicker in empty sockets. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "0e4f4a61-6068-43c9-a6bc-115360cc925f",
+        "animationGroupId": "81b1e92b-c9e9-4930-9b69-ae893782fdd7",
+        "direction": "south",
+        "description": "The hooded skeleton archer attacks — it nocks a crooked arrow, draws the weathered bow fully back, then releases the arrow toward the camera and lowers the bow back to rest."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Idle animation job stalled at 95%% and eventually failed server-side; retried once successfully. Base sprite approved pre-session; self-reviewed (gate 3 pre-approved)."
+}

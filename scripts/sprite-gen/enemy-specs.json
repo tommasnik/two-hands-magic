@@ -1,0 +1,410 @@
+{
+  "$comment": "Source of truth for PixelLab sprite generation (base sprites + south idle/attack animations). Process rules live in PixelLab.md. Base sprites and object candidates are ALWAYS approved/selected by the user before animating.",
+  "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e",
+  "defaults": {
+    "character": {
+      "tool": "create_character",
+      "mode": "v3",
+      "view": "side",
+      "proportions": "default"
+    },
+    "object": {
+      "tool": "create_1_direction_object",
+      "view": "sidescroller"
+    },
+    "animation": {
+      "mode": "v3",
+      "frameCount": 8,
+      "directions": [
+        "south"
+      ],
+      "idleSeamlessLoopSentence": "The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
+    }
+  },
+  "sizeTiers": {
+    "S": "64-96",
+    "M": "128",
+    "L": "160-192",
+    "XL": "208-256"
+  },
+  "enemies": [
+    {
+      "id": "mummy",
+      "act": 2,
+      "name": "Mummy",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 128,
+      "status": "assets-integrated",
+      "pixellab": {
+        "characterId": "acbfcef3-5808-43f7-a8db-8cc5c5fc5023",
+        "idleGroupId": "b168bb77-eb0e-460a-99cf-1e618379ad26",
+        "attackGroupId": "1370563e-91b2-470a-8953-4a1ca1efb01f"
+      },
+      "description": "Ancient desert mummy, an undead humanoid wrapped head to toe in tattered sand-stained linen bandages, loose frayed strips hanging from its arms and waist. Dried grey-brown desiccated skin shows through gaps in the wrappings. Two glowing amber eyes shine from within the bandaged face. Remnants of a faded golden funerary collar around the neck and a torn pharaonic headcloth. Hunched, menacing stance with arms half-raised, attacking with clawed bandaged hands, no weapons.",
+      "idle": "A hunched undead mummy wrapped in tattered sand-stained linen bandages with a blue-and-gold pharaonic headcloth, clawed hands half-raised. It sways slowly in place, chest rising and falling as it breathes, loose bandage strips swinging gently. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The hunched mummy in tattered linen bandages with a blue-and-gold pharaonic headcloth attacks — it rears back gathering itself, then lunges toward the camera slashing downward with both clawed bandaged hands, then recoils back into its hunched ready stance.",
+      "$note": "Base + animations approved; frames integrated into public/assets/characters/mummy + src manifest + masks."
+    },
+    {
+      "id": "scarab-swarm",
+      "act": 2,
+      "name": "Scarab Swarm",
+      "method": "object",
+      "size": 64,
+      "status": "dropped",
+      "description": "A dense swarm of glossy black-and-gold scarab beetles crawling over each other in a loose ball, iridescent green shimmer on their carapaces, tiny legs and clicking mandibles visible at the edges, a few beetles skittering slightly apart from the mass.",
+      "idle": "A dense ball of glossy black-and-gold scarab beetles crawling over each other, iridescent shimmer rippling across the mass, single beetles briefly skittering out and back in. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The swarm of glossy black-and-gold scarabs attacks — the mass compresses tightly, then bursts forward toward the camera in a scattering wave of beetles, then pulls back together into the crawling ball.",
+      "pixellab": {
+        "objectId": "ce89df57-0edb-4a62-b9cb-7475b80b51fa"
+      },
+      "$note": "user rejected all candidates, enemy removed from Act II roster"
+    },
+    {
+      "id": "carrion-vulture",
+      "act": 2,
+      "name": "Carrion Vulture",
+      "method": "object",
+      "size": 96,
+      "status": "assets-integrated",
+      "description": "A mangy desert vulture with a bald wrinkled pink neck, dusty dark-brown ragged feathers with gaps and broken plumes, a long hooked yellowed beak, hunched posture with wings half-folded, facing the camera.",
+      "idle": "A mangy hunched vulture with a bald pink neck and ragged dark-brown feathers, shifting its weight from foot to foot, head twitching as it looks around, feathers ruffling slightly. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The ragged brown vulture with a bald pink neck attacks — it spreads its tattered wings wide, lunges its hooked beak toward the camera with a sharp pecking strike, then folds back into its hunched stance.",
+      "pixellab": {
+        "objectId": "157f3fb6-9c08-4881-9f2c-d307c7817627",
+        "reviewSourceId": "f3297ff8-38ae-4e0d-8c88-f92815f8857b"
+      }
+    },
+    {
+      "id": "sand-cobra",
+      "act": 2,
+      "name": "Sand Cobra",
+      "method": "object",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A giant desert cobra rearing upright, sand-yellow scales with dark brown diamond markings down its back, wide flared hood with an eye-like pattern, fangs bared, coiled lower body resting on the sand, facing the camera.",
+      "idle": "A giant sand-yellow cobra with a flared patterned hood, reared upright on its coiled body, swaying slowly side to side, forked tongue flicking out. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The giant sand-yellow cobra with flared hood attacks — it draws its head back coiling tension, then strikes forward toward the camera with bared fangs, then recoils back into its upright swaying posture.",
+      "pixellab": {
+        "objectId": "f512bb2a-72f1-45d5-8212-60514f05304c",
+        "reviewSourceId": "944c4a5f-8aff-4f9d-88ea-8b6707889218"
+      }
+    },
+    {
+      "id": "jackal-raider",
+      "act": 2,
+      "name": "Jackal Raider",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A jackal-headed desert raider with tan fur, black-tipped ears and muzzle, wearing a ragged sand-colored wrap, leather chest straps and a bronze shoulder plate, holding a curved khopesh sword in one hand, gold bangles on the wrists, standing in a ready fighting stance.",
+      "idle": "A jackal-headed raider with tan fur and a bronze shoulder plate, holding a curved khopesh sword, standing in a ready stance. It breathes steadily, ears twitching, the sword hand shifting slightly. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The jackal-headed raider with the curved khopesh sword attacks — it draws the blade back across its body, then slashes it in a wide arc toward the camera, then returns to its ready fighting stance.",
+      "pixellab": {
+        "characterId": "007fab2d-d069-4f7c-bb92-2aa963581750"
+      }
+    },
+    {
+      "id": "skeleton-archer",
+      "act": 2,
+      "name": "Skeleton Archer",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "An undead skeleton archer with yellowed cracked bones, wearing scraps of rotted leather armor and a torn hood, holding a weathered recurve bow, a quiver of crooked arrows on its back, glowing pale-blue points of light in its empty eye sockets.",
+      "idle": "A yellowed skeleton archer in a torn hood holding a weathered recurve bow, standing watchfully. Its ribcage shifts subtly, the bow arm sways, pale-blue eye lights flicker in empty sockets. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The hooded skeleton archer attacks — it nocks a crooked arrow, draws the weathered bow fully back, then releases the arrow toward the camera and lowers the bow back to rest.",
+      "pixellab": {
+        "characterId": "2a46e417-f6b7-4b28-acd4-6b0aa63894ef"
+      }
+    },
+    {
+      "id": "sand-elemental",
+      "act": 2,
+      "name": "Sand Elemental",
+      "method": "object",
+      "size": 160,
+      "status": "assets-integrated",
+      "description": "A living whirlwind of sand — a swirling column of ochre dust forming a vaguely humanoid torso, two massive fists of compacted sandstone, floating rock chunks orbiting inside the vortex, a glowing amber core where a face would be.",
+      "idle": "A swirling column of ochre sand with a humanoid torso, sandstone fists and a glowing amber core, dust spiraling continuously upward, small rocks orbiting the vortex. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The swirling sand elemental with sandstone fists attacks — it gathers the vortex tighter, then slams both massive stone fists forward toward the camera in a burst of sand, then disperses back into its swirling column.",
+      "pixellab": {
+        "objectId": "36d43a86-2df7-4d79-9bab-98d8824412d9",
+        "reviewSourceId": "c83e70f1-2b51-41a2-a832-0b2308577eb5"
+      }
+    },
+    {
+      "id": "tomb-colossus",
+      "act": 2,
+      "name": "Tomb Colossus",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 224,
+      "role": "boss",
+      "status": "assets-integrated",
+      "description": "A colossal ancient tomb guardian statue come to life, carved from sandstone with deep cracks glowing faint turquoise, gold hieroglyphs engraved across its chest and arms, a pharaonic stone headdress, massive square fists, small fragments of stone hovering at its broken joints.",
+      "idle": "A colossal sandstone tomb guardian with glowing turquoise cracks and gold hieroglyphs, standing massive and still. It breathes with a slow grinding heave, stone fragments drifting at its joints, cracks pulsing faintly. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The colossal sandstone guardian with glowing turquoise cracks attacks — it raises one massive square fist high overhead, then smashes it down toward the camera with a heavy impact, then grinds slowly back upright.",
+      "pixellab": {
+        "characterId": "04785c42-a935-4a78-82a1-bc3257f65ee6"
+      }
+    },
+    {
+      "id": "frost-wolf",
+      "act": 3,
+      "name": "Frost Wolf",
+      "method": "object",
+      "size": 128,
+      "status": "base-review",
+      "description": "A large arctic dire wolf facing the viewer head-on, front view with chest and head pointed straight at the camera, all four legs planted wide and visible. Thick layered fur in rich ramps of white, pale blue and grey-blue with detailed fur clumps and strong cold rim light. Jagged translucent ice spikes grow along its spine and shoulders, frost mist curls from its open jaws, glowing ice-blue eyes stare directly at the viewer, high-contrast detailed pixel art.",
+      "idle": "A large white-and-blue arctic wolf with ice spikes along its spine, standing alert. It breathes visibly with frost mist curling from its jaws, shifting its paws, tail swaying slowly. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The white arctic wolf with ice spikes on its spine attacks — it crouches low gathering power, then lunges toward the camera with jaws snapping in a frosty bite, then springs back into its alert stance.",
+      "pixellab": {
+        "reviewSourceId": "2afb8910-e4f1-4d34-9fc0-bba92a93120f"
+      },
+      "styleImages": "used approved v3 Glacier Colossus south sprite (d08d3f83-2aef-4838-8281-63afd07f8d16), trimmed/resized 128px/48 colors/PNG8, roundtrip-verified",
+      "$note": "Regenerated completely as 1-direction object, front-facing, style_images=Glacier Colossus. 4 candidates in review (object 2afb8910-e4f1-4d34-9fc0-bba92a93120f). Sent to user for gate-2 pick; not blocking, continued with other enemies."
+    },
+    {
+      "id": "snow-harpy",
+      "act": 3,
+      "name": "Snow Harpy",
+      "method": "object",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A pale snow harpy with a gaunt bluish-white female upper body, wild white hair rimed with frost, large frost-covered feathered wings spread half-open, bird-like taloned legs, tattered icy feathers, hovering slightly above the ground, facing the camera.",
+      "idle": "A pale snow harpy with frost-white wings half-spread, hovering gently, wings beating slowly, white hair and icy feathers drifting in the cold air. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The pale snow harpy with frosted wings attacks — she rises with a sharp wingbeat, then dives toward the camera slashing with bird-like talons, then flaps back up into her hovering pose.",
+      "pixellab": {
+        "objectId": "e6fb1881-f45d-47ba-971a-9096d5030153",
+        "reviewSourceId": "eec29b16-9ec4-4670-b384-ccd1c080ce81"
+      }
+    },
+    {
+      "id": "frozen-revenant",
+      "act": 3,
+      "name": "Frozen Revenant",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "An undead frozen warrior encased in rime — pale blue-grey dead skin, frost-covered dented iron armor and chainmail, icicles hanging from its pauldrons and helmet rim, wielding a cracked longsword sheathed in ice, glowing cold white eyes.",
+      "idle": "A frozen undead warrior in frost-covered dented iron armor holding an ice-sheathed longsword, standing rigid. It sways stiffly, cold white eyes pulsing, frost vapor drifting off its shoulders. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The frozen warrior in rimed iron armor attacks — it heaves the ice-sheathed longsword up over its shoulder, then swings it down toward the camera in a heavy frozen arc, then stiffly resets its guard.",
+      "pixellab": {
+        "characterId": "f0e2201b-1d89-4c40-8147-d3fc2fa3f90b"
+      }
+    },
+    {
+      "id": "yeti",
+      "act": 3,
+      "name": "Yeti",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 160,
+      "status": "assets-integrated",
+      "description": "A massive yeti with shaggy white fur, exposed slate-blue skin on the face and chest, long powerful arms with black claws reaching below its knees, a heavy hunched posture, small cold eyes and a large fanged mouth, frost clinging to its shoulders.",
+      "idle": "A massive shaggy white yeti with slate-blue face and long clawed arms, hunched and breathing heavily, shoulders rising and falling, fur swaying, occasionally flexing its claws. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The massive white yeti with long clawed arms attacks — it rears up beating its chest once, then swings both clawed arms down toward the camera in a crushing double blow, then drops back into its hunched posture.",
+      "pixellab": {
+        "characterId": "980f47d8-107d-4db1-ba3d-f364b5affc83"
+      }
+    },
+    {
+      "id": "ice-elemental",
+      "act": 3,
+      "name": "Ice Elemental",
+      "method": "object",
+      "size": 160,
+      "status": "assets-integrated",
+      "description": "A levitating cluster of jagged translucent ice crystals arranged in a vaguely humanoid form, a bright frozen core of pale blue light glowing in the center, orbiting shards of ice and drifting snow particles, sharp crystalline limbs, facing the camera.",
+      "idle": "A levitating humanoid cluster of translucent ice crystals with a glowing pale-blue core, shards slowly orbiting the body, snow particles drifting, the core pulsing gently. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The crystalline ice elemental with the glowing blue core attacks — its orbiting shards gather and sharpen, then fire forward toward the camera in a burst of ice splinters, then new shards reform around its body.",
+      "pixellab": {
+        "objectId": "612cb220-6954-4c17-a34e-b89c634a50a5",
+        "reviewSourceId": "8f54bef7-6ba4-4dfa-8497-54e7bd4fecaa"
+      }
+    },
+    {
+      "id": "winter-witch",
+      "act": 3,
+      "name": "Winter Witch",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A pale winter witch with frost-white skin and long silver hair, wearing a flowing dark-blue hooded cloak edged with white fur and ice crystals, holding a gnarled wooden staff topped with a large glowing icicle, faint snowflakes drifting around her.",
+      "idle": "A pale witch in a dark-blue fur-edged cloak holding a staff topped with a glowing icicle, standing calmly. Her cloak and silver hair drift in the cold wind, the icicle pulsing with light, snowflakes falling around her. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The pale witch with the icicle-topped staff attacks — she raises the staff high as the icicle flares bright, then thrusts it forward launching a shard of ice toward the camera, then lowers the staff back to her side.",
+      "pixellab": {
+        "characterId": "15189b5c-ca14-49cf-bc20-418953847c1b"
+      }
+    },
+    {
+      "id": "frost-drake",
+      "act": 3,
+      "name": "Frost Drake",
+      "method": "object",
+      "size": 224,
+      "status": "assets-integrated",
+      "description": "An ice drake — a wyvern-like dragon with two legs and large wings, pale blue scales with white crystalline ridges, translucent ice spines along its back and tail, wings of stretched frost-veined membrane, a wisp of freezing mist at its nostrils, facing the camera with wings half-spread.",
+      "idle": "A pale blue wyvern-like ice drake with frost-veined wings half-spread, breathing slowly with freezing mist curling from its nostrils, wings flexing gently, tail swaying. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The pale blue ice drake attacks — it rears its head back inhaling deeply, then blasts a cone of freezing mist and ice shards toward the camera, then settles back with wings half-spread.",
+      "pixellab": {
+        "objectId": "034e09dc-2697-4a0f-93df-1afc884e1b03"
+      }
+    },
+    {
+      "id": "glacier-colossus",
+      "act": 3,
+      "name": "Glacier Colossus",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 224,
+      "role": "boss",
+      "status": "assets-integrated",
+      "description": "A towering colossus made of glacial ice, translucent blue-white body with dark boulders and gravel frozen inside its chest and shoulders, deep cracks glowing cold cyan, massive blocky fists of compacted ice, jagged crown-like ice spikes on its head.",
+      "idle": "A towering translucent glacier colossus with boulders frozen inside its body and glowing cyan cracks, standing immense and slow. It heaves with a grinding breath, ice creaking, cracks pulsing with cold light. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The towering glacier colossus attacks — it draws both massive ice fists back, then slams them together toward the camera in a crushing blow that scatters ice shards, then grinds back upright.",
+      "pixellab": {
+        "characterId": "d08d3f83-2aef-4838-8281-63afd07f8d16"
+      }
+    },
+    {
+      "id": "imp",
+      "act": 4,
+      "name": "Imp",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 96,
+      "status": "assets-integrated",
+      "description": "A wiry sinister imp with dark crimson-to-maroon leathery skin rendered in rich shading ramps, lean sinewy limbs and a hunched predatory crouch. Long swept-back black horns, ragged pointed ears, jagged tattered bat wings half-raised behind its back, a long whip-thin tail with a barbed spade tip. Furnace-yellow glowing eyes, a wicked grin full of needle teeth, long hooked claws, small embers and heat glow rising from its skin.",
+      "idle": "A small crimson imp with curved horns and folded bat wings, crouched playfully, tail flicking side to side, wings twitching, grinning with glowing yellow eyes. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The small crimson imp with bat wings attacks — it conjures a small flickering fireball between its claws, then hurls it toward the camera with a hop, then lands back in its crouched grinning stance.",
+      "pixellab": {
+        "characterId": "22ea0c60-9f73-4633-abed-7f1573888cb6"
+      }
+    },
+    {
+      "id": "hellhound",
+      "act": 4,
+      "name": "Hellhound",
+      "method": "object",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A monstrous black hellhound facing the viewer head-on, front view with chest and head pointed straight at the camera, all four legs planted wide and visible. Jet-black fur in rich dark ramps of charcoal and blue-black with strong orange rim light from below. Cracks of molten lava glow across its chest and front legs, a flickering mane of orange fire frames its head and shoulders. Glowing ember eyes stare directly at the viewer, bared fangs, high-contrast detailed pixel art.",
+      "idle": "A monstrous black hellhound with glowing lava-vein cracks and a burning fiery mane, standing in a predatory stance. Its flame mane flickers continuously, ember eyes glowing, muscles shifting as it breathes. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The black hellhound with the burning mane attacks — it crouches low with flaring flames, then lunges toward the camera with a snapping bite trailing fire, then pulls back into its predatory stance.",
+      "pixellab": {
+        "objectId": "6820786d-1bbd-472c-81cc-db2ee6f0d0db",
+        "idleAnimationId": "356ce7b7-e859-4961-89c8-6836f7a7dff5",
+        "attackAnimationId": "813e9464-955a-40c3-8336-d5ea740488ba"
+      },
+      "styleImages": "approved v3 character sprite resized to <=128px, color-quantized (see PixelLab.md quadruped note)"
+    },
+    {
+      "id": "shadow-fiend",
+      "act": 4,
+      "name": "Shadow Fiend",
+      "method": "object",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A shapeless fiend of living shadow — a swirling mass of black smoke forming a hooded silhouette torso, two long shadowy arms ending in elongated claws, piercing white glowing eyes with no other facial features, dark wisps trailing off its form, facing the camera.",
+      "idle": "A hooded silhouette of living black smoke with long clawed arms and glowing white eyes, its form rippling and wisping continuously, edges dissolving and reforming. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The smoky shadow fiend with glowing white eyes attacks — it condenses into a darker denser mass, then whips both elongated shadow claws forward toward the camera in a slashing cross, then dissolves back into its rippling form.",
+      "pixellab": {
+        "objectId": "48c2038a-c1fa-49a7-bcfa-9e3bcc518c20",
+        "reviewSourceId": "ed865957-98e0-4d37-a047-c702580e91f3"
+      }
+    },
+    {
+      "id": "bone-colossus",
+      "act": 4,
+      "name": "Bone Colossus",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 208,
+      "status": "assets-integrated",
+      "description": "A hulking colossus stitched together from hundreds of bones — a torso of interlocked ribcages and skulls, arms made of fused femurs ending in claw-like bone shards, a horned oversized skull head missing its lower jaw, a sickly green necrotic glow pulsing between the bones.",
+      "idle": "A hulking colossus built from interlocked ribcages, skulls and fused femur arms, glowing sickly green between the bones, looming and swaying heavily, loose bones rattling and shifting. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The bone colossus with fused femur arms attacks — it rears back with a rattling shudder, then sweeps a massive bone-shard claw toward the camera in a wide crushing arc, then settles back into its looming sway.",
+      "pixellab": {
+        "characterId": "cf6d9060-4bdc-4da4-972d-9f62db0fa469"
+      }
+    },
+    {
+      "id": "blade-demoness",
+      "act": 4,
+      "name": "Blade Demoness",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 128,
+      "status": "assets-integrated",
+      "description": "A slender demoness with dark crimson skin, both forearms replaced by long curved obsidian blades, swept-back black horns, long dark hair, segmented dark armor plates on her torso and legs, a whip-like tail, glowing violet eyes, standing in an elegant fighting stance.",
+      "idle": "A slender crimson demoness with obsidian blade forearms and swept-back horns, standing in an elegant fighting stance, blades lowered, tail swaying slowly, hair drifting, violet eyes glowing. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The crimson demoness with obsidian blade forearms attacks — she spins once gathering momentum, then slashes both curved blades toward the camera in a scissoring cross-cut, then flows back into her elegant stance.",
+      "pixellab": {
+        "characterId": "78c2f006-43e0-4cd0-81af-f43be9e4f94c"
+      }
+    },
+    {
+      "id": "demon-lord",
+      "act": 4,
+      "name": "Demon Lord",
+      "method": "character",
+      "bodyType": "humanoid",
+      "size": 256,
+      "role": "boss",
+      "status": "assets-integrated",
+      "description": "A towering demon lord with deep red muscular skin, huge ram-like black horns, large leathery bat wings folded behind his back, ornate black-and-gold armor plates on his shoulders and waist, a massive flaming greatsword held point-down in one hand, cloven hooves, burning orange eyes, embers rising around him.",
+      "idle": "A towering red demon lord with ram horns and folded bat wings, resting a massive flaming greatsword point-down, breathing slowly, embers rising, the sword's flames flickering steadily. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The towering demon lord with ram horns attacks — he hoists the massive flaming greatsword overhead with both hands, then cleaves it down toward the camera in a fiery eruption, then plants it back point-down.",
+      "pixellab": {
+        "characterId": "3e6792c7-67bd-4405-b5f0-97cb86f49fc1"
+      }
+    }
+  ],
+  "backfill": [
+    {
+      "id": "forest-bear",
+      "status": "assets-integrated",
+      "pixellab": {
+        "characterId": "7d5053c5-e504-4084-b1ce-1b3cf78de9f3"
+      },
+      "needs": [],
+      "idle": "A large brown forest bear standing on all fours, thick shaggy fur, breathing heavily, head swaying slightly, ears twitching. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The large brown bear attacks — it rears up on its hind legs, then swipes a heavy front paw with claws toward the camera, then drops back onto all fours."
+    },
+    {
+      "id": "fire-cultist",
+      "status": "assets-integrated",
+      "pixellab": {
+        "characterId": "03fd4e3f-cff9-44cb-8ea5-f9062e4ed263"
+      },
+      "needs": [],
+      "idle": "A robed fire mage with glowing ember accents, standing with hands loosely at the sides, robes swaying gently, small flames flickering around the palms. The animation forms a seamless loop — the first and last frames are visually identical in pose and position.",
+      "attack": "The robed fire mage attacks — flames gather between raised hands into a burning sphere, then the mage hurls the fireball toward the camera, then lowers the hands as the flames die down."
+    },
+    {
+      "id": "ice-giant",
+      "status": "assets-integrated",
+      "pixellab": {
+        "characterId": "2ca185d7-f3d3-4cbc-8c11-046cb3ae1ddd"
+      },
+      "needs": [],
+      "idle": "A hulking ice giant with pale blue skin and frost-covered shoulders, standing heavily, breathing slowly with visible cold mist, arms swaying slightly. The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
+    },
+    {
+      "id": "crystal-spider",
+      "status": "assets-integrated",
+      "pixellab": {
+        "characterId": "8b13e305-3aed-4205-b8ab-0a5a28de54d7"
+      },
+      "needs": [],
+      "idle": "A large crystalline spider with translucent gem-like legs and a faceted glowing body, standing in place, legs shifting subtly one at a time, crystals glinting. The animation forms a seamless loop — the first and last frames are visually identical in pose and position."
+    }
+  ]
+}

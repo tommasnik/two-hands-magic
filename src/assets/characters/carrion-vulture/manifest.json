@@ -1,0 +1,38 @@
+{
+  "id": "carrion-vulture",
+  "spriteKey": "carrion_vulture",
+  "displayWidth": 96,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "157f3fb6-9c08-4881-9f2c-d307c7817627",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "7d2338e6-ed14-432b-b831-1311fcf557d2",
+        "animationGroupId": "5b8cda40-8d0c-42fa-b946-cb9860f64849",
+        "direction": "unknown",
+        "description": "A mangy hunched vulture with a bald pink neck and ragged dark-brown feathers, shifting its weight from foot to foot, head twitching as it looks around, feathers ruffling slightly. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "4bb80539-4f73-48db-8e6f-c3f96fc3c3ea",
+        "animationGroupId": "112c70fe-fe37-445a-938f-5738d71ffe68",
+        "direction": "unknown",
+        "description": "The ragged brown vulture with a bald pink neck attacks — it spreads its tattered wings wide, lunges its hooked beak toward the camera with a sharp pecking strike, then folds back into its hunched stance."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

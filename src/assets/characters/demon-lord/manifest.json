@@ -1,0 +1,37 @@
+{
+  "id": "demon-lord",
+  "spriteKey": "demon_lord",
+  "displayWidth": 256,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "3e6792c7-67bd-4405-b5f0-97cb86f49fc1",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "b9521052-7efb-49c3-ba68-e9ae870e5d74",
+        "animationGroupId": "a02ba18d-ca58-429d-8777-e766b5bfefb7",
+        "direction": "south",
+        "description": "A towering red demon lord with ram horns and folded bat wings, resting a massive flaming greatsword point-down, breathing slowly, embers rising, the sword's flames flickering steadily. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "c93d598e-e082-46ae-88f5-ab6dd404ed98",
+        "animationGroupId": "70f2c88b-0a85-4638-9dac-a3cbb6ce26c2",
+        "direction": "south",
+        "description": "The towering demon lord with ram horns attacks — he hoists the massive flaming greatsword overhead with both hands, then cleaves it down toward the camera in a fiery eruption, then plants it back point-down."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character (boss), south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

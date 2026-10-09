@@ -1,0 +1,38 @@
+{
+  "id": "sand-elemental",
+  "spriteKey": "sand_elemental",
+  "displayWidth": 160,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "36d43a86-2df7-4d79-9bab-98d8824412d9",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "b659e6f0-2e40-407c-8cbd-3ec7cbca6701",
+        "animationGroupId": "5de97f81-64b5-4350-af48-62559f905c76",
+        "direction": "unknown",
+        "description": "A swirling column of ochre sand with a humanoid torso, sandstone fists and a glowing amber core, dust spiraling continuously upward, small rocks orbiting the vortex. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "839a0cdb-cabb-46d8-94ae-180c6feae5be",
+        "animationGroupId": "60bb3ff3-b566-46c3-b45e-9d79f2d7bedf",
+        "direction": "unknown",
+        "description": "The swirling sand elemental with sandstone fists attacks — it gathers the vortex tighter, then slams both massive stone fists forward toward the camera in a burst of sand, then disperses back into its swirling column."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

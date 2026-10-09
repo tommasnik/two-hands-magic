@@ -1,0 +1,38 @@
+{
+  "id": "shadow-fiend",
+  "spriteKey": "shadow_fiend",
+  "displayWidth": 128,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "48c2038a-c1fa-49a7-bcfa-9e3bcc518c20",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "26ec128e-c5cf-4e14-b9e4-0d2df0ab9a8a",
+        "animationGroupId": "05f21e59-4c77-4eae-82d9-b524b9405ffe",
+        "direction": "unknown",
+        "description": "A hooded silhouette of living black smoke with long clawed arms and glowing white eyes, its form rippling and wisping continuously, edges dissolving and reforming. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "2eb9e8fc-53fb-4702-9f69-1c69786bb533",
+        "animationGroupId": "b22aa5d5-01bd-45b4-a0b5-15937f8a1a74",
+        "direction": "unknown",
+        "description": "The smoky shadow fiend with glowing white eyes attacks — it condenses into a darker denser mass, then whips both elongated shadow claws forward toward the camera in a slashing cross, then dissolves back into its rippling form."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Idle animation stalled twice at 95%% and eventually failed server-side; retried and succeeded. Base sprite approved pre-session; self-reviewed (gate 3 pre-approved)."
+}

@@ -1,0 +1,37 @@
+{
+  "id": "winter-witch",
+  "spriteKey": "winter_witch",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "15189b5c-ca14-49cf-bc20-418953847c1b",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "a9db3260-4061-42e3-a3e5-f06c11b13b92",
+        "animationGroupId": "63a8061e-4015-4da1-8c15-d4ccc52e47d6",
+        "direction": "south",
+        "description": "A pale witch in a dark-blue fur-edged cloak holding a staff topped with a glowing icicle, standing calmly. Cloak and silver hair drift in the cold wind, the icicle pulsing with light. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "aec4216c-40a1-4ce6-bba1-a488d2fe0d1f",
+        "animationGroupId": "82f1fd6a-ae27-4543-b848-f377a3a72695",
+        "direction": "south",
+        "description": "The pale witch with the icicle-topped staff attacks — she raises the staff high as the icicle flares bright, then thrusts it forward launching a shard of ice toward the camera, then lowers the staff back to her side."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

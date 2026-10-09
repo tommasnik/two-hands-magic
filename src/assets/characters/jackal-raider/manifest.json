@@ -1,0 +1,37 @@
+{
+  "id": "jackal-raider",
+  "spriteKey": "jackal_raider",
+  "displayWidth": 128,
+  "source": {
+    "tool": "pixellab",
+    "characterId": "007fab2d-d069-4f7c-bb92-2aa963581750",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "83fc7440-5597-4bf0-99f4-f64b0dad7cd9",
+        "animationGroupId": "58d20209-5b4c-4691-820a-f64af1d1d368",
+        "direction": "south",
+        "description": "A jackal-headed raider with tan fur and a bronze shoulder plate, holding a curved khopesh sword, standing in a ready stance. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "0bbe9b52-c876-4201-98d5-56e32400d23c",
+        "animationGroupId": "fd89b19a-54d2-4e13-a790-067ec3e11942",
+        "direction": "south",
+        "description": "The jackal-headed raider with the curved khopesh sword attacks — it draws the blade back across its body, then slashes it in a wide arc toward the camera, then returns to its ready fighting stance."
+      }
+    }
+  },
+  "_notes": "v3 humanoid character, south direction only. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}

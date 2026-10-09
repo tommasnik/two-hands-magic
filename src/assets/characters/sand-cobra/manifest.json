@@ -1,0 +1,38 @@
+{
+  "id": "sand-cobra",
+  "spriteKey": "sand_cobra",
+  "displayWidth": 128,
+  "type": "object",
+  "source": {
+    "tool": "pixellab",
+    "objectId": "f512bb2a-72f1-45d5-8212-60514f05304c",
+    "projectId": "10f15a6e-f984-4afa-8be1-b703bfaeb07e"
+  },
+  "animations": {
+    "idle": {
+      "frameCount": 9,
+      "frameDurationMs": 150,
+      "loop": true,
+      "hasMasks": true,
+      "source": {
+        "animationId": "85f64b20-1f21-4d28-a373-4ee36b368492",
+        "animationGroupId": "919a35f8-47f6-4396-b7de-c1dd13cb1512",
+        "direction": "unknown",
+        "description": "A giant sand-yellow cobra with a flared patterned hood, reared upright on its coiled body, swaying slowly side to side, forked tongue flicking out. Seamless loop."
+      }
+    },
+    "attack": {
+      "frameCount": 9,
+      "frameDurationMs": 100,
+      "loop": false,
+      "hasMasks": true,
+      "source": {
+        "animationId": "e64b851e-6bb0-49ef-b007-0f6cfbd135eb",
+        "animationGroupId": "53e839de-3473-478c-89ec-e745aea09fd1",
+        "direction": "unknown",
+        "description": "The giant sand-yellow cobra with flared hood attacks — it draws its head back coiling tension, then strikes forward toward the camera with bared fangs, then recoils back into its upright swaying posture."
+      }
+    }
+  },
+  "_notes": "1-direction object, side-scroller view. Base sprite approved pre-session; idle+attack generated via v3, self-reviewed (gate 3 pre-approved)."
+}
